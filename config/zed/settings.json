@@ -1,0 +1,176 @@
+{
+  "language_models": {
+    "openai_compatible": {
+      "cerebras": {
+        "api_url": "https://api.cerebras.ai/v1",
+        "available_models": [
+          {
+            "name": "gpt-oss-120b",
+            "max_tokens": 200000,
+            "max_output_tokens": 32000,
+            "max_completion_tokens": 200000,
+            "capabilities": {
+              "tools": true,
+              "images": false,
+              "parallel_tool_calls": false,
+              "prompt_cache_key": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  "features": {
+    "edit_prediction_provider": "zed"
+  },
+  "edit_predictions": {
+    "mode": "eager"
+  },
+  "show_edit_predictions": true,
+  "soft_wrap": "editor_width",
+  "git": {
+    "inline_blame": {
+      "enabled": false
+    },
+    "git_gutter": "hide"
+  },
+  "autosave": "off",
+  "ui_font_size": 16,
+  "buffer_font_size": 16,
+  "theme": {
+    "mode": "system",
+    "light": "One Dark Pro Max",
+    "dark": "One Black Max"
+  },
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "path": "/nix/store/hbnl0hvg35h3krwgzpjlnbjadpr5vlr6-clang-tools-21.1.1/bin/clangd"
+      }
+    },
+    "nim": {
+      "binary": {
+        //search PATH and use whatevers at the nix flake, dont ever ever use the default nimlangserver its awful
+        "path": "nimlsp",
+        "args": []
+      }
+    },
+    "protobuf-language-server": {
+      "binary": {
+        "path": "protols"
+      }
+    }
+  },
+  "languages": {
+    "Starlark": {
+      "language_servers": ["buck2-lsp", "!starpls", "tilt"]
+    },
+    "Elixir": {
+      "language_servers": [
+        "next-ls",
+        "!expert",
+        "!elixir-ls",
+        "!lexical",
+        "..."
+      ]
+    },
+    "HEEX": {
+      "language_servers": [
+        "next-ls",
+        "!expert",
+        "!elixir-ls",
+        "!lexical",
+        "..."
+      ]
+    },
+    "Nix": {
+      "language_servers": ["nixd", "!nil"]
+    },
+    "Ruby": {
+      "language_servers": [
+        "!sorbert",
+        "!ruby-lsp",
+        "!rubocop",
+        "!steep",
+        "solargraph"
+      ]
+    },
+    "python": {
+      // Use the wrapper we defined in configuration.nix
+      "interpreter": "python-with-libtmux"
+    },
+    "Nim": {
+      "formatter": {
+        "external": {
+          "command": "nph",
+          "arguments": ["-"]
+        }
+      }
+    }
+  },
+  "diagnostics_max_severity": "error",
+  "toolbar": {
+    "breadcrumbs": false,
+    "quick_actions": false,
+    "agent_review": false
+  },
+  "disable_ai": false,
+  "scrollbar": {
+    "axes": {
+      "horizontal": false,
+      "vertical": false
+    }
+  },
+  "outline_panel": {
+    "button": false
+  },
+  "collaboration_panel": {
+    "button": false
+  },
+  "search": {
+    "button": false
+  },
+  "git_panel": {
+    "button": false
+  },
+  "project_panel": {
+    "button": false
+  },
+  "terminal": {
+    "button": false,
+    "shell": {
+      "program": "bash"
+    }
+  },
+  "agent": {
+    "profiles": {
+      "careful-write": {
+        "default_model": {
+          "provider": "cerebras",
+          "model": "gpt-oss-120b"
+        },
+        "name": "Careful Write",
+        "tools": {},
+        "enable_all_context_servers": false,
+        "context_servers": {}
+      }
+    },
+    "default_profile": "write",
+    "always_allow_tool_actions": true,
+    "default_model": {
+      "provider": "cerebras",
+      "model": "gpt-oss-120b"
+    },
+    "play_sound_when_agent_done": true,
+    "button": false
+  },
+  "notification_panel": {
+    "button": false
+  },
+
+  "experimental.theme_overrides": {
+    "title_bar.inactive_background": "#000000", // <= the color you need
+    "panel.indent_guide": "#444444", // magenta
+    "panel.indent_guide_active": "#9e114c" // light grey
+  }
+}

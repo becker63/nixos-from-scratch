@@ -1,0 +1,197 @@
+
+monitor=eDP-1,preferred,auto,1.6
+
+render {
+    explicit_sync = 0
+}
+env = WLR_DRM_NO_ATOMIC,1
+
+xwayland {
+    force_zero_scaling = true
+}
+
+$terminal = alacritty
+$fileManager = nautilus
+$menu = tofi-drun --drun-launch=false --terminal "alacritty -e"
+
+
+general {
+    gaps_in = 9
+    gaps_out = 18
+
+    border_size = 0
+    layout = dwindle
+}
+
+
+decoration {
+    shadow {
+        enabled = true
+        range = 60
+        render_power = 4
+
+        color = 0xaa000000       # ~80% black
+        #0x11000000
+        color_inactive = 0x66000000
+
+        offset = 0 0
+        scale = 1.1
+    }
+    rounding = 5
+    rounding_power = 4
+    blur:enabled = false
+}
+
+dwindle {
+    pseudotile = true
+    preserve_split = true
+}
+
+exec-once = swaybg -i ~/nixos-from-scratch/walls/wallpaper4.jpg -m fil
+
+animations {
+    #enabled = true
+
+    # curves
+    bezier = ghostCurveIntro, 0.25, 1, 0.25, 1   # soft, lingering
+    bezier = ghostCurve, 0.5, 1, 0.5, 1          # balanced
+
+    # no spawn pop, fade handles it
+    animation = windows, 0, 1, default
+
+    # movement: short + subtle (snappy, not floaty)
+    animation = windowsMove, 1, 3, ghostCurve
+
+    # borders: instant
+    animation = border, 0, 1, default
+
+    # fades: ghosty spawn linger, snappy close
+    animation = fadeIn, 1, 18, ghostCurveIntro   # long + dreamy
+    animation = fadeOut, 1, 8, ghostCurve        # shorter, clean
+
+    # workspaces: medium glide
+    animation = workspaces, 1, 9, ghostCurveIntro, slide
+}
+
+
+windowrulev2 = opacity 0.85, class:^(dev\.zed\.Zed)$
+windowrule = opacity 0.85, class:obsidian
+windowrule = opacity 0.85, class:Alacritty
+
+
+# =====================
+# Input Settings
+# =====================
+
+input {
+    kb_layout = us
+    kb_model = apple         # IMPORTANT for Mac keyboards
+    kb_variant =
+    # this option swaps Left Ctrl and Left Super (Command)
+    kb_options = ctrl:swap_lwin_lctl,caps:super
+
+    follow_mouse = 1
+    accel_profile = flat
+    sensitivity = 0
+    natural_scroll = true
+
+    touchpad {
+        natural_scroll = true
+    }
+}
+
+gestures:workspace_swipe = true
+
+# Use SUPER as the main modifier for Hyprland bindings
+$mainMod = ALT
+
+# =====================
+# Window / Workspace Keybinds
+# =====================
+
+bind = $mainMod, Return, exec, $terminal
+bind = $mainMod, Q, killactive,
+bind = $mainMod, X, exit,
+bind = $mainMod, E, exec, $fileManager
+bind = $mainMod, SPACE, exec, $menu | xargs hyprctl dispatch exec --
+bind = $mainMod, P, pseudo,
+bind = $mainMod, J, togglesplit,
+
+bind = $mainMod, left, movefocus, l
+bind = $mainMod, right, movefocus, r
+bind = $mainMod, up, movefocus, u
+bind = $mainMod, down, movefocus, d
+
+bind = $mainMod SHIFT, left, movewindow, l
+bind = $mainMod SHIFT, right, movewindow, r
+bind = $mainMod SHIFT, up, movewindow, u
+bind = $mainMod SHIFT, down, movewindow, d
+
+
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, 5, workspace, 5
+bind = $mainMod, 6, workspace, 6
+bind = $mainMod, 7, workspace, 7
+bind = $mainMod, 8, workspace, 8
+bind = $mainMod, 9, workspace, 9
+bind = $mainMod, 0, workspace, 10
+
+bind = $mainMod SHIFT, 1, movetoworkspacesilent, 1
+bind = $mainMod SHIFT, 2, movetoworkspacesilent, 2
+bind = $mainMod SHIFT, 3, movetoworkspacesilent, 3
+bind = $mainMod SHIFT, 4, movetoworkspacesilent, 4
+bind = $mainMod SHIFT, 5, movetoworkspacesilent, 5
+bind = $mainMod SHIFT, 6, movetoworkspacesilent, 6
+bind = $mainMod SHIFT, 7, movetoworkspacesilent, 7
+bind = $mainMod SHIFT, 8, movetoworkspacesilent, 8
+bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
+bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
+
+bind = $mainMod SUPER, left, resizeactive, -80 0
+bind = $mainMod SUPER, right, resizeactive, 80 0
+bind = $mainMod SUPER, up, resizeactive, 0 -80
+bind = $mainMod SUPER, down, resizeactive, 0 80
+
+bind = $mainMod, mouse_down, workspace, e+1
+bind = $mainMod, mouse_up, workspace, e-1
+
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod, mouse:273, resizewindow
+
+# =====================
+# Media / Special Keys
+# =====================
+
+bindel = ,XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindel = ,XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindel = ,XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindel = ,XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindel = ,XF86MonBrightnessUp, exec, brightnessctl s 10%+
+bindel = ,XF86MonBrightnessDown, exec, brightnessctl s 10%-
+
+bindl = ,XF86AudioNext, exec, playerctl next
+bindl = ,XF86AudioPause, exec, playerctl play-pause
+bindl = ,XF86AudioPlay, exec, playerctl play-pause
+bindl = ,XF86AudioPrev, exec, playerctl previous
+
+
+env = GDK_SCALE,"1"
+env = GDK_DPI_SCALE,"1.6"
+env = QT_AUTO_SCREEN_SCALE_FACTOR,"0"
+env = QT_SCALE_FACTOR,"1.6"
+env = QT_WAYLAND_DISABLE_WINDOWDECORATION,"1"
+env = NIXOS_OZONE_WL,"1"
+env = ELECTRON_OZONE_PLATFORM_HINT,"wayland"
+env = QT_QPA_PLATFORM,"wayland"
+env = XWAYLAND_DPI,"153"
+
+for_window [app_id="dev.zed.Zed"] opacity 0.85
+
+# Obsidian
+for_window [app_id="obsidian"] opacity 0.85
+
+# Alacritty terminal
+for_window [app_id="Alacritty"] opacity 0.85

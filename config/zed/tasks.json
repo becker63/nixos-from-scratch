@@ -1,0 +1,16 @@
+[
+  {
+    "label": "File Finder",
+    "command": "bash -c 'zed \"$(tv files)\"'",
+    "hide": "always",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": true
+  },
+  {
+    "label": "Find in Files",
+    "command": "bash -c 'zed \"$(tv text)\"'",
+    "hide": "always",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": true
+  }
+]
