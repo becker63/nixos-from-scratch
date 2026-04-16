@@ -1,0 +1,3 @@
+[submodule "config/xonsh-prewarmed"]
+	path = config/xonsh-prewarmed
+	url = https://github.com/anki-code/xonsh-prewarmed

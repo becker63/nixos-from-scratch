@@ -1,0 +1,17 @@
+diff --git a/xontrib/output_search.py b/xontrib/output_search.py
+index f3edd57..313bcdd 100644
+--- a/xontrib/output_search.py
++++ b/xontrib/output_search.py
+@@ -60,6 +60,12 @@ def _xontrib_output_search_completer(prefix, line, begidx, endidx, ctx):
+                         tokens = set([prefix_before_char + t for t in tokens])
+ 
+             tokens = tokens if tokens else set([prefix])
++
++            import re
++
++            _valid_token = re.compile(r"^[A-Za-z0-9._/\-]+$")
++
++            tokens = {t for t in tokens if _valid_token.match(t)}
+             return (tokens, len(prefix))
+ 
+ 

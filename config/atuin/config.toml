@@ -1,0 +1,11 @@
+auto_sync = true
+style = "compact"
+prefers_reduced_motion = true
+#enter_accept = true
+command_chaining = true
+show_tabs = false
+workspaces = true
+invert = false
+
+[sync]
+records = true

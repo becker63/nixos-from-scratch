@@ -1,0 +1,9 @@
+{
+  "lastChangelogVersion": "0.62.0",
+  "defaultProvider": "openrouter",
+  "defaultThinkingLevel": "medium",
+  "packages": [
+    "npm:pi-mcp-adapter"
+  ],
+  "defaultModel": "qwen/qwen3-coder-flash"
+}
