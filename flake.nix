@@ -70,7 +70,20 @@
         inputs.nur.overlays.default
 
         (final: prev: {
-          paseo = inputs.paseo.packages.${prev.system}.default;
+          paseo = (prev.callPackage "${inputs.paseo}/nix/package.nix" { }).overrideAttrs (old: rec {
+            npmDepsHash = "sha256-kw9Lefo644oeeTJCvdFdeW4tbwVMQWqkIVaNonhqbNs=";
+            npmDeps = prev.fetchNpmDeps {
+              src = old.src;
+              name = "paseo-0.1.59-npm-deps";
+              hash = npmDepsHash;
+              fetcherVersion = 1;
+            };
+          });
+        })
+
+        (import ./overlays/paseo-desktop.nix {
+          paseo-src = inputs.paseo;
+          version = "0.1.59";
         })
 
         (import ./overlays/xontribs-and-pkgs.nix {

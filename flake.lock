@@ -8,11 +8,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1776147994,
-        "narHash": "sha256-c5F8jYiB0fjWsP4j/yeszqszA3laflzDj6/pmoJTeG4=",
+        "lastModified": 1776370524,
+        "narHash": "sha256-0Gt5qnjNkIZJdOBfu2u47zgyhYL3WmgUrguUhGSxUdk=",
         "owner": "tpwrules",
         "repo": "nixos-apple-silicon",
-        "rev": "81439a7fb8067ab43641efd79c84607701da1ccd",
+        "rev": "f9f0650b45e31b3f6c3e2a0405fa198a286e2741",
         "type": "github"
       },
       "original": {
@@ -128,11 +128,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1775710090,
-        "narHash": "sha256-ar3rofg+awPB8QXDaFJhJ2jJhu+KqN/PRCXeyuXR76E=",
+        "lastModified": 1776548001,
+        "narHash": "sha256-ZSK0NL4a1BwVbbTBoSnWgbJy9HeZFXLYQizjb2DPF24=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "4c1018dae018162ec878d42fec712642d214fdfa",
+        "rev": "b12141ef619e0a9c1c84dc8c684040326f27cdcc",
         "type": "github"
       },
       "original": {
@@ -150,16 +150,37 @@
         ]
       },
       "locked": {
-        "lastModified": 1776270388,
-        "narHash": "sha256-NYWFwrjGdulKrY/kAJZtQo3oct3dXCy8r/l9qsMz+J4=",
+        "lastModified": 1776711100,
+        "narHash": "sha256-gRHgKcIIrT05ujIXxWqQATHZSDkJkQzpeBHjRY7sA1g=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "cb00cd036283a84c25e10ef99fcb7e38ee5bcf11",
+        "rev": "5deb20eacb269990c3368c85b9809f9e2b8caa24",
         "type": "github"
       },
       "original": {
         "owner": "nix-community",
         "repo": "NUR",
+        "type": "github"
+      }
+    },
+    "paseo": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1776352249,
+        "narHash": "sha256-1aYK6zX/qHftTgdC9JRUKLaaEdjTIUqlKwSeoCWp7Zw=",
+        "owner": "getpaseo",
+        "repo": "paseo",
+        "rev": "40f8a8414af30ef4e979d489542c02ae77998e46",
+        "type": "github"
+      },
+      "original": {
+        "owner": "getpaseo",
+        "ref": "v0.1.59",
+        "repo": "paseo",
         "type": "github"
       }
     },
@@ -172,6 +193,7 @@
         "mesa-pinned": "mesa-pinned",
         "nixpkgs": "nixpkgs",
         "nur": "nur",
+        "paseo": "paseo",
         "tokenize-output-src": "tokenize-output-src",
         "xontrib-jedi-src": "xontrib-jedi-src",
         "xontrib-output-search-src": "xontrib-output-search-src",
@@ -213,11 +235,11 @@
     "xontrib-output-search-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1774862523,
-        "narHash": "sha256-3jz2Y3fsVfKrJgrF1+tZ4vowERvzWkiiAFGG/wy5R3M=",
+        "lastModified": 1776532583,
+        "narHash": "sha256-r92uBgvyEaRDIlAN9GKYilQpophN7DDuJfUxwCqw1J4=",
         "owner": "anki-code",
         "repo": "xontrib-output-search",
-        "rev": "a531e57d21e40e8fd032a94a0d161a40fe360bfe",
+        "rev": "84094c918c23b214c0e33f899ae7c537ea6cc0d7",
         "type": "github"
       },
       "original": {
