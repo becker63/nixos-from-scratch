@@ -156,7 +156,7 @@ in
     tokei
 
     exercism
-    gleam
+    #gleam
     erlang
 
     nix-output-monitor
@@ -178,5 +178,6 @@ in
     obs-studio
     codeql
     paseo
+    paseo-desktop
   ];
 }
