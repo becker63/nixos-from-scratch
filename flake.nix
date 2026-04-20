@@ -16,6 +16,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    paseo = {
+      url = "github:getpaseo/paseo?ref=v0.1.59";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # 👇 pinned nixpkgs at Mesa 25.1.9
     mesa-pinned.url = "github:NixOS/nixpkgs/0170f90d6c3e56b98289f8956d1add375fcfb423";
 
@@ -49,7 +54,6 @@
       url = "github:copier-org/copier-templates-extensions";
       flake = false;
     };
-
   };
 
   outputs =
@@ -64,6 +68,11 @@
 
       overlays = [
         inputs.nur.overlays.default
+
+        (final: prev: {
+          paseo = inputs.paseo.packages.${prev.system}.default;
+        })
+
         (import ./overlays/xontribs-and-pkgs.nix {
           inherit (inputs)
             xontrib-jedi-src
@@ -100,15 +109,18 @@
               peripheralFirmwareDirectory = ./firmware;
               setupAsahiSound = true;
             };
+
             services.pipewire = {
               enable = true;
               alsa.enable = true;
               pulse.enable = true;
               wireplumber.enable = true;
             };
+
             environment.sessionVariables = {
               LV2_PATH = "${pkgs.asahi-audio}/lib/lv2";
             };
+
             hardware.graphics = {
               enable = true;
               extraPackages = with pkgs; [
@@ -136,6 +148,8 @@
         ];
       };
 
-      devShells.${system}.default = pkgs.mkShell { buildInputs = [ pkgs.python-env ]; };
+      devShells.${system}.default = pkgs.mkShell {
+        buildInputs = [ pkgs.python-env ];
+      };
     };
 }

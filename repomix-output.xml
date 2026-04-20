@@ -191,6 +191,1634 @@ home.nix
 <files>
 This section contains the contents of the repository's files.
 
+<file path="zed-codeql/.git/hooks/applypatch-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to check the commit log message taken by
+# applypatch from an e-mail message.
+#
+# The hook should exit with non-zero status after issuing an
+# appropriate message if it wants to stop the commit.  The hook is
+# allowed to edit the commit message file.
+#
+# To enable this hook, rename this file to "applypatch-msg".
+
+. git-sh-setup
+commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
+test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/commit-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to check the commit log message.
+# Called by "git commit" with one argument, the name of the file
+# that has the commit message.  The hook should exit with non-zero
+# status after issuing an appropriate message if it wants to stop the
+# commit.  The hook is allowed to edit the commit message file.
+#
+# To enable this hook, rename this file to "commit-msg".
+
+# Uncomment the below to add a Signed-off-by line to the message.
+# Doing this in a hook is a bad idea in general, but the prepare-commit-msg
+# hook is more suited to it.
+#
+# SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+# grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+
+# This example catches duplicate Signed-off-by lines.
+
+test "" = "$(grep '^Signed-off-by: ' "$1" |
+	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
+	echo >&2 Duplicate Signed-off-by lines.
+	exit 1
+}
+</file>
+
+<file path="zed-codeql/.git/hooks/fsmonitor-watchman.sample">
+#!/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl
+
+use strict;
+use warnings;
+use IPC::Open2;
+
+# An example hook script to integrate Watchman
+# (https://facebook.github.io/watchman/) with git to speed up detecting
+# new and modified files.
+#
+# The hook is passed a version (currently 2) and last update token
+# formatted as a string and outputs to stdout a new update token and
+# all files that have been modified since the update token. Paths must
+# be relative to the root of the working tree and separated by a single NUL.
+#
+# To enable this hook, rename this file to "query-watchman" and set
+# 'git config core.fsmonitor .git/hooks/query-watchman'
+#
+my ($version, $last_update_token) = @ARGV;
+
+# Uncomment for debugging
+# print STDERR "$0 $version $last_update_token\n";
+
+# Check the hook interface version
+if ($version ne 2) {
+	die "Unsupported query-fsmonitor hook version '$version'.\n" .
+	    "Falling back to scanning...\n";
+}
+
+my $git_work_tree = get_working_dir();
+
+my $retry = 1;
+
+my $json_pkg;
+eval {
+	require JSON::XS;
+	$json_pkg = "JSON::XS";
+	1;
+} or do {
+	require JSON::PP;
+	$json_pkg = "JSON::PP";
+};
+
+launch_watchman();
+
+sub launch_watchman {
+	my $o = watchman_query();
+	if (is_work_tree_watched($o)) {
+		output_result($o->{clock}, @{$o->{files}});
+	}
+}
+
+sub output_result {
+	my ($clockid, @files) = @_;
+
+	# Uncomment for debugging watchman output
+	# open (my $fh, ">", ".git/watchman-output.out");
+	# binmode $fh, ":utf8";
+	# print $fh "$clockid\n@files\n";
+	# close $fh;
+
+	binmode STDOUT, ":utf8";
+	print $clockid;
+	print "\0";
+	local $, = "\0";
+	print @files;
+}
+
+sub watchman_clock {
+	my $response = qx/watchman clock "$git_work_tree"/;
+	die "Failed to get clock id on '$git_work_tree'.\n" .
+		"Falling back to scanning...\n" if $? != 0;
+
+	return $json_pkg->new->utf8->decode($response);
+}
+
+sub watchman_query {
+	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
+	or die "open2() failed: $!\n" .
+	"Falling back to scanning...\n";
+
+	# In the query expression below we're asking for names of files that
+	# changed since $last_update_token but not from the .git folder.
+	#
+	# To accomplish this, we're using the "since" generator to use the
+	# recency index to select candidate nodes and "fields" to limit the
+	# output to file names only. Then we're using the "expression" term to
+	# further constrain the results.
+	my $last_update_line = "";
+	if (substr($last_update_token, 0, 1) eq "c") {
+		$last_update_token = "\"$last_update_token\"";
+		$last_update_line = qq[\n"since": $last_update_token,];
+	}
+	my $query = <<"	END";
+		["query", "$git_work_tree", {$last_update_line
+			"fields": ["name"],
+			"expression": ["not", ["dirname", ".git"]]
+		}]
+	END
+
+	# Uncomment for debugging the watchman query
+	# open (my $fh, ">", ".git/watchman-query.json");
+	# print $fh $query;
+	# close $fh;
+
+	print CHLD_IN $query;
+	close CHLD_IN;
+	my $response = do {local $/; <CHLD_OUT>};
+
+	# Uncomment for debugging the watch response
+	# open ($fh, ">", ".git/watchman-response.json");
+	# print $fh $response;
+	# close $fh;
+
+	die "Watchman: command returned no output.\n" .
+	"Falling back to scanning...\n" if $response eq "";
+	die "Watchman: command returned invalid output: $response\n" .
+	"Falling back to scanning...\n" unless $response =~ /^\{/;
+
+	return $json_pkg->new->utf8->decode($response);
+}
+
+sub is_work_tree_watched {
+	my ($output) = @_;
+	my $error = $output->{error};
+	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
+		$retry--;
+		my $response = qx/watchman watch "$git_work_tree"/;
+		die "Failed to make watchman watch '$git_work_tree'.\n" .
+		    "Falling back to scanning...\n" if $? != 0;
+		$output = $json_pkg->new->utf8->decode($response);
+		$error = $output->{error};
+		die "Watchman: $error.\n" .
+		"Falling back to scanning...\n" if $error;
+
+		# Uncomment for debugging watchman output
+		# open (my $fh, ">", ".git/watchman-output.out");
+		# close $fh;
+
+		# Watchman will always return all files on the first query so
+		# return the fast "everything is dirty" flag to git and do the
+		# Watchman query just to get it over with now so we won't pay
+		# the cost in git to look up each individual file.
+		my $o = watchman_clock();
+		$error = $output->{error};
+
+		die "Watchman: $error.\n" .
+		"Falling back to scanning...\n" if $error;
+
+		output_result($o->{clock}, ("/"));
+		$last_update_token = $o->{clock};
+
+		eval { launch_watchman() };
+		return 0;
+	}
+
+	die "Watchman: $error.\n" .
+	"Falling back to scanning...\n" if $error;
+
+	return 1;
+}
+
+sub get_working_dir {
+	my $working_dir;
+	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
+		$working_dir = Win32::GetCwd();
+		$working_dir =~ tr/\\/\//;
+	} else {
+		require Cwd;
+		$working_dir = Cwd::cwd();
+	}
+
+	return $working_dir;
+}
+</file>
+
+<file path="zed-codeql/.git/hooks/post-update.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to prepare a packed repository for use over
+# dumb transports.
+#
+# To enable this hook, rename this file to "post-update".
+
+exec git update-server-info
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-applypatch.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed
+# by applypatch from an e-mail message.
+#
+# The hook should exit with non-zero status after issuing an
+# appropriate message if it wants to stop the commit.
+#
+# To enable this hook, rename this file to "pre-applypatch".
+
+. git-sh-setup
+precommit="$(git rev-parse --git-path hooks/pre-commit)"
+test -x "$precommit" && exec "$precommit" ${1+"$@"}
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-commit.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed.
+# Called by "git commit" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message if
+# it wants to stop the commit.
+#
+# To enable this hook, rename this file to "pre-commit".
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+# If you want to allow non-ASCII filenames set this variable to true.
+allownonascii=$(git config --type=bool hooks.allownonascii)
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Cross platform projects tend to avoid non-ASCII filenames; prevent
+# them from being added to the repository. We exploit the fact that the
+# printable range starts at the space character and ends with tilde.
+if [ "$allownonascii" != "true" ] &&
+	# Note that the use of brackets around a tr range is ok here, (it's
+	# even required, for portability to Solaris 10's /usr/bin/tr), since
+	# the square bracket bytes happen to fall in the designated range.
+	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
+	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+then
+	cat <<\EOF
+Error: Attempt to add a non-ASCII file name.
+
+This can cause problems if you want to work with people on other platforms.
+
+To be portable it is advisable to rename the file.
+
+If you know what you are doing you can disable this check using:
+
+  git config hooks.allownonascii true
+EOF
+	exit 1
+fi
+
+# If there are whitespace errors, print the offending file names and fail.
+exec git diff-index --check --cached $against --
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-merge-commit.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed.
+# Called by "git merge" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message to
+# stderr if it wants to stop the merge commit.
+#
+# To enable this hook, rename this file to "pre-merge-commit".
+
+. git-sh-setup
+test -x "$GIT_DIR/hooks/pre-commit" &&
+        exec "$GIT_DIR/hooks/pre-commit"
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-push.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to verify what is about to be pushed.  Called by "git
+# push" after it has checked the remote status, but before anything has been
+# pushed.  If this script exits with a non-zero status nothing will be pushed.
+#
+# This hook is called with the following parameters:
+#
+# $1 -- Name of the remote to which the push is being done
+# $2 -- URL to which the push is being done
+#
+# If pushing without using a named remote those arguments will be equal.
+#
+# Information about the commits which are being pushed is supplied as lines to
+# the standard input in the form:
+#
+#   <local ref> <local oid> <remote ref> <remote oid>
+#
+# This sample shows how to prevent push of commits where the log message starts
+# with "WIP" (work in progress).
+
+remote="$1"
+url="$2"
+
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+
+while read local_ref local_oid remote_ref remote_oid
+do
+	if test "$local_oid" = "$zero"
+	then
+		# Handle delete
+		:
+	else
+		if test "$remote_oid" = "$zero"
+		then
+			# New branch, examine all commits
+			range="$local_oid"
+		else
+			# Update to existing branch, examine new commits
+			range="$remote_oid..$local_oid"
+		fi
+
+		# Check for WIP commit
+		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
+		if test -n "$commit"
+		then
+			echo >&2 "Found WIP commit in $local_ref, not pushing"
+			exit 1
+		fi
+	fi
+done
+
+exit 0
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-rebase.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# Copyright (c) 2006, 2008 Junio C Hamano
+#
+# The "pre-rebase" hook is run just before "git rebase" starts doing
+# its job, and can prevent the command from running by exiting with
+# non-zero status.
+#
+# The hook is called with the following parameters:
+#
+# $1 -- the upstream the series was forked from.
+# $2 -- the branch being rebased (or empty when rebasing the current branch).
+#
+# This sample shows how to prevent topic branches that are already
+# merged to 'next' branch from getting rebased, because allowing it
+# would result in rebasing already published history.
+
+publish=next
+basebranch="$1"
+if test "$#" = 2
+then
+	topic="refs/heads/$2"
+else
+	topic=`git symbolic-ref HEAD` ||
+	exit 0 ;# we do not interrupt rebasing detached HEAD
+fi
+
+case "$topic" in
+refs/heads/??/*)
+	;;
+*)
+	exit 0 ;# we do not interrupt others.
+	;;
+esac
+
+# Now we are dealing with a topic branch being rebased
+# on top of master.  Is it OK to rebase it?
+
+# Does the topic really exist?
+git show-ref -q "$topic" || {
+	echo >&2 "No such branch $topic"
+	exit 1
+}
+
+# Is topic fully merged to master?
+not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
+if test -z "$not_in_master"
+then
+	echo >&2 "$topic is fully merged to master; better remove it."
+	exit 1 ;# we could allow it, but there is no point.
+fi
+
+# Is topic ever merged to next?  If so you should not be rebasing it.
+only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
+only_next_2=`git rev-list ^master           ${publish} | sort`
+if test "$only_next_1" = "$only_next_2"
+then
+	not_in_topic=`git rev-list "^$topic" master`
+	if test -z "$not_in_topic"
+	then
+		echo >&2 "$topic is already up to date with master"
+		exit 1 ;# we could allow it, but there is no point.
+	else
+		exit 0
+	fi
+else
+	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
+	/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -e '
+		my $topic = $ARGV[0];
+		my $msg = "* $topic has commits already merged to public branch:\n";
+		my (%not_in_next) = map {
+			/^([0-9a-f]+) /;
+			($1 => 1);
+		} split(/\n/, $ARGV[1]);
+		for my $elem (map {
+				/^([0-9a-f]+) (.*)$/;
+				[$1 => $2];
+			} split(/\n/, $ARGV[2])) {
+			if (!exists $not_in_next{$elem->[0]}) {
+				if ($msg) {
+					print STDERR $msg;
+					undef $msg;
+				}
+				print STDERR " $elem->[1]\n";
+			}
+		}
+	' "$topic" "$not_in_next" "$not_in_master"
+	exit 1
+fi
+
+<<\DOC_END
+
+This sample hook safeguards topic branches that have been
+published from being rewound.
+
+The workflow assumed here is:
+
+ * Once a topic branch forks from "master", "master" is never
+   merged into it again (either directly or indirectly).
+
+ * Once a topic branch is fully cooked and merged into "master",
+   it is deleted.  If you need to build on top of it to correct
+   earlier mistakes, a new topic branch is created by forking at
+   the tip of the "master".  This is not strictly necessary, but
+   it makes it easier to keep your history simple.
+
+ * Whenever you need to test or publish your changes to topic
+   branches, merge them into "next" branch.
+
+The script, being an example, hardcodes the publish branch name
+to be "next", but it is trivial to make it configurable via
+$GIT_DIR/config mechanism.
+
+With this workflow, you would want to know:
+
+(1) ... if a topic branch has ever been merged to "next".  Young
+    topic branches can have stupid mistakes you would rather
+    clean up before publishing, and things that have not been
+    merged into other branches can be easily rebased without
+    affecting other people.  But once it is published, you would
+    not want to rewind it.
+
+(2) ... if a topic branch has been fully merged to "master".
+    Then you can delete it.  More importantly, you should not
+    build on top of it -- other people may already want to
+    change things related to the topic as patches against your
+    "master", so if you need further changes, it is better to
+    fork the topic (perhaps with the same name) afresh from the
+    tip of "master".
+
+Let's look at this example:
+
+		   o---o---o---o---o---o---o---o---o---o "next"
+		  /       /           /           /
+		 /   a---a---b A     /           /
+		/   /               /           /
+	       /   /   c---c---c---c B         /
+	      /   /   /             \         /
+	     /   /   /   b---b C     \       /
+	    /   /   /   /             \     /
+    ---o---o---o---o---o---o---o---o---o---o---o "master"
+
+
+A, B and C are topic branches.
+
+ * A has one fix since it was merged up to "next".
+
+ * B has finished.  It has been fully merged up to "master" and "next",
+   and is ready to be deleted.
+
+ * C has not merged to "next" at all.
+
+We would want to allow C to be rebased, refuse A, and encourage
+B to be deleted.
+
+To compute (1):
+
+	git rev-list ^master ^topic next
+	git rev-list ^master        next
+
+	if these match, topic has not merged in next at all.
+
+To compute (2):
+
+	git rev-list master..topic
+
+	if this is empty, it is fully merged to "master".
+
+DOC_END
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-receive.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to make use of push options.
+# The example simply echoes all push options that start with 'echoback='
+# and rejects all pushes when the "reject" push option is used.
+#
+# To enable this hook, rename this file to "pre-receive".
+
+if test -n "$GIT_PUSH_OPTION_COUNT"
+then
+	i=0
+	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
+	do
+		eval "value=\$GIT_PUSH_OPTION_$i"
+		case "$value" in
+		echoback=*)
+			echo "echo from the pre-receive-hook: ${value#*=}" >&2
+			;;
+		reject)
+			exit 1
+		esac
+		i=$((i + 1))
+	done
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/prepare-commit-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to prepare the commit log message.
+# Called by "git commit" with the name of the file that has the
+# commit message, followed by the description of the commit
+# message's source.  The hook's purpose is to edit the commit
+# message file.  If the hook fails with a non-zero status,
+# the commit is aborted.
+#
+# To enable this hook, rename this file to "prepare-commit-msg".
+
+# This hook includes three examples. The first one removes the
+# "# Please enter the commit message..." help message.
+#
+# The second includes the output of "git diff --name-status -r"
+# into the message, just before the "git status" output.  It is
+# commented because it doesn't cope with --amend or with squashed
+# commits.
+#
+# The third example adds a Signed-off-by line to the message, that can
+# still be edited.  This is rarely a good idea.
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+SHA1=$3
+
+/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
+
+# case "$COMMIT_SOURCE,$SHA1" in
+#  ,|template,)
+#    /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe '
+#       print "\n" . `git diff --cached --name-status -r`
+# 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
+#  *) ;;
+# esac
+
+# SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+# git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
+# if test -z "$COMMIT_SOURCE"
+# then
+#   /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
+# fi
+</file>
+
+<file path="zed-codeql/.git/hooks/push-to-checkout.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to update a checked-out tree on a git push.
+#
+# This hook is invoked by git-receive-pack(1) when it reacts to git
+# push and updates reference(s) in its repository, and when the push
+# tries to update the branch that is currently checked out and the
+# receive.denyCurrentBranch configuration variable is set to
+# updateInstead.
+#
+# By default, such a push is refused if the working tree and the index
+# of the remote repository has any difference from the currently
+# checked out commit; when both the working tree and the index match
+# the current commit, they are updated to match the newly pushed tip
+# of the branch. This hook is to be used to override the default
+# behaviour; however the code below reimplements the default behaviour
+# as a starting point for convenient modification.
+#
+# The hook receives the commit with which the tip of the current
+# branch is going to be updated:
+commit=$1
+
+# It can exit with a non-zero status to refuse the push (when it does
+# so, it must not modify the index or the working tree).
+die () {
+	echo >&2 "$*"
+	exit 1
+}
+
+# Or it can make any necessary changes to the working tree and to the
+# index to bring them to the desired state when the tip of the current
+# branch is updated to the new commit, and exit with a zero status.
+#
+# For example, the hook can simply run git read-tree -u -m HEAD "$1"
+# in order to emulate git fetch that is run in the reverse direction
+# with git push, as the two-tree form of git read-tree -u -m is
+# essentially the same as git switch or git checkout that switches
+# branches while keeping the local changes in the working tree that do
+# not interfere with the difference between the branches.
+
+# The below is a more-or-less exact translation to shell of the C code
+# for the default behaviour for git's push-to-checkout hook defined in
+# the push_to_deploy() function in builtin/receive-pack.c.
+#
+# Note that the hook will be executed from the repository directory,
+# not from the working tree, so if you want to perform operations on
+# the working tree, you will have to adapt your code accordingly, e.g.
+# by adding "cd .." or using relative paths.
+
+if ! git update-index -q --ignore-submodules --refresh
+then
+	die "Up-to-date check failed"
+fi
+
+if ! git diff-files --quiet --ignore-submodules --
+then
+	die "Working directory has unstaged changes"
+fi
+
+# This is a rough translation of:
+#
+#   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
+if git cat-file -e HEAD 2>/dev/null
+then
+	head=HEAD
+else
+	head=$(git hash-object -t tree --stdin </dev/null)
+fi
+
+if ! git diff-index --quiet --cached --ignore-submodules $head --
+then
+	die "Working directory has staged changes"
+fi
+
+if ! git read-tree -u -m "$commit"
+then
+	die "Could not update working tree to new HEAD"
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/sendemail-validate.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to validate a patch (and/or patch series) before
+# sending it via email.
+#
+# The hook should exit with non-zero status after issuing an appropriate
+# message if it wants to prevent the email(s) from being sent.
+#
+# To enable this hook, rename this file to "sendemail-validate".
+#
+# By default, it will only check that the patch(es) can be applied on top of
+# the default upstream branch without conflicts in a secondary worktree. After
+# validation (successful or not) of the last patch of a series, the worktree
+# will be deleted.
+#
+# The following config variables can be set to change the default remote and
+# remote ref that are used to apply the patches against:
+#
+#   sendemail.validateRemote (default: origin)
+#   sendemail.validateRemoteRef (default: HEAD)
+#
+# Replace the TODO placeholders with appropriate checks according to your
+# needs.
+
+validate_cover_letter () {
+	file="$1"
+	# TODO: Replace with appropriate checks (e.g. spell checking).
+	true
+}
+
+validate_patch () {
+	file="$1"
+	# Ensure that the patch applies without conflicts.
+	git am -3 "$file" || return
+	# TODO: Replace with appropriate checks for this patch
+	# (e.g. checkpatch.pl).
+	true
+}
+
+validate_series () {
+	# TODO: Replace with appropriate checks for the whole series
+	# (e.g. quick build, coding style checks, etc.).
+	true
+}
+
+# main -------------------------------------------------------------------------
+
+if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
+then
+	remote=$(git config --default origin --get sendemail.validateRemote) &&
+	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
+	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
+	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
+	git config --replace-all sendemail.validateWorktree "$worktree"
+else
+	worktree=$(git config --get sendemail.validateWorktree)
+fi || {
+	echo "sendemail-validate: error: failed to prepare worktree" >&2
+	exit 1
+}
+
+unset GIT_DIR GIT_WORK_TREE
+cd "$worktree" &&
+
+if grep -q "^diff --git " "$1"
+then
+	validate_patch "$1"
+else
+	validate_cover_letter "$1"
+fi &&
+
+if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
+then
+	git config --unset-all sendemail.validateWorktree &&
+	trap 'git worktree remove -ff "$worktree"' EXIT &&
+	validate_series
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/update.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to block unannotated tags from entering.
+# Called by "git receive-pack" with arguments: refname sha1-old sha1-new
+#
+# To enable this hook, rename this file to "update".
+#
+# Config
+# ------
+# hooks.allowunannotated
+#   This boolean sets whether unannotated tags will be allowed into the
+#   repository.  By default they won't be.
+# hooks.allowdeletetag
+#   This boolean sets whether deleting tags will be allowed in the
+#   repository.  By default they won't be.
+# hooks.allowmodifytag
+#   This boolean sets whether a tag may be modified after creation. By default
+#   it won't be.
+# hooks.allowdeletebranch
+#   This boolean sets whether deleting branches will be allowed in the
+#   repository.  By default they won't be.
+# hooks.denycreatebranch
+#   This boolean sets whether remotely creating branches will be denied
+#   in the repository.  By default this is allowed.
+#
+
+# --- Command line
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+# --- Safety check
+if [ -z "$GIT_DIR" ]; then
+	echo "Don't run this script from the command line." >&2
+	echo " (if you want, you could supply GIT_DIR then run" >&2
+	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+	exit 1
+fi
+
+if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+	exit 1
+fi
+
+# --- Config
+allowunannotated=$(git config --type=bool hooks.allowunannotated)
+allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
+denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
+allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
+allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
+
+# check for no description
+projectdesc=$(sed -e '1q' "$GIT_DIR/description")
+case "$projectdesc" in
+"Unnamed repository"* | "")
+	echo "*** Project description file hasn't been set" >&2
+	exit 1
+	;;
+esac
+
+# --- Check types
+# if $newrev is 0000...0000, it's a commit to delete a ref.
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+if [ "$newrev" = "$zero" ]; then
+	newrev_type=delete
+else
+	newrev_type=$(git cat-file -t $newrev)
+fi
+
+case "$refname","$newrev_type" in
+	refs/tags/*,commit)
+		# un-annotated tag
+		short_refname=${refname##refs/tags/}
+		if [ "$allowunannotated" != "true" ]; then
+			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
+			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
+			exit 1
+		fi
+		;;
+	refs/tags/*,delete)
+		# delete tag
+		if [ "$allowdeletetag" != "true" ]; then
+			echo "*** Deleting a tag is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/tags/*,tag)
+		# annotated tag
+		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
+		then
+			echo "*** Tag '$refname' already exists." >&2
+			echo "*** Modifying a tag is not allowed in this repository." >&2
+			exit 1
+		fi
+		;;
+	refs/heads/*,commit)
+		# branch
+		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
+			echo "*** Creating a branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/heads/*,delete)
+		# delete branch
+		if [ "$allowdeletebranch" != "true" ]; then
+			echo "*** Deleting a branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/remotes/*,commit)
+		# tracking branch
+		;;
+	refs/remotes/*,delete)
+		# delete tracking branch
+		if [ "$allowdeletebranch" != "true" ]; then
+			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	*)
+		# Anything else (is there anything else?)
+		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
+		exit 1
+		;;
+esac
+
+# --- Finished
+exit 0
+</file>
+
+<file path="zed-codeql/.git/info/exclude">
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~
+</file>
+
+<file path="zed-codeql/.git/logs/refs/heads/main">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/logs/refs/remotes/origin/HEAD">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/logs/HEAD">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/refs/heads/main">
+0049551f3ab08881db3ac4fd5ce9b112548b0d8c
+</file>
+
+<file path="zed-codeql/.git/refs/remotes/origin/HEAD">
+ref: refs/remotes/origin/main
+</file>
+
+<file path="zed-codeql/.git/config">
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/blacktop/zed-codeql
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+</file>
+
+<file path="zed-codeql/.git/description">
+Unnamed repository; edit this file 'description' to name the repository.
+</file>
+
+<file path="zed-codeql/.git/HEAD">
+ref: refs/heads/main
+</file>
+
+<file path="zed-codeql/.git/packed-refs">
+# pack-refs with: peeled fully-peeled sorted 
+0049551f3ab08881db3ac4fd5ce9b112548b0d8c refs/remotes/origin/main
+</file>
+
+<file path="zed-codeql/languages/codeql/brackets.scm">
+; Bracket pairs for CodeQL
+("(" @open ")" @close)
+("[" @open "]" @close)
+("{" @open "}" @close)
+</file>
+
+<file path="zed-codeql/languages/codeql/config.toml">
+name = "CodeQL"
+grammar = "ql"
+path_suffixes = ["ql", "qll", "qlref", "dbscheme"]
+line_comments = ["//"]
+block_comment = ["/**", "*/"]
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = false },
+    { start = "(", end = ")", close = true, newline = false }
+]
+auto_pairs = [
+    { start = "{", end = "}" },
+    { start = "[", end = "]" },
+    { start = "(", end = ")" },
+    { start = "\"", end = "\"" },
+    { start = "'", end = "'" },
+    { start = "`", end = "`" }
+]
+</file>
+
+<file path="zed-codeql/languages/codeql/folds.scm">
+; Folding rules for CodeQL
+
+; Fold predicates
+(memberPredicate) @fold
+
+; Fold classes
+(dataclass) @fold
+
+; Fold modules
+(module) @fold
+
+; Fold select clauses
+(select) @fold
+
+; Fold block comments
+(block_comment) @fold
+
+; Fold QLDoc comments
+(qldoc) @fold
+</file>
+
+<file path="zed-codeql/languages/codeql/highlights.scm">
+[
+  "and"
+  "any"
+  "as"
+  "asc"
+  "avg"
+  "by"
+  "class"
+  "concat"
+  "count"
+  "desc"
+  "else"
+  "exists"
+  "extends"
+  "forall"
+  "forex"
+  "from"
+  "if"
+  "implements"
+  "implies"
+  "import"
+  "in"
+  "instanceof"
+  "max"
+  "min"
+  "module"
+  "newtype"
+  "not"
+  "or"
+  "order"
+  "rank"
+  "select"
+  "strictconcat"
+  "strictcount"
+  "strictsum"
+  "sum"
+  "then"
+  "where"
+
+  (false)
+  (predicate)
+  (result)
+  (specialId)
+  (super)
+  (this)
+  (true)
+] @keyword
+
+[
+  "boolean"
+  "float"
+  "int"
+  "date"
+  "string"
+] @type.builtin
+
+(annotName) @attribute
+
+[
+  "<"
+  "<="
+  "="
+  ">"
+  ">="
+  "-"
+  "!="
+  "/"
+  "*"
+  "%"
+  "+"
+  "::"
+] @operator
+
+[
+  "("
+  ")"
+  "{"
+  "}"
+  "["
+  "]"
+] @punctuation.bracket
+
+[
+  ","
+  "|"
+] @punctuation.delimiter
+
+(className) @type
+
+(varName) @variable
+
+(integer) @number
+(float) @number
+
+(string) @string
+
+(aritylessPredicateExpr (literalId) @function)
+(predicateName) @function
+
+[
+  (line_comment)
+  (block_comment)
+  (qldoc)
+] @comment
+</file>
+
+<file path="zed-codeql/languages/codeql/indents.scm">
+; Indentation rules for CodeQL
+
+; Indent inside blocks
+[
+  (body)
+] @indent
+
+; Indent inside parentheses and brackets
+[
+  "("
+  "["
+  "{"
+] @indent
+
+; Dedent closing brackets
+[
+  ")"
+  "]"
+  "}"
+] @outdent
+
+; Indent after these keywords
+[
+  "from"
+  "where"
+  "select"
+  "order"
+  "if"
+  "then"
+  "else"
+] @indent
+
+; Keep same indent for continuation
+[
+  "and"
+  "or"
+  ","
+  "|"
+] @indent.auto
+</file>
+
+<file path="zed-codeql/languages/codeql/injections.scm">
+; Language injections for CodeQL
+
+; QDoc comments contain Markdown
+((qldoc) @content
+ (#set! "language" "markdown"))
+
+; Regex patterns in strings
+((string) @content
+ (#match? @content "^[\"']/.*?/[gimsu]*[\"']$")
+ (#set! "language" "regex"))
+
+; SQL in string literals (common in security queries)
+((string) @content
+ (#match? @content "(?i)(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\\s")
+ (#set! "language" "sql"))
+
+; JavaScript/TypeScript in strings (for JS/TS analysis queries)
+((string) @content
+ (#match? @content "(function|const|let|var|=>|class|import|export)\\s")
+ (#set! "language" "javascript"))
+
+; HTML/XML in strings (for web security queries)
+((string) @content
+ (#match? @content "^[\"']<(html|div|script|style|xml|svg)")
+ (#set! "language" "html"))
+
+; JSON in strings
+((string) @content
+ (#match? @content "^[\"']\\{.*\\}[\"']$")
+ (#set! "language" "json"))
+
+; YAML in strings (for config analysis)
+((string) @content
+ (#match? @content "^[\"']---")
+ (#set! "language" "yaml"))
+</file>
+
+<file path="zed-codeql/languages/codeql/outline.scm">
+; Simplified outline/symbols for CodeQL
+
+; Import statements
+(importDirective
+  (moduleName) @name) @item
+
+; Class definitions
+(dataclass
+  name: (className) @name) @item
+
+; Predicate definitions
+(memberPredicate
+  name: (predicateName) @name) @item
+
+; Module definitions
+(module
+  name: (moduleName) @name) @item
+
+; Select clauses (queries)
+(select) @item
+</file>
+
+<file path="zed-codeql/languages/codeql/tags.scm">
+; Tags for CodeQL - enables jump to definition
+
+; Class definitions
+(dataclass
+  name: (className) @name) @definition.class
+
+; Module definitions
+(module
+  name: (moduleName) @name) @definition.module
+
+; Predicate definitions
+(memberPredicate
+  name: (predicateName) @name) @definition.function
+
+; Import statements
+(importDirective) @reference.import
+
+; Class references
+(className) @reference.class
+
+; Module references
+(moduleName) @reference.module
+
+; Predicate references
+(predicateName) @reference.call
+
+; Variable references
+(varName) @reference.variable
+</file>
+
+<file path="zed-codeql/languages/codeql/textobjects.scm">
+; Text objects for CodeQL
+
+; Predicates
+(memberPredicate) @function.outer
+
+; Classes
+(dataclass) @class.outer
+
+; Modules
+(module) @namespace.outer
+
+; Select statements (queries)
+(select) @statement.outer
+
+; Comments
+(line_comment) @comment.outer
+(block_comment) @comment.outer
+(qldoc) @comment.outer
+
+; Import statements
+(importDirective) @import.outer
+
+; String literals
+(string) @string.outer
+</file>
+
+<file path="zed-codeql/src/lib.rs">
+use zed_extension_api::{
+    self as zed, CodeLabel, CodeLabelSpan, Command, LanguageServerId, Result, Worktree,
+};
+
+struct CodeQLExtension {
+    cached_binary_path: Option<String>,
+}
+
+impl CodeQLExtension {
+    fn find_codeql_cli(&mut self, worktree: &Worktree) -> Option<String> {
+        // Return cached path if available
+        if let Some(path) = &self.cached_binary_path {
+            return Some(path.clone());
+        }
+
+        // Use Zed's which function to find codeql in PATH
+        // This works properly in WASM environment
+        if let Some(path) = worktree.which("codeql") {
+            // Cache the path for future use
+            self.cached_binary_path = Some(path.clone());
+            Some(path)
+        } else {
+            None
+        }
+    }
+}
+
+impl zed::Extension for CodeQLExtension {
+    fn new() -> Self {
+        Self {
+            cached_binary_path: None,
+        }
+    }
+
+    fn language_server_command(
+        &mut self,
+        _language_server_id: &LanguageServerId,
+        worktree: &Worktree,
+    ) -> Result<Command> {
+        let codeql_path = self.find_codeql_cli(worktree).ok_or_else(|| {
+            concat!(
+                "CodeQL CLI not found in PATH.\n",
+                "Please install CodeQL CLI:\n",
+                "  • Homebrew: brew install codeql\n",
+                "  • Download: https://github.com/github/codeql-action/releases\n",
+                "Then restart Zed to detect the installation."
+            ).to_string()
+        })?;
+
+        Ok(Command {
+            command: codeql_path,
+            args: vec![
+                "execute".to_string(),
+                "language-server".to_string(),
+                "--check-errors=ON_CHANGE".to_string(),
+            ],
+            env: Default::default(),
+        })
+    }
+
+    fn language_server_workspace_configuration(
+        &mut self,
+        _server_id: &LanguageServerId,
+        worktree: &Worktree,
+    ) -> Result<Option<serde_json::Value>> {
+        // CodeQL language server configuration options
+        // Using conservative defaults that work on most systems
+        let settings = serde_json::json!({
+            "codeql": {
+                "cli": {
+                    "executablePath": self.find_codeql_cli(worktree)
+                },
+                "runningQueries": {
+                    "numberOfThreads": 2,     // Conservative default for compatibility
+                    "saveCache": false,
+                    "cacheSize": 1024,        // 1GB cache size
+                    "timeout": 600,           // 10 minutes for complex queries
+                    "memory": 1024,           // 1GB memory limit
+                    "debug": false,
+                    "customLogDirectory": ""
+                },
+                "runningTests": {
+                    "numberOfThreads": 1,     // Single thread for tests
+                    "saveCache": false,
+                    "cacheSize": 512,         // 512MB cache for tests
+                    "timeout": 300,           // 5 minutes for tests
+                    "memory": 512,            // 512MB memory for tests
+                    "customLogDirectory": ""
+                }
+            }
+        });
+
+        Ok(Some(settings))
+    }
+
+    fn label_for_completion(
+        &self,
+        _language_server_id: &LanguageServerId,
+        completion: zed::lsp::Completion,
+    ) -> Option<CodeLabel> {
+        match completion.kind? {
+            zed::lsp::CompletionKind::Class | zed::lsp::CompletionKind::Module => {
+                let label = completion.label.clone();
+                let name_span = CodeLabelSpan::literal(&label, Some("type".to_string()));
+                Some(CodeLabel {
+                    code: label,
+                    spans: vec![name_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            zed::lsp::CompletionKind::Method | zed::lsp::CompletionKind::Function => {
+                let label = format!("{}()", completion.label);
+                let name_span =
+                    CodeLabelSpan::literal(&completion.label, Some("function".to_string()));
+                let paren_span = CodeLabelSpan::literal("()", None);
+                Some(CodeLabel {
+                    code: label.clone(),
+                    spans: vec![name_span, paren_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            zed::lsp::CompletionKind::Keyword => {
+                let name_span =
+                    CodeLabelSpan::literal(&completion.label, Some("keyword".to_string()));
+                Some(CodeLabel {
+                    code: completion.label.clone(),
+                    spans: vec![name_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn label_for_symbol(
+        &self,
+        _language_server_id: &LanguageServerId,
+        symbol: zed::lsp::Symbol,
+    ) -> Option<CodeLabel> {
+        let name = symbol.name.clone();
+
+        let (code, highlight) = match symbol.kind {
+            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Interface => {
+                (format!("class {}", name), Some("type".to_string()))
+            }
+            zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
+                (format!("{}()", name), Some("function".to_string()))
+            }
+            zed::lsp::SymbolKind::Module | zed::lsp::SymbolKind::Namespace => {
+                (format!("module {}", name), Some("module".to_string()))
+            }
+            _ => (name.clone(), None),
+        };
+
+        let name_span = CodeLabelSpan::literal(&name, highlight);
+        Some(CodeLabel {
+            code: code.clone(),
+            spans: vec![name_span],
+            filter_range: (0..name.len()).into(),
+        })
+    }
+}
+
+zed::register_extension!(CodeQLExtension);
+</file>
+
+<file path="zed-codeql/.gitignore">
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Zed extension build
+*.wasm
+/grammars
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.sarif
+*.bqrs
+
+# CodeQL databases
+*.codeql/
+/databases/
+
+# AI files
+AGENTS.md
+ARCHITECTURE.md
+</file>
+
+<file path="zed-codeql/Cargo.toml">
+[package]
+name = "zed-codeql"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.7.0"
+serde_json = "1.0"
+</file>
+
+<file path="zed-codeql/extension.toml">
+id = "codeql"
+name = "CodeQL"
+description = "CodeQL language support with syntax highlighting and language server for Zed"
+version = "0.1.0"
+schema_version = 1
+authors = ["blacktop"]
+repository = "https://github.com/blacktop/zed-codeql"
+
+[language_servers.codeql]
+name = "codeql"
+languages = ["CodeQL"]
+
+[grammars.ql]
+repository = "https://github.com/tree-sitter/tree-sitter-ql"
+commit = "1fd627a4e8bff8c24c11987474bd33112bead857"
+</file>
+
+<file path="zed-codeql/LICENSE">
+MIT License
+
+Copyright (c) 2025 blacktop
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="zed-codeql/README.md">
+# zed-codeql
+
+CodeQL language support for [Zed](https://zed.dev).
+
+## Features
+
+- Syntax highlighting for `.ql`, `.qll`, `.qlref`, and `.dbscheme` files
+- Language server integration with CodeQL CLI
+- Code completion
+- Go to definition
+- Hover documentation
+- Error diagnostics
+
+## Requirements
+
+CodeQL CLI must be installed and available in your PATH.
+
+### Installation via Homebrew
+```bash
+brew install codeql
+```
+
+### Manual Installation
+Download from [GitHub CodeQL releases](https://github.com/github/codeql-action/releases).
+
+## Installation
+
+Install from Zed's extension gallery or build from source.
+
+## Language Server
+
+The extension automatically starts the CodeQL language server when you open a CodeQL file.
+
+The extension searches for CodeQL CLI in your system PATH.
+
+## Credit
+
+Inspired by <https://github.com/pwntester/codeql.nvim>
+
+## License
+
+MIT Copyright (c) 2025 blacktop
+</file>
+
+<file path="config/alacritty/alacritty.toml">
+[window]
+#opacity = 0.92
+
+[window.padding]
+y = 6
+x = 6
+
+[selection]
+save_to_clipboard = true
+
+[font]
+normal = { family = "JetBrainsMono Nerd Font Propo", style = "Regular" }
+size = 12
+
+[colors.normal]
+black = "#000000"
+red = "#d54e53"
+green = "#b9ca4a"
+yellow = "#e6c547"
+blue = "#7aa6da"
+magenta = "#c397d8"
+cyan = "#70c0ba"
+white = "#eaeaea"
+
+[colors.bright]
+black = "#666666"
+red = "#ff3334"
+green = "#9ec400"
+yellow = "#e7c547"
+blue = "#7aa6da"
+magenta = "#b77ee0"
+cyan = "#54ced6"
+white = "#ffffff"
+
+
+[colors.primary]
+background = "#000000"
+foreground = "#a9b1d6"
+</file>
+
 <file path="config/atuin/config.toml">
 auto_sync = true
 style = "compact"
@@ -206,9 +1834,18 @@ records = true
 </file>
 
 <file path="config/hypr/hyprland.conf">
-monitor=eDP-1,preferred,auto,1.6
+monitor = eDP-1, preferred, auto, 1.6
 
 env = WLR_DRM_NO_ATOMIC,1
+env = GDK_SCALE,1
+env = GDK_DPI_SCALE,1.6
+env = QT_AUTO_SCREEN_SCALE_FACTOR,0
+env = QT_SCALE_FACTOR,1.6
+env = QT_WAYLAND_DISABLE_WINDOWDECORATION,1
+env = NIXOS_OZONE_WL,1
+env = ELECTRON_OZONE_PLATFORM_HINT,wayland
+env = QT_QPA_PLATFORM,wayland
+env = XWAYLAND_DPI,153
 
 xwayland {
     force_zero_scaling = true
@@ -216,34 +1853,32 @@ xwayland {
 
 $terminal = alacritty
 $fileManager = nautilus
-$menu = tofi-drun --drun-launch=false --terminal "alacritty -e"
-
+$mainMod = ALT
 
 general {
     gaps_in = 7
     gaps_out = 14
-
     border_size = 0
     layout = dwindle
 }
 
-
 decoration {
+    rounding = 5
+    rounding_power = 4
+
     shadow {
         enabled = true
         range = 60
         render_power = 4
-
-        color = 0xaa000000       # ~80% black
-        #0x11000000
+        color = 0xaa000000
         color_inactive = 0x66000000
-
         offset = 0 0
-        scale = 1.1
+        scale = 1.0
     }
-    rounding = 5
-    rounding_power = 4
-    blur:enabled = false
+
+    blur {
+        enabled = false
+    }
 }
 
 dwindle {
@@ -251,48 +1886,22 @@ dwindle {
     preserve_split = true
 }
 
-exec-once = swaybg -i ~/nixos-from-scratch/walls/wallpaper4.jpg -m fil
-
 animations {
-    #enabled = true
+    bezier = ghostCurveIntro, 0.25, 1, 0.25, 1
+    bezier = ghostCurve, 0.5, 1, 0.5, 1
 
-    # curves
-    bezier = ghostCurveIntro, 0.25, 1, 0.25, 1   # soft, lingering
-    bezier = ghostCurve, 0.5, 1, 0.5, 1          # balanced
-
-    # no spawn pop, fade handles it
     animation = windows, 1, 3, ghostCurve
-
-
-    # movement: short + subtle (snappy, not floaty)
     animation = windowsMove, 1, 3, ghostCurve
-
-    # borders: instant
     animation = border, 0, 1, default
-
-    # fades: ghosty spawn linger, snappy close
-    animation = fadeIn, 1, 18, ghostCurveIntro   # long + dreamy
-    animation = fadeOut, 1, 8, ghostCurve        # shorter, clean
-
-    # workspaces: medium glide
+    animation = fadeIn, 1, 18, ghostCurveIntro
+    animation = fadeOut, 1, 8, ghostCurve
     animation = workspaces, 1, 9, ghostCurveIntro, slide
 }
 
-
-windowrulev2 = opacity 0.85, class:^(dev\.zed\.Zed)$
-windowrule = opacity 0.85, class:obsidian
-windowrule = opacity 0.85, class:Alacritty
-
-
-# =====================
-# Input Settings
-# =====================
-
 input {
     kb_layout = us
-    kb_model = apple         # IMPORTANT for Mac keyboards
+    kb_model = apple
     kb_variant =
-    # this option swaps Left Ctrl and Left Super (Command)
     kb_options = ctrl:swap_lwin_lctl,caps:super
 
     follow_mouse = 1
@@ -307,25 +1916,24 @@ input {
 
 gesture = 3, horizontal, workspace
 
+exec-once = mkdir -p ~/Pictures
+exec-once = swaybg -i ~/nixos-from-scratch/walls/wallpaper4.jpg -m fill
 
-# Use SUPER as the main modifier for Hyprland bindings
-$mainMod = ALT
+windowrule = opacity 0.85, match:class ^(dev\.zed\.Zed)$
+windowrule = opacity 0.85, match:class ^(Obsidian)$
+windowrule = opacity 0.85, match:class ^(Alacritty)$
 
-# =====================
-# Window / Workspace Keybinds
-# =====================
-
-bind = $mainMod, F, fullscreen
-windowrulev2 = fullscreen, class:^(moonlight)$
-windowrulev2 = noborder, class:^(moonlight)$
-windowrulev2 = noshadow, class:^(moonlight)$
-windowrulev2 = noanim, class:^(moonlight)$
+windowrule = match:class ^(moonlight)$, fullscreen on
+windowrule = match:class ^(moonlight)$, decorate off
+windowrule = match:class ^(moonlight)$, no_shadow on
+windowrule = match:class ^(moonlight)$, no_anim on
 
 bind = $mainMod, Return, exec, $terminal
 bind = $mainMod, Q, killactive,
 bind = $mainMod, X, exit,
 bind = $mainMod, E, exec, $fileManager
-bind = $mainMod, SPACE, exec, $menu | xargs hyprctl dispatch exec --
+bind = $mainMod, SPACE, exec, sh -c 'tofi-drun --drun-launch=false --terminal "alacritty -e" | xargs -r hyprctl dispatch -- exec --'
+bind = $mainMod, F, fullscreen
 bind = $mainMod, P, pseudo,
 bind = $mainMod, J, togglesplit,
 
@@ -338,7 +1946,6 @@ bind = $mainMod SHIFT, left, movewindow, l
 bind = $mainMod SHIFT, right, movewindow, r
 bind = $mainMod SHIFT, up, movewindow, u
 bind = $mainMod SHIFT, down, movewindow, d
-
 
 bind = $mainMod, 1, workspace, 1
 bind = $mainMod, 2, workspace, 2
@@ -370,70 +1977,28 @@ bind = $mainMod SUPER, down, resizeactive, 0 80
 bind = $mainMod, mouse_down, workspace, e+1
 bind = $mainMod, mouse_up, workspace, e-1
 
-
 bindm = $mainMod, mouse:272, movewindow
 bindm = $mainMod, mouse:273, resizewindow
 
-##############################
-# Mac-style Screenshot Binds
-##############################
-
-exec-once = mkdir -p ~/Pictures
-
-# Full screen
 bind = CTRL SHIFT, 3, exec, sh -c 'grim ~/Pictures/$(date +"%Y-%m-%d_%H-%M-%S").png'
-
-# Region → file
 bind = CTRL SHIFT, 4, exec, sh -c 'grim -g "$(slurp)" ~/Pictures/$(date +"%Y-%m-%d_%H-%M-%S").png'
-
-# Region → clipboard
 bind = CTRL SHIFT, 5, exec, sh -c 'grim -g "$(slurp)" - | wl-copy'
 
-# =====================
-# Media / Special Keys
-# =====================
-
-bindel = ,XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
-bindel = ,XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-bindel = ,XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-bindel = ,XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
-bindel = ,XF86MonBrightnessUp, exec, brightnessctl s 10%+
-bindel = ,XF86MonBrightnessDown, exec, brightnessctl s 10%-
-
-bindl = ,XF86AudioNext, exec, playerctl next
-bindl = ,XF86AudioPause, exec, playerctl play-pause
-bindl = ,XF86AudioPlay, exec, playerctl play-pause
-bindl = ,XF86AudioPrev, exec, playerctl previous
-
-##############################
-# Mac-style Screenshot Binds
-##############################
-
-exec-once = mkdir -p ~/Pictures
-
-# Full screen → file
 bind = SUPER SHIFT, 3, exec, sh -c 'grim ~/Pictures/$(date +"%Y-%m-%d_%H-%M-%S").png'
-
-# Region → file
 bind = SUPER SHIFT, 4, exec, sh -c 'grim -g "$(slurp)" ~/Pictures/$(date +"%Y-%m-%d_%H-%M-%S").png'
-
-# Region → clipboard
 bind = SUPER SHIFT, 5, exec, sh -c 'grim -g "$(slurp)" - | wl-copy'
 
+bindel = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindel = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindel = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindel = , XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindel = , XF86MonBrightnessUp, exec, brightnessctl s 10%+
+bindel = , XF86MonBrightnessDown, exec, brightnessctl s 10%-
 
-env = GDK_SCALE,"1"
-env = GDK_DPI_SCALE,"1.6"
-env = QT_AUTO_SCREEN_SCALE_FACTOR,"0"
-env = QT_SCALE_FACTOR,"1.6"
-env = QT_WAYLAND_DISABLE_WINDOWDECORATION,"1"
-env = NIXOS_OZONE_WL,"1"
-env = ELECTRON_OZONE_PLATFORM_HINT,"wayland"
-env = QT_QPA_PLATFORM,"wayland"
-env = XWAYLAND_DPI,"153"
-
-windowrule = opacity 0.85, class:(dev\.zed\.Zed)
-windowrule = opacity 0.85, class:(Obsidian)
-windowrule = opacity 0.85, class:(Alacritty
+bindl = , XF86AudioNext, exec, playerctl next
+bindl = , XF86AudioPause, exec, playerctl play-pause
+bindl = , XF86AudioPlay, exec, playerctl play-pause
+bindl = , XF86AudioPrev, exec, playerctl previous
 </file>
 
 <file path="config/kitty/kitty.conf">
@@ -517,6 +2082,68 @@ color15 #ffffff
 -- Keymaps are automatically loaded on the VeryLazy event
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
+</file>
+
+<file path="config/nvim/lua/config/lazy.lua">
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
+  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
+  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+  if vim.v.shell_error ~= 0 then
+    vim.api.nvim_echo({
+      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
+      { out, "WarningMsg" },
+      { "\nPress any key to exit..." },
+    }, true, {})
+    vim.fn.getchar()
+    os.exit(1)
+  end
+end
+vim.opt.rtp:prepend(lazypath)
+
+require("lazy").setup({
+  spec = {
+    -- add LazyVim and import its plugins
+    { "LazyVim/LazyVim", import = "lazyvim.plugins" },
+    -- import/override with your plugins
+    { import = "plugins" },
+  },
+  defaults = {
+    -- By default, only LazyVim plugins will be lazy-loaded. Your custom plugins will load during startup.
+    -- If you know what you're doing, you can set this to `true` to have all your custom plugins lazy-loaded by default.
+    lazy = false,
+    -- It's recommended to leave version=false for now, since a lot the plugin that support versioning,
+    -- have outdated releases, which may break your Neovim install.
+    version = false, -- always use the latest git commit
+    -- version = "*", -- try installing the latest stable version for plugins that support semver
+  },
+  install = { colorscheme = { "tokyonight", "habamax" } },
+  checker = {
+    enabled = true, -- check for plugin updates periodically
+    notify = false, -- notify on update
+  }, -- automatically check for plugin updates
+  performance = {
+    rtp = {
+      -- disable some rtp plugins
+      disabled_plugins = {
+        "gzip",
+        -- "matchit",
+        -- "matchparen",
+        -- "netrwPlugin",
+        "tarPlugin",
+        "tohtml",
+        "tutor",
+        "zipPlugin",
+      },
+    },
+  },
+})
+</file>
+
+<file path="config/nvim/lua/config/options.lua">
+-- Options are automatically loaded before lazy.nvim startup
+-- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
+-- Add any additional options here
 </file>
 
 <file path="config/nvim/lua/plugins/example.lua">
@@ -719,6 +2346,27 @@ return {
 }
 </file>
 
+<file path="config/nvim/lua/plugins/lsp.lua">
+return {
+    -- enable clangd manually
+    {
+        "neovim/nvim-lspconfig",
+        opts = {
+            servers = {
+                clangd = {
+                    cmd = { "clangd" },
+                    -- optional flags (you can tweak these later)
+                    cmd_env = {
+                        -- ensure nix shell environment is passed through
+                        PATH = vim.env.PATH,
+                    },
+                },
+            },
+        },
+    },
+}
+</file>
+
 <file path="config/nvim/.neoconf.json">
 {
   "neodev": {
@@ -735,6 +2383,11 @@ return {
     }
   }
 }
+</file>
+
+<file path="config/nvim/init.lua">
+-- bootstrap lazy.nvim, LazyVim and your plugins
+require("config.lazy")
 </file>
 
 <file path="config/nvim/lazy-lock.json">
@@ -989,6 +2642,13 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+</file>
+
+<file path="config/nvim/README.md">
+# 💤 LazyVim
+
+A starter template for [LazyVim](https://github.com/LazyVim/LazyVim).
+Refer to the [documentation](https://lazyvim.github.io/installation) to get started.
 </file>
 
 <file path="config/nvim/stylua.toml">
@@ -1528,6 +3188,32 @@ aliases['zed'] = 'zed -n'
 aliases['zed_raw'] = 'zed_raw -n'
 aliases['bluetooth'] = 'bluetuith'
 
+
+from pathlib import Path
+import subprocess
+
+def repoclip(args, stdin=None):
+    target = args[0] if args else "."
+    output = Path("repomix-output.xml")
+
+    pack = subprocess.run(["repomix", target])
+    if pack.returncode != 0:
+        return pack.returncode
+
+    if not output.exists():
+        print(f"[repoclip] expected output file not found: {output}")
+        return 1
+
+    with output.open("rb") as f:
+        copy = subprocess.run(["wl-copy"], stdin=f)
+
+    if copy.returncode == 0:
+        print(f"[repoclip] packed {target} and copied {output} to clipboard")
+    return copy.returncode
+
+aliases["repoclip"] = repoclip
+aliases["rmx"] = repoclip
+
 import shutil
 import os
 
@@ -1632,18 +3318,16 @@ class FileMeta:
     content: str
 
 
-class File(Path):
+_BasePath = type(Path())
+
+class File(_BasePath):
     """Procedural File interface with adaptive truncation and auto clipboard copy."""
-    _flavour = Path('.')._flavour
     _collected = []
     _prepared = False
     _max_bytes = 1_000_000
     _default_lines = 100
     _clip_total = 0
     _autocommit = True
-
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
 
     # ───────────────────────────────
     @classmethod
@@ -7172,7 +8856,7 @@ final: prev: {
 
 <file path="overlays/my-xonsh.nix">
 final: prev: {
-  python-env = prev.python312.withPackages (
+  python-env = prev.python313.withPackages (
     ps: with ps; [
       xonsh
       prompt-toolkit
@@ -7430,1593 +9114,6 @@ if __name__ == "__main__":
     main()
 </file>
 
-<file path="zed-codeql/.git/hooks/applypatch-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to check the commit log message taken by
-# applypatch from an e-mail message.
-#
-# The hook should exit with non-zero status after issuing an
-# appropriate message if it wants to stop the commit.  The hook is
-# allowed to edit the commit message file.
-#
-# To enable this hook, rename this file to "applypatch-msg".
-
-. git-sh-setup
-commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
-test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
-:
-</file>
-
-<file path="zed-codeql/.git/hooks/commit-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to check the commit log message.
-# Called by "git commit" with one argument, the name of the file
-# that has the commit message.  The hook should exit with non-zero
-# status after issuing an appropriate message if it wants to stop the
-# commit.  The hook is allowed to edit the commit message file.
-#
-# To enable this hook, rename this file to "commit-msg".
-
-# Uncomment the below to add a Signed-off-by line to the message.
-# Doing this in a hook is a bad idea in general, but the prepare-commit-msg
-# hook is more suited to it.
-#
-# SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-# grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
-
-# This example catches duplicate Signed-off-by lines.
-
-test "" = "$(grep '^Signed-off-by: ' "$1" |
-	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
-	echo >&2 Duplicate Signed-off-by lines.
-	exit 1
-}
-</file>
-
-<file path="zed-codeql/.git/hooks/fsmonitor-watchman.sample">
-#!/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl
-
-use strict;
-use warnings;
-use IPC::Open2;
-
-# An example hook script to integrate Watchman
-# (https://facebook.github.io/watchman/) with git to speed up detecting
-# new and modified files.
-#
-# The hook is passed a version (currently 2) and last update token
-# formatted as a string and outputs to stdout a new update token and
-# all files that have been modified since the update token. Paths must
-# be relative to the root of the working tree and separated by a single NUL.
-#
-# To enable this hook, rename this file to "query-watchman" and set
-# 'git config core.fsmonitor .git/hooks/query-watchman'
-#
-my ($version, $last_update_token) = @ARGV;
-
-# Uncomment for debugging
-# print STDERR "$0 $version $last_update_token\n";
-
-# Check the hook interface version
-if ($version ne 2) {
-	die "Unsupported query-fsmonitor hook version '$version'.\n" .
-	    "Falling back to scanning...\n";
-}
-
-my $git_work_tree = get_working_dir();
-
-my $retry = 1;
-
-my $json_pkg;
-eval {
-	require JSON::XS;
-	$json_pkg = "JSON::XS";
-	1;
-} or do {
-	require JSON::PP;
-	$json_pkg = "JSON::PP";
-};
-
-launch_watchman();
-
-sub launch_watchman {
-	my $o = watchman_query();
-	if (is_work_tree_watched($o)) {
-		output_result($o->{clock}, @{$o->{files}});
-	}
-}
-
-sub output_result {
-	my ($clockid, @files) = @_;
-
-	# Uncomment for debugging watchman output
-	# open (my $fh, ">", ".git/watchman-output.out");
-	# binmode $fh, ":utf8";
-	# print $fh "$clockid\n@files\n";
-	# close $fh;
-
-	binmode STDOUT, ":utf8";
-	print $clockid;
-	print "\0";
-	local $, = "\0";
-	print @files;
-}
-
-sub watchman_clock {
-	my $response = qx/watchman clock "$git_work_tree"/;
-	die "Failed to get clock id on '$git_work_tree'.\n" .
-		"Falling back to scanning...\n" if $? != 0;
-
-	return $json_pkg->new->utf8->decode($response);
-}
-
-sub watchman_query {
-	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
-	or die "open2() failed: $!\n" .
-	"Falling back to scanning...\n";
-
-	# In the query expression below we're asking for names of files that
-	# changed since $last_update_token but not from the .git folder.
-	#
-	# To accomplish this, we're using the "since" generator to use the
-	# recency index to select candidate nodes and "fields" to limit the
-	# output to file names only. Then we're using the "expression" term to
-	# further constrain the results.
-	my $last_update_line = "";
-	if (substr($last_update_token, 0, 1) eq "c") {
-		$last_update_token = "\"$last_update_token\"";
-		$last_update_line = qq[\n"since": $last_update_token,];
-	}
-	my $query = <<"	END";
-		["query", "$git_work_tree", {$last_update_line
-			"fields": ["name"],
-			"expression": ["not", ["dirname", ".git"]]
-		}]
-	END
-
-	# Uncomment for debugging the watchman query
-	# open (my $fh, ">", ".git/watchman-query.json");
-	# print $fh $query;
-	# close $fh;
-
-	print CHLD_IN $query;
-	close CHLD_IN;
-	my $response = do {local $/; <CHLD_OUT>};
-
-	# Uncomment for debugging the watch response
-	# open ($fh, ">", ".git/watchman-response.json");
-	# print $fh $response;
-	# close $fh;
-
-	die "Watchman: command returned no output.\n" .
-	"Falling back to scanning...\n" if $response eq "";
-	die "Watchman: command returned invalid output: $response\n" .
-	"Falling back to scanning...\n" unless $response =~ /^\{/;
-
-	return $json_pkg->new->utf8->decode($response);
-}
-
-sub is_work_tree_watched {
-	my ($output) = @_;
-	my $error = $output->{error};
-	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
-		$retry--;
-		my $response = qx/watchman watch "$git_work_tree"/;
-		die "Failed to make watchman watch '$git_work_tree'.\n" .
-		    "Falling back to scanning...\n" if $? != 0;
-		$output = $json_pkg->new->utf8->decode($response);
-		$error = $output->{error};
-		die "Watchman: $error.\n" .
-		"Falling back to scanning...\n" if $error;
-
-		# Uncomment for debugging watchman output
-		# open (my $fh, ">", ".git/watchman-output.out");
-		# close $fh;
-
-		# Watchman will always return all files on the first query so
-		# return the fast "everything is dirty" flag to git and do the
-		# Watchman query just to get it over with now so we won't pay
-		# the cost in git to look up each individual file.
-		my $o = watchman_clock();
-		$error = $output->{error};
-
-		die "Watchman: $error.\n" .
-		"Falling back to scanning...\n" if $error;
-
-		output_result($o->{clock}, ("/"));
-		$last_update_token = $o->{clock};
-
-		eval { launch_watchman() };
-		return 0;
-	}
-
-	die "Watchman: $error.\n" .
-	"Falling back to scanning...\n" if $error;
-
-	return 1;
-}
-
-sub get_working_dir {
-	my $working_dir;
-	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
-		$working_dir = Win32::GetCwd();
-		$working_dir =~ tr/\\/\//;
-	} else {
-		require Cwd;
-		$working_dir = Cwd::cwd();
-	}
-
-	return $working_dir;
-}
-</file>
-
-<file path="zed-codeql/.git/hooks/post-update.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to prepare a packed repository for use over
-# dumb transports.
-#
-# To enable this hook, rename this file to "post-update".
-
-exec git update-server-info
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-applypatch.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed
-# by applypatch from an e-mail message.
-#
-# The hook should exit with non-zero status after issuing an
-# appropriate message if it wants to stop the commit.
-#
-# To enable this hook, rename this file to "pre-applypatch".
-
-. git-sh-setup
-precommit="$(git rev-parse --git-path hooks/pre-commit)"
-test -x "$precommit" && exec "$precommit" ${1+"$@"}
-:
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-commit.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed.
-# Called by "git commit" with no arguments.  The hook should
-# exit with non-zero status after issuing an appropriate message if
-# it wants to stop the commit.
-#
-# To enable this hook, rename this file to "pre-commit".
-
-if git rev-parse --verify HEAD >/dev/null 2>&1
-then
-	against=HEAD
-else
-	# Initial commit: diff against an empty tree object
-	against=$(git hash-object -t tree /dev/null)
-fi
-
-# If you want to allow non-ASCII filenames set this variable to true.
-allownonascii=$(git config --type=bool hooks.allownonascii)
-
-# Redirect output to stderr.
-exec 1>&2
-
-# Cross platform projects tend to avoid non-ASCII filenames; prevent
-# them from being added to the repository. We exploit the fact that the
-# printable range starts at the space character and ends with tilde.
-if [ "$allownonascii" != "true" ] &&
-	# Note that the use of brackets around a tr range is ok here, (it's
-	# even required, for portability to Solaris 10's /usr/bin/tr), since
-	# the square bracket bytes happen to fall in the designated range.
-	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
-	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
-then
-	cat <<\EOF
-Error: Attempt to add a non-ASCII file name.
-
-This can cause problems if you want to work with people on other platforms.
-
-To be portable it is advisable to rename the file.
-
-If you know what you are doing you can disable this check using:
-
-  git config hooks.allownonascii true
-EOF
-	exit 1
-fi
-
-# If there are whitespace errors, print the offending file names and fail.
-exec git diff-index --check --cached $against --
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-merge-commit.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed.
-# Called by "git merge" with no arguments.  The hook should
-# exit with non-zero status after issuing an appropriate message to
-# stderr if it wants to stop the merge commit.
-#
-# To enable this hook, rename this file to "pre-merge-commit".
-
-. git-sh-setup
-test -x "$GIT_DIR/hooks/pre-commit" &&
-        exec "$GIT_DIR/hooks/pre-commit"
-:
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-push.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to verify what is about to be pushed.  Called by "git
-# push" after it has checked the remote status, but before anything has been
-# pushed.  If this script exits with a non-zero status nothing will be pushed.
-#
-# This hook is called with the following parameters:
-#
-# $1 -- Name of the remote to which the push is being done
-# $2 -- URL to which the push is being done
-#
-# If pushing without using a named remote those arguments will be equal.
-#
-# Information about the commits which are being pushed is supplied as lines to
-# the standard input in the form:
-#
-#   <local ref> <local oid> <remote ref> <remote oid>
-#
-# This sample shows how to prevent push of commits where the log message starts
-# with "WIP" (work in progress).
-
-remote="$1"
-url="$2"
-
-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-
-while read local_ref local_oid remote_ref remote_oid
-do
-	if test "$local_oid" = "$zero"
-	then
-		# Handle delete
-		:
-	else
-		if test "$remote_oid" = "$zero"
-		then
-			# New branch, examine all commits
-			range="$local_oid"
-		else
-			# Update to existing branch, examine new commits
-			range="$remote_oid..$local_oid"
-		fi
-
-		# Check for WIP commit
-		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
-		if test -n "$commit"
-		then
-			echo >&2 "Found WIP commit in $local_ref, not pushing"
-			exit 1
-		fi
-	fi
-done
-
-exit 0
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-rebase.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# Copyright (c) 2006, 2008 Junio C Hamano
-#
-# The "pre-rebase" hook is run just before "git rebase" starts doing
-# its job, and can prevent the command from running by exiting with
-# non-zero status.
-#
-# The hook is called with the following parameters:
-#
-# $1 -- the upstream the series was forked from.
-# $2 -- the branch being rebased (or empty when rebasing the current branch).
-#
-# This sample shows how to prevent topic branches that are already
-# merged to 'next' branch from getting rebased, because allowing it
-# would result in rebasing already published history.
-
-publish=next
-basebranch="$1"
-if test "$#" = 2
-then
-	topic="refs/heads/$2"
-else
-	topic=`git symbolic-ref HEAD` ||
-	exit 0 ;# we do not interrupt rebasing detached HEAD
-fi
-
-case "$topic" in
-refs/heads/??/*)
-	;;
-*)
-	exit 0 ;# we do not interrupt others.
-	;;
-esac
-
-# Now we are dealing with a topic branch being rebased
-# on top of master.  Is it OK to rebase it?
-
-# Does the topic really exist?
-git show-ref -q "$topic" || {
-	echo >&2 "No such branch $topic"
-	exit 1
-}
-
-# Is topic fully merged to master?
-not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
-if test -z "$not_in_master"
-then
-	echo >&2 "$topic is fully merged to master; better remove it."
-	exit 1 ;# we could allow it, but there is no point.
-fi
-
-# Is topic ever merged to next?  If so you should not be rebasing it.
-only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
-only_next_2=`git rev-list ^master           ${publish} | sort`
-if test "$only_next_1" = "$only_next_2"
-then
-	not_in_topic=`git rev-list "^$topic" master`
-	if test -z "$not_in_topic"
-	then
-		echo >&2 "$topic is already up to date with master"
-		exit 1 ;# we could allow it, but there is no point.
-	else
-		exit 0
-	fi
-else
-	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
-	/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -e '
-		my $topic = $ARGV[0];
-		my $msg = "* $topic has commits already merged to public branch:\n";
-		my (%not_in_next) = map {
-			/^([0-9a-f]+) /;
-			($1 => 1);
-		} split(/\n/, $ARGV[1]);
-		for my $elem (map {
-				/^([0-9a-f]+) (.*)$/;
-				[$1 => $2];
-			} split(/\n/, $ARGV[2])) {
-			if (!exists $not_in_next{$elem->[0]}) {
-				if ($msg) {
-					print STDERR $msg;
-					undef $msg;
-				}
-				print STDERR " $elem->[1]\n";
-			}
-		}
-	' "$topic" "$not_in_next" "$not_in_master"
-	exit 1
-fi
-
-<<\DOC_END
-
-This sample hook safeguards topic branches that have been
-published from being rewound.
-
-The workflow assumed here is:
-
- * Once a topic branch forks from "master", "master" is never
-   merged into it again (either directly or indirectly).
-
- * Once a topic branch is fully cooked and merged into "master",
-   it is deleted.  If you need to build on top of it to correct
-   earlier mistakes, a new topic branch is created by forking at
-   the tip of the "master".  This is not strictly necessary, but
-   it makes it easier to keep your history simple.
-
- * Whenever you need to test or publish your changes to topic
-   branches, merge them into "next" branch.
-
-The script, being an example, hardcodes the publish branch name
-to be "next", but it is trivial to make it configurable via
-$GIT_DIR/config mechanism.
-
-With this workflow, you would want to know:
-
-(1) ... if a topic branch has ever been merged to "next".  Young
-    topic branches can have stupid mistakes you would rather
-    clean up before publishing, and things that have not been
-    merged into other branches can be easily rebased without
-    affecting other people.  But once it is published, you would
-    not want to rewind it.
-
-(2) ... if a topic branch has been fully merged to "master".
-    Then you can delete it.  More importantly, you should not
-    build on top of it -- other people may already want to
-    change things related to the topic as patches against your
-    "master", so if you need further changes, it is better to
-    fork the topic (perhaps with the same name) afresh from the
-    tip of "master".
-
-Let's look at this example:
-
-		   o---o---o---o---o---o---o---o---o---o "next"
-		  /       /           /           /
-		 /   a---a---b A     /           /
-		/   /               /           /
-	       /   /   c---c---c---c B         /
-	      /   /   /             \         /
-	     /   /   /   b---b C     \       /
-	    /   /   /   /             \     /
-    ---o---o---o---o---o---o---o---o---o---o---o "master"
-
-
-A, B and C are topic branches.
-
- * A has one fix since it was merged up to "next".
-
- * B has finished.  It has been fully merged up to "master" and "next",
-   and is ready to be deleted.
-
- * C has not merged to "next" at all.
-
-We would want to allow C to be rebased, refuse A, and encourage
-B to be deleted.
-
-To compute (1):
-
-	git rev-list ^master ^topic next
-	git rev-list ^master        next
-
-	if these match, topic has not merged in next at all.
-
-To compute (2):
-
-	git rev-list master..topic
-
-	if this is empty, it is fully merged to "master".
-
-DOC_END
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-receive.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to make use of push options.
-# The example simply echoes all push options that start with 'echoback='
-# and rejects all pushes when the "reject" push option is used.
-#
-# To enable this hook, rename this file to "pre-receive".
-
-if test -n "$GIT_PUSH_OPTION_COUNT"
-then
-	i=0
-	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
-	do
-		eval "value=\$GIT_PUSH_OPTION_$i"
-		case "$value" in
-		echoback=*)
-			echo "echo from the pre-receive-hook: ${value#*=}" >&2
-			;;
-		reject)
-			exit 1
-		esac
-		i=$((i + 1))
-	done
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/prepare-commit-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to prepare the commit log message.
-# Called by "git commit" with the name of the file that has the
-# commit message, followed by the description of the commit
-# message's source.  The hook's purpose is to edit the commit
-# message file.  If the hook fails with a non-zero status,
-# the commit is aborted.
-#
-# To enable this hook, rename this file to "prepare-commit-msg".
-
-# This hook includes three examples. The first one removes the
-# "# Please enter the commit message..." help message.
-#
-# The second includes the output of "git diff --name-status -r"
-# into the message, just before the "git status" output.  It is
-# commented because it doesn't cope with --amend or with squashed
-# commits.
-#
-# The third example adds a Signed-off-by line to the message, that can
-# still be edited.  This is rarely a good idea.
-
-COMMIT_MSG_FILE=$1
-COMMIT_SOURCE=$2
-SHA1=$3
-
-/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
-
-# case "$COMMIT_SOURCE,$SHA1" in
-#  ,|template,)
-#    /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe '
-#       print "\n" . `git diff --cached --name-status -r`
-# 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
-#  *) ;;
-# esac
-
-# SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-# git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
-# if test -z "$COMMIT_SOURCE"
-# then
-#   /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
-# fi
-</file>
-
-<file path="zed-codeql/.git/hooks/push-to-checkout.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to update a checked-out tree on a git push.
-#
-# This hook is invoked by git-receive-pack(1) when it reacts to git
-# push and updates reference(s) in its repository, and when the push
-# tries to update the branch that is currently checked out and the
-# receive.denyCurrentBranch configuration variable is set to
-# updateInstead.
-#
-# By default, such a push is refused if the working tree and the index
-# of the remote repository has any difference from the currently
-# checked out commit; when both the working tree and the index match
-# the current commit, they are updated to match the newly pushed tip
-# of the branch. This hook is to be used to override the default
-# behaviour; however the code below reimplements the default behaviour
-# as a starting point for convenient modification.
-#
-# The hook receives the commit with which the tip of the current
-# branch is going to be updated:
-commit=$1
-
-# It can exit with a non-zero status to refuse the push (when it does
-# so, it must not modify the index or the working tree).
-die () {
-	echo >&2 "$*"
-	exit 1
-}
-
-# Or it can make any necessary changes to the working tree and to the
-# index to bring them to the desired state when the tip of the current
-# branch is updated to the new commit, and exit with a zero status.
-#
-# For example, the hook can simply run git read-tree -u -m HEAD "$1"
-# in order to emulate git fetch that is run in the reverse direction
-# with git push, as the two-tree form of git read-tree -u -m is
-# essentially the same as git switch or git checkout that switches
-# branches while keeping the local changes in the working tree that do
-# not interfere with the difference between the branches.
-
-# The below is a more-or-less exact translation to shell of the C code
-# for the default behaviour for git's push-to-checkout hook defined in
-# the push_to_deploy() function in builtin/receive-pack.c.
-#
-# Note that the hook will be executed from the repository directory,
-# not from the working tree, so if you want to perform operations on
-# the working tree, you will have to adapt your code accordingly, e.g.
-# by adding "cd .." or using relative paths.
-
-if ! git update-index -q --ignore-submodules --refresh
-then
-	die "Up-to-date check failed"
-fi
-
-if ! git diff-files --quiet --ignore-submodules --
-then
-	die "Working directory has unstaged changes"
-fi
-
-# This is a rough translation of:
-#
-#   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
-if git cat-file -e HEAD 2>/dev/null
-then
-	head=HEAD
-else
-	head=$(git hash-object -t tree --stdin </dev/null)
-fi
-
-if ! git diff-index --quiet --cached --ignore-submodules $head --
-then
-	die "Working directory has staged changes"
-fi
-
-if ! git read-tree -u -m "$commit"
-then
-	die "Could not update working tree to new HEAD"
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/sendemail-validate.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to validate a patch (and/or patch series) before
-# sending it via email.
-#
-# The hook should exit with non-zero status after issuing an appropriate
-# message if it wants to prevent the email(s) from being sent.
-#
-# To enable this hook, rename this file to "sendemail-validate".
-#
-# By default, it will only check that the patch(es) can be applied on top of
-# the default upstream branch without conflicts in a secondary worktree. After
-# validation (successful or not) of the last patch of a series, the worktree
-# will be deleted.
-#
-# The following config variables can be set to change the default remote and
-# remote ref that are used to apply the patches against:
-#
-#   sendemail.validateRemote (default: origin)
-#   sendemail.validateRemoteRef (default: HEAD)
-#
-# Replace the TODO placeholders with appropriate checks according to your
-# needs.
-
-validate_cover_letter () {
-	file="$1"
-	# TODO: Replace with appropriate checks (e.g. spell checking).
-	true
-}
-
-validate_patch () {
-	file="$1"
-	# Ensure that the patch applies without conflicts.
-	git am -3 "$file" || return
-	# TODO: Replace with appropriate checks for this patch
-	# (e.g. checkpatch.pl).
-	true
-}
-
-validate_series () {
-	# TODO: Replace with appropriate checks for the whole series
-	# (e.g. quick build, coding style checks, etc.).
-	true
-}
-
-# main -------------------------------------------------------------------------
-
-if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
-then
-	remote=$(git config --default origin --get sendemail.validateRemote) &&
-	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
-	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
-	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
-	git config --replace-all sendemail.validateWorktree "$worktree"
-else
-	worktree=$(git config --get sendemail.validateWorktree)
-fi || {
-	echo "sendemail-validate: error: failed to prepare worktree" >&2
-	exit 1
-}
-
-unset GIT_DIR GIT_WORK_TREE
-cd "$worktree" &&
-
-if grep -q "^diff --git " "$1"
-then
-	validate_patch "$1"
-else
-	validate_cover_letter "$1"
-fi &&
-
-if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
-then
-	git config --unset-all sendemail.validateWorktree &&
-	trap 'git worktree remove -ff "$worktree"' EXIT &&
-	validate_series
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/update.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to block unannotated tags from entering.
-# Called by "git receive-pack" with arguments: refname sha1-old sha1-new
-#
-# To enable this hook, rename this file to "update".
-#
-# Config
-# ------
-# hooks.allowunannotated
-#   This boolean sets whether unannotated tags will be allowed into the
-#   repository.  By default they won't be.
-# hooks.allowdeletetag
-#   This boolean sets whether deleting tags will be allowed in the
-#   repository.  By default they won't be.
-# hooks.allowmodifytag
-#   This boolean sets whether a tag may be modified after creation. By default
-#   it won't be.
-# hooks.allowdeletebranch
-#   This boolean sets whether deleting branches will be allowed in the
-#   repository.  By default they won't be.
-# hooks.denycreatebranch
-#   This boolean sets whether remotely creating branches will be denied
-#   in the repository.  By default this is allowed.
-#
-
-# --- Command line
-refname="$1"
-oldrev="$2"
-newrev="$3"
-
-# --- Safety check
-if [ -z "$GIT_DIR" ]; then
-	echo "Don't run this script from the command line." >&2
-	echo " (if you want, you could supply GIT_DIR then run" >&2
-	echo "  $0 <ref> <oldrev> <newrev>)" >&2
-	exit 1
-fi
-
-if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
-	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
-	exit 1
-fi
-
-# --- Config
-allowunannotated=$(git config --type=bool hooks.allowunannotated)
-allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
-denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
-allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
-allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
-
-# check for no description
-projectdesc=$(sed -e '1q' "$GIT_DIR/description")
-case "$projectdesc" in
-"Unnamed repository"* | "")
-	echo "*** Project description file hasn't been set" >&2
-	exit 1
-	;;
-esac
-
-# --- Check types
-# if $newrev is 0000...0000, it's a commit to delete a ref.
-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-if [ "$newrev" = "$zero" ]; then
-	newrev_type=delete
-else
-	newrev_type=$(git cat-file -t $newrev)
-fi
-
-case "$refname","$newrev_type" in
-	refs/tags/*,commit)
-		# un-annotated tag
-		short_refname=${refname##refs/tags/}
-		if [ "$allowunannotated" != "true" ]; then
-			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
-			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
-			exit 1
-		fi
-		;;
-	refs/tags/*,delete)
-		# delete tag
-		if [ "$allowdeletetag" != "true" ]; then
-			echo "*** Deleting a tag is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/tags/*,tag)
-		# annotated tag
-		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
-		then
-			echo "*** Tag '$refname' already exists." >&2
-			echo "*** Modifying a tag is not allowed in this repository." >&2
-			exit 1
-		fi
-		;;
-	refs/heads/*,commit)
-		# branch
-		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
-			echo "*** Creating a branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/heads/*,delete)
-		# delete branch
-		if [ "$allowdeletebranch" != "true" ]; then
-			echo "*** Deleting a branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/remotes/*,commit)
-		# tracking branch
-		;;
-	refs/remotes/*,delete)
-		# delete tracking branch
-		if [ "$allowdeletebranch" != "true" ]; then
-			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	*)
-		# Anything else (is there anything else?)
-		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
-		exit 1
-		;;
-esac
-
-# --- Finished
-exit 0
-</file>
-
-<file path="zed-codeql/.git/info/exclude">
-# git ls-files --others --exclude-from=.git/info/exclude
-# Lines that start with '#' are comments.
-# For a project mostly in C, the following would be a good set of
-# exclude patterns (uncomment them if you want to use them):
-# *.[oa]
-# *~
-</file>
-
-<file path="zed-codeql/.git/logs/refs/heads/main">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/logs/refs/remotes/origin/HEAD">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/logs/HEAD">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/refs/heads/main">
-0049551f3ab08881db3ac4fd5ce9b112548b0d8c
-</file>
-
-<file path="zed-codeql/.git/refs/remotes/origin/HEAD">
-ref: refs/remotes/origin/main
-</file>
-
-<file path="zed-codeql/.git/config">
-[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-[remote "origin"]
-	url = https://github.com/blacktop/zed-codeql
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[branch "main"]
-	remote = origin
-	merge = refs/heads/main
-</file>
-
-<file path="zed-codeql/.git/description">
-Unnamed repository; edit this file 'description' to name the repository.
-</file>
-
-<file path="zed-codeql/.git/HEAD">
-ref: refs/heads/main
-</file>
-
-<file path="zed-codeql/.git/packed-refs">
-# pack-refs with: peeled fully-peeled sorted 
-0049551f3ab08881db3ac4fd5ce9b112548b0d8c refs/remotes/origin/main
-</file>
-
-<file path="zed-codeql/languages/codeql/brackets.scm">
-; Bracket pairs for CodeQL
-("(" @open ")" @close)
-("[" @open "]" @close)
-("{" @open "}" @close)
-</file>
-
-<file path="zed-codeql/languages/codeql/config.toml">
-name = "CodeQL"
-grammar = "ql"
-path_suffixes = ["ql", "qll", "qlref", "dbscheme"]
-line_comments = ["//"]
-block_comment = ["/**", "*/"]
-brackets = [
-    { start = "{", end = "}", close = true, newline = true },
-    { start = "[", end = "]", close = true, newline = false },
-    { start = "(", end = ")", close = true, newline = false }
-]
-auto_pairs = [
-    { start = "{", end = "}" },
-    { start = "[", end = "]" },
-    { start = "(", end = ")" },
-    { start = "\"", end = "\"" },
-    { start = "'", end = "'" },
-    { start = "`", end = "`" }
-]
-</file>
-
-<file path="zed-codeql/languages/codeql/folds.scm">
-; Folding rules for CodeQL
-
-; Fold predicates
-(memberPredicate) @fold
-
-; Fold classes
-(dataclass) @fold
-
-; Fold modules
-(module) @fold
-
-; Fold select clauses
-(select) @fold
-
-; Fold block comments
-(block_comment) @fold
-
-; Fold QLDoc comments
-(qldoc) @fold
-</file>
-
-<file path="zed-codeql/languages/codeql/highlights.scm">
-[
-  "and"
-  "any"
-  "as"
-  "asc"
-  "avg"
-  "by"
-  "class"
-  "concat"
-  "count"
-  "desc"
-  "else"
-  "exists"
-  "extends"
-  "forall"
-  "forex"
-  "from"
-  "if"
-  "implements"
-  "implies"
-  "import"
-  "in"
-  "instanceof"
-  "max"
-  "min"
-  "module"
-  "newtype"
-  "not"
-  "or"
-  "order"
-  "rank"
-  "select"
-  "strictconcat"
-  "strictcount"
-  "strictsum"
-  "sum"
-  "then"
-  "where"
-
-  (false)
-  (predicate)
-  (result)
-  (specialId)
-  (super)
-  (this)
-  (true)
-] @keyword
-
-[
-  "boolean"
-  "float"
-  "int"
-  "date"
-  "string"
-] @type.builtin
-
-(annotName) @attribute
-
-[
-  "<"
-  "<="
-  "="
-  ">"
-  ">="
-  "-"
-  "!="
-  "/"
-  "*"
-  "%"
-  "+"
-  "::"
-] @operator
-
-[
-  "("
-  ")"
-  "{"
-  "}"
-  "["
-  "]"
-] @punctuation.bracket
-
-[
-  ","
-  "|"
-] @punctuation.delimiter
-
-(className) @type
-
-(varName) @variable
-
-(integer) @number
-(float) @number
-
-(string) @string
-
-(aritylessPredicateExpr (literalId) @function)
-(predicateName) @function
-
-[
-  (line_comment)
-  (block_comment)
-  (qldoc)
-] @comment
-</file>
-
-<file path="zed-codeql/languages/codeql/indents.scm">
-; Indentation rules for CodeQL
-
-; Indent inside blocks
-[
-  (body)
-] @indent
-
-; Indent inside parentheses and brackets
-[
-  "("
-  "["
-  "{"
-] @indent
-
-; Dedent closing brackets
-[
-  ")"
-  "]"
-  "}"
-] @outdent
-
-; Indent after these keywords
-[
-  "from"
-  "where"
-  "select"
-  "order"
-  "if"
-  "then"
-  "else"
-] @indent
-
-; Keep same indent for continuation
-[
-  "and"
-  "or"
-  ","
-  "|"
-] @indent.auto
-</file>
-
-<file path="zed-codeql/languages/codeql/injections.scm">
-; Language injections for CodeQL
-
-; QDoc comments contain Markdown
-((qldoc) @content
- (#set! "language" "markdown"))
-
-; Regex patterns in strings
-((string) @content
- (#match? @content "^[\"']/.*?/[gimsu]*[\"']$")
- (#set! "language" "regex"))
-
-; SQL in string literals (common in security queries)
-((string) @content
- (#match? @content "(?i)(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\\s")
- (#set! "language" "sql"))
-
-; JavaScript/TypeScript in strings (for JS/TS analysis queries)
-((string) @content
- (#match? @content "(function|const|let|var|=>|class|import|export)\\s")
- (#set! "language" "javascript"))
-
-; HTML/XML in strings (for web security queries)
-((string) @content
- (#match? @content "^[\"']<(html|div|script|style|xml|svg)")
- (#set! "language" "html"))
-
-; JSON in strings
-((string) @content
- (#match? @content "^[\"']\\{.*\\}[\"']$")
- (#set! "language" "json"))
-
-; YAML in strings (for config analysis)
-((string) @content
- (#match? @content "^[\"']---")
- (#set! "language" "yaml"))
-</file>
-
-<file path="zed-codeql/languages/codeql/outline.scm">
-; Simplified outline/symbols for CodeQL
-
-; Import statements
-(importDirective
-  (moduleName) @name) @item
-
-; Class definitions
-(dataclass
-  name: (className) @name) @item
-
-; Predicate definitions
-(memberPredicate
-  name: (predicateName) @name) @item
-
-; Module definitions
-(module
-  name: (moduleName) @name) @item
-
-; Select clauses (queries)
-(select) @item
-</file>
-
-<file path="zed-codeql/languages/codeql/tags.scm">
-; Tags for CodeQL - enables jump to definition
-
-; Class definitions
-(dataclass
-  name: (className) @name) @definition.class
-
-; Module definitions
-(module
-  name: (moduleName) @name) @definition.module
-
-; Predicate definitions
-(memberPredicate
-  name: (predicateName) @name) @definition.function
-
-; Import statements
-(importDirective) @reference.import
-
-; Class references
-(className) @reference.class
-
-; Module references
-(moduleName) @reference.module
-
-; Predicate references
-(predicateName) @reference.call
-
-; Variable references
-(varName) @reference.variable
-</file>
-
-<file path="zed-codeql/languages/codeql/textobjects.scm">
-; Text objects for CodeQL
-
-; Predicates
-(memberPredicate) @function.outer
-
-; Classes
-(dataclass) @class.outer
-
-; Modules
-(module) @namespace.outer
-
-; Select statements (queries)
-(select) @statement.outer
-
-; Comments
-(line_comment) @comment.outer
-(block_comment) @comment.outer
-(qldoc) @comment.outer
-
-; Import statements
-(importDirective) @import.outer
-
-; String literals
-(string) @string.outer
-</file>
-
-<file path="zed-codeql/src/lib.rs">
-use zed_extension_api::{
-    self as zed, CodeLabel, CodeLabelSpan, Command, LanguageServerId, Result, Worktree,
-};
-
-struct CodeQLExtension {
-    cached_binary_path: Option<String>,
-}
-
-impl CodeQLExtension {
-    fn find_codeql_cli(&mut self, worktree: &Worktree) -> Option<String> {
-        // Return cached path if available
-        if let Some(path) = &self.cached_binary_path {
-            return Some(path.clone());
-        }
-
-        // Use Zed's which function to find codeql in PATH
-        // This works properly in WASM environment
-        if let Some(path) = worktree.which("codeql") {
-            // Cache the path for future use
-            self.cached_binary_path = Some(path.clone());
-            Some(path)
-        } else {
-            None
-        }
-    }
-}
-
-impl zed::Extension for CodeQLExtension {
-    fn new() -> Self {
-        Self {
-            cached_binary_path: None,
-        }
-    }
-
-    fn language_server_command(
-        &mut self,
-        _language_server_id: &LanguageServerId,
-        worktree: &Worktree,
-    ) -> Result<Command> {
-        let codeql_path = self.find_codeql_cli(worktree).ok_or_else(|| {
-            concat!(
-                "CodeQL CLI not found in PATH.\n",
-                "Please install CodeQL CLI:\n",
-                "  • Homebrew: brew install codeql\n",
-                "  • Download: https://github.com/github/codeql-action/releases\n",
-                "Then restart Zed to detect the installation."
-            ).to_string()
-        })?;
-
-        Ok(Command {
-            command: codeql_path,
-            args: vec![
-                "execute".to_string(),
-                "language-server".to_string(),
-                "--check-errors=ON_CHANGE".to_string(),
-            ],
-            env: Default::default(),
-        })
-    }
-
-    fn language_server_workspace_configuration(
-        &mut self,
-        _server_id: &LanguageServerId,
-        worktree: &Worktree,
-    ) -> Result<Option<serde_json::Value>> {
-        // CodeQL language server configuration options
-        // Using conservative defaults that work on most systems
-        let settings = serde_json::json!({
-            "codeql": {
-                "cli": {
-                    "executablePath": self.find_codeql_cli(worktree)
-                },
-                "runningQueries": {
-                    "numberOfThreads": 2,     // Conservative default for compatibility
-                    "saveCache": false,
-                    "cacheSize": 1024,        // 1GB cache size
-                    "timeout": 600,           // 10 minutes for complex queries
-                    "memory": 1024,           // 1GB memory limit
-                    "debug": false,
-                    "customLogDirectory": ""
-                },
-                "runningTests": {
-                    "numberOfThreads": 1,     // Single thread for tests
-                    "saveCache": false,
-                    "cacheSize": 512,         // 512MB cache for tests
-                    "timeout": 300,           // 5 minutes for tests
-                    "memory": 512,            // 512MB memory for tests
-                    "customLogDirectory": ""
-                }
-            }
-        });
-
-        Ok(Some(settings))
-    }
-
-    fn label_for_completion(
-        &self,
-        _language_server_id: &LanguageServerId,
-        completion: zed::lsp::Completion,
-    ) -> Option<CodeLabel> {
-        match completion.kind? {
-            zed::lsp::CompletionKind::Class | zed::lsp::CompletionKind::Module => {
-                let label = completion.label.clone();
-                let name_span = CodeLabelSpan::literal(&label, Some("type".to_string()));
-                Some(CodeLabel {
-                    code: label,
-                    spans: vec![name_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            zed::lsp::CompletionKind::Method | zed::lsp::CompletionKind::Function => {
-                let label = format!("{}()", completion.label);
-                let name_span =
-                    CodeLabelSpan::literal(&completion.label, Some("function".to_string()));
-                let paren_span = CodeLabelSpan::literal("()", None);
-                Some(CodeLabel {
-                    code: label.clone(),
-                    spans: vec![name_span, paren_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            zed::lsp::CompletionKind::Keyword => {
-                let name_span =
-                    CodeLabelSpan::literal(&completion.label, Some("keyword".to_string()));
-                Some(CodeLabel {
-                    code: completion.label.clone(),
-                    spans: vec![name_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            _ => None,
-        }
-    }
-
-    fn label_for_symbol(
-        &self,
-        _language_server_id: &LanguageServerId,
-        symbol: zed::lsp::Symbol,
-    ) -> Option<CodeLabel> {
-        let name = symbol.name.clone();
-
-        let (code, highlight) = match symbol.kind {
-            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Interface => {
-                (format!("class {}", name), Some("type".to_string()))
-            }
-            zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
-                (format!("{}()", name), Some("function".to_string()))
-            }
-            zed::lsp::SymbolKind::Module | zed::lsp::SymbolKind::Namespace => {
-                (format!("module {}", name), Some("module".to_string()))
-            }
-            _ => (name.clone(), None),
-        };
-
-        let name_span = CodeLabelSpan::literal(&name, highlight);
-        Some(CodeLabel {
-            code: code.clone(),
-            spans: vec![name_span],
-            filter_range: (0..name.len()).into(),
-        })
-    }
-}
-
-zed::register_extension!(CodeQLExtension);
-</file>
-
-<file path="zed-codeql/.gitignore">
-# Rust build artifacts
-/target/
-Cargo.lock
-
-# Zed extension build
-*.wasm
-/grammars
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Test files
-*.sarif
-*.bqrs
-
-# CodeQL databases
-*.codeql/
-/databases/
-
-# AI files
-AGENTS.md
-ARCHITECTURE.md
-</file>
-
-<file path="zed-codeql/Cargo.toml">
-[package]
-name = "zed-codeql"
-version = "0.1.0"
-edition = "2021"
-publish = false
-license = "MIT"
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-zed_extension_api = "0.7.0"
-serde_json = "1.0"
-</file>
-
-<file path="zed-codeql/extension.toml">
-id = "codeql"
-name = "CodeQL"
-description = "CodeQL language support with syntax highlighting and language server for Zed"
-version = "0.1.0"
-schema_version = 1
-authors = ["blacktop"]
-repository = "https://github.com/blacktop/zed-codeql"
-
-[language_servers.codeql]
-name = "codeql"
-languages = ["CodeQL"]
-
-[grammars.ql]
-repository = "https://github.com/tree-sitter/tree-sitter-ql"
-commit = "1fd627a4e8bff8c24c11987474bd33112bead857"
-</file>
-
-<file path="zed-codeql/LICENSE">
-MIT License
-
-Copyright (c) 2025 blacktop
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-</file>
-
-<file path="zed-codeql/README.md">
-# zed-codeql
-
-CodeQL language support for [Zed](https://zed.dev).
-
-## Features
-
-- Syntax highlighting for `.ql`, `.qll`, `.qlref`, and `.dbscheme` files
-- Language server integration with CodeQL CLI
-- Code completion
-- Go to definition
-- Hover documentation
-- Error diagnostics
-
-## Requirements
-
-CodeQL CLI must be installed and available in your PATH.
-
-### Installation via Homebrew
-```bash
-brew install codeql
-```
-
-### Manual Installation
-Download from [GitHub CodeQL releases](https://github.com/github/codeql-action/releases).
-
-## Installation
-
-Install from Zed's extension gallery or build from source.
-
-## Language Server
-
-The extension automatically starts the CodeQL language server when you open a CodeQL file.
-
-The extension searches for CodeQL CLI in your system PATH.
-
-## Credit
-
-Inspired by <https://github.com/pwntester/codeql.nvim>
-
-## License
-
-MIT Copyright (c) 2025 blacktop
-</file>
-
 <file path=".bashrc">
 export BUN_INSTALL="/home/becker/.bun"
 export PATH="$BUN_INSTALL/bin:/nix/store/rr74d79lmba7j6gms3a8lmn6gy3fps2w-fzf-0.67.0/bin:/nix/store/qz4k80cgcrz0qhac0jnb19nsjgy21ind-ripgrep-15.1.0/bin:/run/wrappers/bin:/home/becker/.nix-profile/bin:/nix/profile/bin:/home/becker/.local/state/nix/profile/bin:/etc/profiles/per-user/becker/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/nix/store/fhmb82a3q7nbsz3w9yj28nyscykrj87p-binutils-wrapper-2.44/bin:/nix/store/k2vcgfv92wadz9fh0rbixp5dmxfkyy6s-hyprland-qtutils-0.1.5/bin:/nix/store/gy7mvvsfqzg03wbm02hcdiabajna8zb6-pciutils-3.14.0/bin:/nix/store/s9ncdhslhxmpwkydf2cykdcjlap8m0z9-pkgconf-wrapper-2.4.3/bin:/home/becker/.local/bin:/home/becker/.local/bin"
@@ -9024,6 +9121,10 @@ export PATH="$BUN_INSTALL/bin:/nix/store/rr74d79lmba7j6gms3a8lmn6gy3fps2w-fzf-0.
 
 <file path=".envrc">
 use flake
+</file>
+
+<file path=".gitignore">
+#hardware-configuration.nix
 </file>
 
 <file path=".gitmodules">
@@ -9229,188 +9330,6 @@ for_window [app_id="obsidian"] opacity 0.85
 
 # Alacritty terminal
 for_window [app_id="Alacritty"] opacity 0.85
-</file>
-
-<file path="hardware-configuration.nix">
-# Do not modify this file!  It was generated by ‘nixos-generate-config’
-# and may be overwritten by future invocations.  Please make changes
-# to /etc/nixos/configuration.nix instead.
-{
-  config,
-  lib,
-  pkgs,
-  modulesPath,
-  ...
-}:
-
-{
-  imports = [
-    (modulesPath + "/installer/scan/not-detected.nix")
-  ];
-
-  boot.initrd.availableKernelModules = [ "usb_storage" ];
-  boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ ];
-  boot.extraModulePackages = [ ];
-
-  fileSystems."/" = {
-    device = "/dev/disk/by-uuid/04e66dd3-e3f3-4ffe-92d3-a7d38c167d31";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/4796-181C";
-    fsType = "vfat";
-    options = [
-      "fmask=0022"
-      "dmask=0022"
-    ];
-  };
-
-  swapDevices = [ ];
-
-  nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
-}
-</file>
-
-<file path="config/alacritty/alacritty.toml">
-[window]
-#opacity = 0.92
-
-[window.padding]
-y = 6
-x = 6
-
-[selection]
-save_to_clipboard = true
-
-[font]
-normal = { family = "JetBrainsMono Nerd Font Propo", style = "Regular" }
-size = 12
-
-[colors.normal]
-black = "#000000"
-red = "#d54e53"
-green = "#b9ca4a"
-yellow = "#e6c547"
-blue = "#7aa6da"
-magenta = "#c397d8"
-cyan = "#70c0ba"
-white = "#eaeaea"
-
-[colors.bright]
-black = "#666666"
-red = "#ff3334"
-green = "#9ec400"
-yellow = "#e7c547"
-blue = "#7aa6da"
-magenta = "#b77ee0"
-cyan = "#54ced6"
-white = "#ffffff"
-
-
-[colors.primary]
-background = "#000000"
-foreground = "#a9b1d6"
-</file>
-
-<file path="config/nvim/lua/config/lazy.lua">
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
-  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
-  if vim.v.shell_error ~= 0 then
-    vim.api.nvim_echo({
-      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-      { out, "WarningMsg" },
-      { "\nPress any key to exit..." },
-    }, true, {})
-    vim.fn.getchar()
-    os.exit(1)
-  end
-end
-vim.opt.rtp:prepend(lazypath)
-
-require("lazy").setup({
-  spec = {
-    -- add LazyVim and import its plugins
-    { "LazyVim/LazyVim", import = "lazyvim.plugins" },
-    -- import/override with your plugins
-    { import = "plugins" },
-  },
-  defaults = {
-    -- By default, only LazyVim plugins will be lazy-loaded. Your custom plugins will load during startup.
-    -- If you know what you're doing, you can set this to `true` to have all your custom plugins lazy-loaded by default.
-    lazy = false,
-    -- It's recommended to leave version=false for now, since a lot the plugin that support versioning,
-    -- have outdated releases, which may break your Neovim install.
-    version = false, -- always use the latest git commit
-    -- version = "*", -- try installing the latest stable version for plugins that support semver
-  },
-  install = { colorscheme = { "tokyonight", "habamax" } },
-  checker = {
-    enabled = true, -- check for plugin updates periodically
-    notify = false, -- notify on update
-  }, -- automatically check for plugin updates
-  performance = {
-    rtp = {
-      -- disable some rtp plugins
-      disabled_plugins = {
-        "gzip",
-        -- "matchit",
-        -- "matchparen",
-        -- "netrwPlugin",
-        "tarPlugin",
-        "tohtml",
-        "tutor",
-        "zipPlugin",
-      },
-    },
-  },
-})
-</file>
-
-<file path="config/nvim/lua/config/options.lua">
--- Options are automatically loaded before lazy.nvim startup
--- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
--- Add any additional options here
-</file>
-
-<file path="config/nvim/lua/plugins/lsp.lua">
-return {
-    -- enable clangd manually
-    {
-        "neovim/nvim-lspconfig",
-        opts = {
-            servers = {
-                clangd = {
-                    cmd = { "clangd" },
-                    -- optional flags (you can tweak these later)
-                    cmd_env = {
-                        -- ensure nix shell environment is passed through
-                        PATH = vim.env.PATH,
-                    },
-                },
-            },
-        },
-    },
-}
-</file>
-
-<file path="config/nvim/init.lua">
--- bootstrap lazy.nvim, LazyVim and your plugins
-require("config.lazy")
-</file>
-
-<file path="config/nvim/README.md">
-# 💤 LazyVim
-
-A starter template for [LazyVim](https://github.com/LazyVim/LazyVim).
-Refer to the [documentation](https://lazyvim.github.io/installation) to get started.
-</file>
-
-<file path=".gitignore">
-#hardware-configuration.nix
 </file>
 
 <file path="configuration.nix">
@@ -9964,11 +9883,11 @@ in
         ]
       },
       "locked": {
-        "lastModified": 1776269030,
-        "narHash": "sha256-4/fq+Ee4QwyXJKr4KP/6Ob+SUhBqpVXNoVZR9HxWj0w=",
+        "lastModified": 1776270388,
+        "narHash": "sha256-NYWFwrjGdulKrY/kAJZtQo3oct3dXCy8r/l9qsMz+J4=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "75b542af32a46367ae6e7271d9b95312294c5556",
+        "rev": "cb00cd036283a84c25e10ef99fcb7e38ee5bcf11",
         "type": "github"
       },
       "original": {
@@ -10206,6 +10125,48 @@ in
 }
 </file>
 
+<file path="hardware-configuration.nix">
+# Do not modify this file!  It was generated by ‘nixos-generate-config’
+# and may be overwritten by future invocations.  Please make changes
+# to /etc/nixos/configuration.nix instead.
+{
+  config,
+  lib,
+  pkgs,
+  modulesPath,
+  ...
+}:
+
+{
+  imports = [
+    (modulesPath + "/installer/scan/not-detected.nix")
+  ];
+
+  boot.initrd.availableKernelModules = [ "usb_storage" ];
+  boot.initrd.kernelModules = [ ];
+  boot.kernelModules = [ ];
+  boot.extraModulePackages = [ ];
+
+  fileSystems."/" = {
+    device = "/dev/disk/by-uuid/04e66dd3-e3f3-4ffe-92d3-a7d38c167d31";
+    fsType = "ext4";
+  };
+
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-uuid/4796-181C";
+    fsType = "vfat";
+    options = [
+      "fmask=0022"
+      "dmask=0022"
+    ];
+  };
+
+  swapDevices = [ ];
+
+  nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
+}
+</file>
+
 <file path="home.nix">
 {
   config,
@@ -10385,7 +10346,6 @@ in
     moonlight-qt
 
     obs-studio
-
     codeql
   ];
 }

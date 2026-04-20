@@ -177,5 +177,6 @@ in
 
     obs-studio
     codeql
+    paseo
   ];
 }
