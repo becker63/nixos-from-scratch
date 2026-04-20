@@ -1,16 +1,57 @@
-# overlays/paseo-desktop.nix
-{ paseo-src, version ? "0.1.59" }:
+{
+  paseo-src,
+  version ? "0.1.59",
+}:
 final: prev:
 let
   lib = prev.lib;
   system = prev.stdenv.hostPlatform.system;
   arch =
-    if system == "aarch64-linux" then "arm64"
-    else if system == "x86_64-linux" then "x64"
-    else throw "paseo-desktop: unsupported system ${system}";
+    if system == "aarch64-linux" then
+      "arm64"
+    else if system == "x86_64-linux" then
+      "x64"
+    else
+      throw "paseo-desktop: unsupported system ${system}";
 
-  electron =
-    if prev ? electron_41 then prev.electron_41 else prev.electron;
+  electron = if prev ? electron_41 then prev.electron_41 else prev.electron;
+
+  runtimeLibs = with prev; [
+    libglvnd
+    mesa
+
+    glib
+    gtk3
+    cairo
+    pango
+    atk
+    at-spi2-atk
+
+    nspr
+    nss
+    dbus
+    alsa-lib
+    libsecret
+    libnotify
+    libxkbcommon
+    wayland
+    cups
+
+    libx11
+    libxcomposite
+    libxdamage
+    libxext
+    libxfixes
+    libxrandr
+    libxcb
+    libxscrnsaver
+    libxtst
+    libxi
+    libxcursor
+    libxrender
+  ];
+
+  runtimeLibPath = lib.makeLibraryPath runtimeLibs;
 in
 {
   paseo-desktop = prev.buildNpmPackage rec {
@@ -18,21 +59,32 @@ in
     inherit version;
     src = paseo-src;
 
-    # first build: set fakeHash, copy the "got:" hash, rebuild
-    npmDepsHash = lib.fakeHash;
+    npmDepsHash = "sha256-kw9Lefo644oeeTJCvdFdeW4tbwVMQWqkIVaNonhqbNs=";
 
     nativeBuildInputs = [
       prev.makeWrapper
       prev.pkg-config
       prev.python3
       prev.git
+      prev.wrapGAppsHook4
+      prev.makeWrapper
+      prev.pkg-config
+      prev.python3
+      prev.git
+      prev.nodejs
+      prev.patchelf
+      prev.wrapGAppsHook4
     ];
 
-    # We build manually.
+    buildInputs = runtimeLibs ++ [
+      prev.gsettings-desktop-schemas
+      prev.shared-mime-info
+    ];
+
     dontNpmBuild = true;
     dontNpmPrune = true;
+    dontWrapGApps = true;
 
-    # Prevent npm/electron install scripts from trying to fetch Electron.
     ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
 
     postPatch = ''
@@ -69,6 +121,13 @@ in
 
       npm run build:web --workspace=@getpaseo/app
 
+      # Rebuild native deps (node-pty, etc.) against Electron for this arch.
+      (
+        cd packages/desktop
+        export npm_config_build_from_source=true
+        ../../node_modules/.bin/electron-builder install-app-deps
+      )
+
       npm run build --workspace=@getpaseo/desktop -- \
         --publish never \
         --linux dir \
@@ -89,7 +148,6 @@ in
       cp -r "$appdir" "$out/opt/Paseo"
 
       mkdir -p "$out/bin"
-      ln -s "$out/opt/Paseo/Paseo" "$out/bin/paseo-desktop"
 
       mkdir -p "$out/share/applications"
       cat > "$out/share/applications/paseo-desktop.desktop" <<EOF
@@ -110,11 +168,24 @@ in
       runHook postInstall
     '';
 
+    postFixup = ''
+      mv "$out/opt/Paseo/Paseo" "$out/opt/Paseo/Paseo-real"
+      makeWrapper "$out/opt/Paseo/Paseo-real" "$out/opt/Paseo/Paseo" \
+        "''${gappsWrapperArgs[@]}" \
+        --prefix LD_LIBRARY_PATH : "${runtimeLibPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib" \
+        --set-default ELECTRON_OZONE_PLATFORM_HINT auto
+
+      ln -s "$out/opt/Paseo/Paseo" "$out/bin/paseo-desktop"
+    '';
+
     meta = with lib; {
       description = "Paseo desktop app";
       homepage = "https://paseo.sh";
       license = licenses.agpl3Plus;
-      platforms = [ "aarch64-linux" "x86_64-linux" ];
+      platforms = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
       mainProgram = "paseo-desktop";
     };
   };
