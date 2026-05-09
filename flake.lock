@@ -197,7 +197,8 @@
         "tokenize-output-src": "tokenize-output-src",
         "xontrib-jedi-src": "xontrib-jedi-src",
         "xontrib-output-search-src": "xontrib-output-search-src",
-        "xontrib-prompt-starship-src": "xontrib-prompt-starship-src"
+        "xontrib-prompt-starship-src": "xontrib-prompt-starship-src",
+        "zed-preview-bin": "zed-preview-bin"
       }
     },
     "tokenize-output-src": {
@@ -262,6 +263,19 @@
         "owner": "anki-code",
         "repo": "xontrib-prompt-starship",
         "type": "github"
+      }
+    },
+    "zed-preview-bin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778267178,
+        "narHash": "sha256-El7c/hLrRKpKuO3dDSMHPK+Ikuit5LBuGm5BzFCm++4=",
+        "type": "tarball",
+        "url": "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz"
       }
     }
   },

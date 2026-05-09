@@ -383,7 +383,7 @@ in
   services.blueman.enable = true;
 
   services.tailscale = {
-    enable = false;
+    enable = true;
     #openFirewall = true;
     #extraUpFlags = [
     #  "--accept-routes=true"
@@ -399,6 +399,8 @@ in
       Restart = "on-failure";
     };
   };
+
+  services.openssh.enable = true;
 
   system.stateVersion = "25.05";
 }

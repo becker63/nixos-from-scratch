@@ -1,4 +1,21 @@
 {
+  "context_servers": {
+    "mcp-server-context7": {
+      "enabled": true,
+      "remote": false,
+      "settings": {
+        "context7_api_key": "ctx7sk-79543669-2e38-459a-81bc-4b2b234f8ffd"
+      }
+    }
+  },
+  "agent_servers": {
+    "codex-acp": {
+      "type": "registry"
+    },
+    "cursor": {
+      "type": "registry"
+    }
+  },
   "language_models": {
     "openai_compatible": {
       "cerebras": {

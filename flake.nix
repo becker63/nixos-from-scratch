@@ -6,6 +6,17 @@
     home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Upstream Zed Preview tarball (aarch64 Linux). The `latest` URL is a
+    # redirect to the current preview build; running
+    #   nix flake update zed-preview-bin
+    # refetches it and updates the locked narHash. If `latest` ever stops
+    # resolving cleanly, swap in an explicit version, e.g.
+    #   url = "https://zed.dev/api/releases/preview/0.221.5/zed-linux-aarch64.tar.gz";
+    zed-preview-bin = {
+      url = "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz";
+      flake = false;
+    };
+
     apple-silicon = {
       url = "github:tpwrules/nixos-apple-silicon";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -99,7 +110,9 @@
         (import ./overlays/arttime.nix { inherit (inputs) arttime-src; })
         (import ./overlays/scripts.nix)
         (import ./overlays/hascard.nix)
-        (import ./overlays/zed-dual.nix)
+        (import ./overlays/zed-dual.nix {
+          inherit (inputs) zed-preview-bin;
+        })
 
         #(import ./overlays/mesa.nix { inherit (inputs) mesa-pinned; })
       ];
@@ -107,6 +120,15 @@
       pkgs = import nixpkgs { inherit system overlays; };
     in
     {
+      packages.${system} = {
+        inherit (pkgs) zed zed_raw zed-deps-report;
+      };
+
+      apps.${system}.zed-deps-report = {
+        type = "app";
+        program = "${pkgs.zed-deps-report}/bin/zed-deps-report";
+      };
+
       nixosConfigurations.nixos-btw = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {
