@@ -179,5 +179,11 @@ in
     codeql
     paseo
     paseo-desktop
+    bun
+
+    mosh
+    tmux
+
+    code-cursor-fhs
   ];
 }
