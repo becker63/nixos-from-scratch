@@ -75,16 +75,9 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 ## Recent Writing
 
-- [Derivations Are Better Than Skills](https://www.becker63.digital/Blogs/derivations-are-better-than-skills) — Skills tell an agent what to try. Derivations encode what exists. When I want durable capability, I trust the second one more.  
-  Published: 2026-05-18 · Tags: tech, nix, ai
-- [I Installed OpenCode So I Could Run Nx](https://www.becker63.digital/Blogs/i-installed-opencode-so-i-could-run-nx) — Packaging Cursor Agent, open-cursor, and an OpenCode provider stack as Nix artifacts because I wanted an agent surface as legible and forceful as Nx.  
-  Published: 2026-05-18 · Tags: tech, nix, ai, nx
-- [You Are Giving Your AI Cognitive Overload](https://www.becker63.digital/Blogs/ai-cognitive-overload) — Using Buck2 and Nix to turn repository operations into a small graph of sanctioned actions instead of a pile of debugging commands.  
-  Published: 2026-05-14 · Tags: tech, ai, build-systems
-- [Running the Latest Zed on a Platform That Hates Me](https://www.becker63.digital/Blogs/zed) — Getting bleeding-edge Zed running on NixOS, Asahi Linux, Wayland, and Apple Silicon because I wanted to try the new agent features before my package set caught up.  
-  Published: 2026-05-09 · Tags: tech, nix, linux
 
-Writing snapshot: 9 published posts. Current themes: ai (3), nix (3), build-systems (1), linux (1).
+
+Writing snapshot: 0 published posts. Current themes: technical writing, systems design, reproducible tooling.
 
 ## GitHub Snapshot
 
