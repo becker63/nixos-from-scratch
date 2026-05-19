@@ -1,0 +1,11 @@
+{
+  "name": "opencode-cursor-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for OpenCode + Cursor integration",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "2.0.47",
+    "@rama_nigg/open-cursor": "2.4.4"
+  }
+}

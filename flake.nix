@@ -2,6 +2,8 @@
   description = "NixOS from Scratch";
 
   inputs = {
+    nix-hermes.url = "github:becker63/nix-hermes-agent";
+
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
@@ -132,12 +134,14 @@
       nixosConfigurations.nixos-btw = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {
+          inherit inputs;
           inherit (inputs) xontrib-jedi-src arttime-src;
           xontrib-fish-completer-src = inputs.xontrib-fish-completer-src;
         };
         modules = [
           inputs.apple-silicon.nixosModules.apple-silicon-support
           ./configuration.nix
+          ./hermes.nix
           home-manager.nixosModules.home-manager
           {
             hardware.asahi = {

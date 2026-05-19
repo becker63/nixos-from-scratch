@@ -1,20 +1,21 @@
 {
+  "bottom_dock_layout": "contained",
   "context_servers": {
     "mcp-server-context7": {
       "enabled": true,
       "remote": false,
       "settings": {
-        "context7_api_key": "ctx7sk-79543669-2e38-459a-81bc-4b2b234f8ffd"
-      }
-    }
+        "context7_api_key": "ctx7sk-79543669-2e38-459a-81bc-4b2b234f8ffd",
+      },
+    },
   },
   "agent_servers": {
     "codex-acp": {
-      "type": "registry"
+      "type": "registry",
     },
     "cursor": {
-      "type": "registry"
-    }
+      "type": "registry",
+    },
   },
   "language_models": {
     "openai_compatible": {
@@ -30,26 +31,26 @@
               "tools": true,
               "images": false,
               "parallel_tool_calls": false,
-              "prompt_cache_key": false
-            }
-          }
-        ]
-      }
-    }
+              "prompt_cache_key": false,
+            },
+          },
+        ],
+      },
+    },
   },
   "features": {
-    "edit_prediction_provider": "zed"
+    "edit_prediction_provider": "zed",
   },
   "edit_predictions": {
-    "mode": "eager"
+    "mode": "eager",
   },
   "show_edit_predictions": true,
   "soft_wrap": "editor_width",
   "git": {
     "inline_blame": {
-      "enabled": false
+      "enabled": false,
     },
-    "git_gutter": "hide"
+    "git_gutter": "hide",
   },
   "autosave": "off",
   "ui_font_size": 16,
@@ -57,30 +58,30 @@
   "theme": {
     "mode": "system",
     "light": "One Dark Pro Max",
-    "dark": "One Black Max"
+    "dark": "One Black Max",
   },
   "lsp": {
     "clangd": {
       "binary": {
-        "path": "/nix/store/hbnl0hvg35h3krwgzpjlnbjadpr5vlr6-clang-tools-21.1.1/bin/clangd"
-      }
+        "path": "/nix/store/hbnl0hvg35h3krwgzpjlnbjadpr5vlr6-clang-tools-21.1.1/bin/clangd",
+      },
     },
     "nim": {
       "binary": {
         //search PATH and use whatevers at the nix flake, dont ever ever use the default nimlangserver its awful
         "path": "nimlsp",
-        "args": []
-      }
+        "args": [],
+      },
     },
     "protobuf-language-server": {
       "binary": {
-        "path": "protols"
-      }
-    }
+        "path": "protols",
+      },
+    },
   },
   "languages": {
     "Starlark": {
-      "language_servers": ["buck2-lsp", "!starpls", "tilt"]
+      "language_servers": ["buck2-lsp", "!starpls", "tilt"],
     },
     "Elixir": {
       "language_servers": [
@@ -88,8 +89,8 @@
         "!expert",
         "!elixir-ls",
         "!lexical",
-        "..."
-      ]
+        "...",
+      ],
     },
     "HEEX": {
       "language_servers": [
@@ -97,11 +98,11 @@
         "!expert",
         "!elixir-ls",
         "!lexical",
-        "..."
-      ]
+        "...",
+      ],
     },
     "Nix": {
-      "language_servers": ["nixd", "!nil"]
+      "language_servers": ["nixd", "!nil"],
     },
     "Ruby": {
       "language_servers": [
@@ -109,85 +110,91 @@
         "!ruby-lsp",
         "!rubocop",
         "!steep",
-        "solargraph"
-      ]
+        "solargraph",
+      ],
     },
     "python": {
       // Use the wrapper we defined in configuration.nix
-      "interpreter": "python-with-libtmux"
+      "interpreter": "python-with-libtmux",
     },
     "Nim": {
       "formatter": {
         "external": {
           "command": "nph",
-          "arguments": ["-"]
-        }
-      }
-    }
+          "arguments": ["-"],
+        },
+      },
+    },
   },
   "diagnostics_max_severity": "error",
   "toolbar": {
     "breadcrumbs": false,
     "quick_actions": false,
-    "agent_review": false
+    "agent_review": false,
   },
   "disable_ai": false,
   "scrollbar": {
     "axes": {
       "horizontal": false,
-      "vertical": false
-    }
+      "vertical": false,
+    },
   },
   "outline_panel": {
-    "button": false
+    "button": false,
   },
   "collaboration_panel": {
-    "button": false
+    "button": false,
   },
   "search": {
-    "button": false
+    "button": false,
   },
   "git_panel": {
-    "button": false
+    "button": false,
   },
   "project_panel": {
-    "button": false
+    "dock": "left",
+    "hide_root": false,
+    "bold_folder_labels": false,
+    "button": false,
   },
   "terminal": {
     "button": false,
     "shell": {
-      "program": "bash"
-    }
+      "program": "bash",
+    },
   },
   "agent": {
+    "dock": "right",
+    "tool_permissions": {
+      "default": "allow",
+    },
     "profiles": {
       "careful-write": {
         "default_model": {
           "provider": "cerebras",
-          "model": "gpt-oss-120b"
+          "model": "gpt-oss-120b",
         },
         "name": "Careful Write",
         "tools": {},
         "enable_all_context_servers": false,
-        "context_servers": {}
-      }
+        "context_servers": {},
+      },
     },
     "default_profile": "write",
-    "always_allow_tool_actions": true,
     "default_model": {
       "provider": "cerebras",
-      "model": "gpt-oss-120b"
+      "model": "gpt-oss-120b",
     },
     "play_sound_when_agent_done": true,
-    "button": false
+    "button": false,
   },
   "notification_panel": {
-    "button": false
+    "button": false,
   },
 
   "experimental.theme_overrides": {
     "title_bar.inactive_background": "#000000", // <= the color you need
     "panel.indent_guide": "#444444", // magenta
-    "panel.indent_guide_active": "#9e114c" // light grey
-  }
+    "panel.indent_guide_active": "#9e114c", // light grey
+  },
 }
