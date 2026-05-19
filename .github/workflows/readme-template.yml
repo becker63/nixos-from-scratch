@@ -1,0 +1,32 @@
+name: README Template
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Render README from template
+        uses: probablykasper/readme-template-action@v1.0.0
+        with:
+          token: ${{ secrets.STATS_TOKEN }}
+          template: TEMPLATE.md
+          output: README.md
+      - name: Commit README if it changed
+        run: |
+          if [[ -n "$(git status --porcelain README.md)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "Auto-update README"
+            git push
+          fi
