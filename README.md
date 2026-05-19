@@ -83,7 +83,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 | Public repos | Followers | Following | Stars given | Pinned repos |
 | --- | --- | --- | --- | --- |
-| 106 | 21 | 7 | 644 | 6 |
+| 107 | 21 | 7 | 645 | 6 |
 
 ## Current Surface Area
 
@@ -102,10 +102,10 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
-- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-05-19
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
   TypeScript · updated 2026-05-19
+- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
+  Nix · updated 2026-05-19
 - [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
   Go · updated 2026-05-19
 - [becker63/iterative-context](https://github.com/becker63/iterative-context) — Agent and retrieval experiments centered on structured context gathering and evaluation.  
