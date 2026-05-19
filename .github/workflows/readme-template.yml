@@ -16,11 +16,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Render README from template
-        uses: probablykasper/readme-template-action@v1.0.0
-        with:
-          token: ${{ secrets.STATS_TOKEN }}
-          template: TEMPLATE.md
-          output: README.md
+        env:
+          README_RENDER_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: python3 scripts/render_readme.py --template TEMPLATE.md --output README.md
       - name: Commit README if it changed
         run: |
           if [[ -n "$(git status --porcelain README.md)" ]]; then
