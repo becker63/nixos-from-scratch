@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-05-19
+- Last refreshed: 2026-05-20
 
 ## What I Build
 
@@ -24,17 +24,8 @@ Go/Pkl experiment surface for evaluating agentic code-search systems with bundle
 
 - Why it matters: It turns agent evaluation into a release-engineering problem: baseline, candidate, regressions, artifacts, and promotion decisions.
 - Stack: Go
-- Last push: 2026-05-19
+- Last push: 2026-05-20
 - GitHub: `becker63/searchbench-go`
-
-### [searchbench](https://github.com/becker63/searchbench)
-
-Deterministic Python harness for comparing baseline and candidate retrieval policies with scoring, telemetry, and reproducible run results.
-
-- Why it matters: It shows how AI evaluation becomes more useful when scoring, cost, and failure state are explicit instead of anecdotal.
-- Stack: Python
-- Last push: 2026-04-21
-- GitHub: `becker63/searchbench`
 
 ### [designing-for-two](https://github.com/becker63/designing-for-two)
 
@@ -69,7 +60,7 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-05-19
+- Last push: 2026-05-20
 - GitHub: `becker63/nixos-from-scratch`
 
 
@@ -102,17 +93,17 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
+- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
+  Nix · updated 2026-05-20
+- [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
+  Go · updated 2026-05-20
+- [becker63/iterative-context](https://github.com/becker63/iterative-context) — Agent and retrieval experiments centered on structured context gathering and evaluation.  
+  Python · updated 2026-05-19
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
   TypeScript · updated 2026-05-19
-- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-05-19
-- [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
-  Go · updated 2026-05-19
-- [becker63/iterative-context](https://github.com/becker63/iterative-context) — Agent and retrieval experiments centered on structured context gathering and evaluation.  
-  Python · updated 2026-05-18
 - [becker63/jaad](https://github.com/becker63/jaad) — Just Another AI DAW  
   TypeScript · updated 2026-05-13
-- [becker63/searchbench](https://github.com/becker63/searchbench) — Deterministic Python harness for comparing baseline and candidate retrieval policies with scoring, telemetry, and reproducible run results.  
+- [becker63/searchbench-py](https://github.com/becker63/searchbench-py) — No public description yet.  
   Python · updated 2026-04-21
 
 ## Language Analytics
