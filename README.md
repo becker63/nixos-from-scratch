@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-05-24
+- Last refreshed: 2026-05-25
 
 ## What I Build
 
@@ -24,7 +24,7 @@ Go/Pkl experiment surface for evaluating agentic code-search systems with bundle
 
 - Why it matters: It turns agent evaluation into a release-engineering problem: baseline, candidate, regressions, artifacts, and promotion decisions.
 - Stack: Go
-- Last push: 2026-05-23
+- Last push: 2026-05-25
 - GitHub: `becker63/searchbench-go`
 
 ### [designing-for-two](https://github.com/becker63/designing-for-two)
@@ -51,7 +51,7 @@ Custom Next.js + MDX writing system for technical essays, diagrams, search, and 
 
 - Why it matters: It is both a publishing surface and a technical artifact for communicating systems work with diagrams, search, and controlled rendering.
 - Stack: TypeScript
-- Last push: 2026-05-19
+- Last push: 2026-05-25
 - GitHub: `becker63/blog`
 
 ### [nixos-from-scratch](https://github.com/becker63/nixos-from-scratch)
@@ -60,7 +60,7 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-05-24
+- Last push: 2026-05-25
 - GitHub: `becker63/nixos-from-scratch`
 
 
@@ -83,7 +83,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 - [becker63/designing-for-two](https://github.com/becker63/designing-for-two) — Typed control-plane experiments around KCL, Crossplane, Buck2, and Nix to make infrastructure coordination more legible.  
   Python · 1 stars · updated 2026-02-15
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
-  TypeScript · 0 stars · updated 2026-05-19
+  TypeScript · 0 stars · updated 2026-05-25
 - [becker63/home_lab](https://github.com/becker63/home_lab) — Home infrastructure experiments around reproducible systems, services, and local platform ownership.  
   Nix · 0 stars · updated 2026-02-15
 - [becker63/home_network](https://github.com/becker63/home_network) — Typed network and infrastructure modeling work with an emphasis on legibility.  
@@ -93,14 +93,14 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
-- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-05-24
-- [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
-  Go · updated 2026-05-23
 - [becker63/iterative-context](https://github.com/becker63/iterative-context) — Agent and retrieval experiments centered on structured context gathering and evaluation.  
-  Python · updated 2026-05-23
+  Python · updated 2026-05-25
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
-  TypeScript · updated 2026-05-19
+  TypeScript · updated 2026-05-25
+- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
+  Nix · updated 2026-05-25
+- [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
+  Go · updated 2026-05-25
 - [becker63/jaad](https://github.com/becker63/jaad) — Just Another AI DAW  
   TypeScript · updated 2026-05-13
 - [becker63/searchbench-py](https://github.com/becker63/searchbench-py) — No public description yet.  
