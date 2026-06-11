@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-06-10
+- Last refreshed: 2026-06-11
 
 ## What I Build
 
@@ -69,7 +69,7 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-06-09
+- Last push: 2026-06-10
 - GitHub: `becker63/nixos-from-scratch`
 
 
@@ -83,7 +83,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 | Public repos | Followers | Following | Stars given | Pinned repos |
 | --- | --- | --- | --- | --- |
-| 108 | 21 | 7 | 648 | 6 |
+| 109 | 21 | 7 | 649 | 6 |
 
 ## Current Surface Area
 
@@ -102,8 +102,10 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
+- [becker63/joern-effect](https://github.com/becker63/joern-effect) — No public description yet.  
+  Mixed · updated 2026-06-11
 - [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-06-09
+  Nix · updated 2026-06-10
 - [becker63/attune](https://github.com/becker63/attune) — No public description yet.  
   TypeScript · updated 2026-06-09
 - [becker63/searchbench-go](https://github.com/becker63/searchbench-go) — Go/Pkl experiment surface for evaluating agentic code-search systems with bundled artifacts, typed domain models, and promotion-style reports.  
@@ -112,8 +114,6 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
   Python · updated 2026-05-27
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
   TypeScript · updated 2026-05-25
-- [becker63/jaad](https://github.com/becker63/jaad) — Just Another AI DAW  
-  TypeScript · updated 2026-05-13
 
 ## Language Analytics
 
