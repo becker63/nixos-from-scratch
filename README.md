@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-06-20
+- Last refreshed: 2026-06-21
 
 ## What I Build
 
@@ -83,7 +83,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 | Public repos | Followers | Following | Stars given | Pinned repos |
 | --- | --- | --- | --- | --- |
-| 111 | 21 | 7 | 654 | 6 |
+| 111 | 21 | 7 | 655 | 6 |
 
 ## Current Surface Area
 
