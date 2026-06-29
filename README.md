@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-06-28
+- Last refreshed: 2026-06-29
 
 ## What I Build
 
@@ -69,7 +69,7 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-06-27
+- Last push: 2026-06-29
 - GitHub: `becker63/nixos-from-scratch`
 
 
@@ -103,9 +103,9 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 ## Recently Active Repos
 
 - [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-06-27
+  Nix · updated 2026-06-29
 - [becker63/attune](https://github.com/becker63/attune) — No public description yet.  
-  TypeScript · updated 2026-06-24
+  TypeScript · updated 2026-06-28
 - [becker63/attuned](https://github.com/becker63/attuned) — No public description yet.  
   Mixed · updated 2026-06-15
 - [becker63/attunedocs](https://github.com/becker63/attunedocs) — No public description yet.  
