@@ -8,7 +8,6 @@ result-spacing = 25
 num-results = 5
 font = monospace
 background-color = #000A
-set -g synchronize-panes off
 
 drun-launch = true
 history = true

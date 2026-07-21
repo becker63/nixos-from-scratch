@@ -1,0 +1,134 @@
+{
+  nixosBtwFlakeBuild ? false,
+  pkgs,
+  ...
+}:
+
+{
+  assertions = [
+    {
+      assertion = nixosBtwFlakeBuild;
+      message = ''
+        Refusing to evaluate this Apple Silicon configuration outside its flake.
+
+        This host must be rebuilt through the Nixverse node:
+
+          sudo nixos-rebuild switch --flake /home/becker/nixos-from-scratch#nixos-btw
+
+        Direct evaluation bypasses nixos-apple-silicon support, drops the
+        linux-asahi/m1n1/U-Boot closure, and can create broken generic Linux
+        boot entries.
+      '';
+    }
+  ];
+
+  boot = {
+    loader.systemd-boot.enable = true;
+    # Apple Silicon firmware/efivars can be touchy; allow bootctl to proceed
+    # when EFI variables are not writable, since we already rely on the
+    # removable-path install instead of mutating firmware boot entries.
+    loader.systemd-boot.graceful = true;
+    loader.efi.canTouchEfiVariables = false;
+
+    # Attune ThinkCentre day-0 builds target x86_64 from this Asahi laptop.
+    # Register qemu-user through binfmt so local Nix can execute x86_64
+    # builder programs while evaluating installer and host closures.
+    binfmt.emulatedSystems = [ "x86_64-linux" ];
+  };
+
+  boot.kernelModules = [
+    "uhid"
+    "hidp"
+  ];
+
+  networking = {
+    hostName = "nixos-btw";
+    useNetworkd = false;
+    firewall.allowPing = true;
+    wireless.iwd = {
+      enable = true;
+      settings.Network.EnableNetworkConfiguration = true;
+    };
+  };
+
+  services.resolved.enable = true;
+
+  security.sudo.wheelNeedsPassword = false;
+
+  users.users.becker = {
+    isNormalUser = true;
+    password = "***REMOVED***";
+    extraGroups = [
+      "input"
+      "video"
+      "podman"
+      "docker"
+      "wheel"
+      "storage"
+    ];
+    subUidRanges = [
+      {
+        startUid = 100000;
+        count = 65536;
+      }
+    ];
+    subGidRanges = [
+      {
+        startGid = 100000;
+        count = 65536;
+      }
+    ];
+    shell = "${pkgs.xonsh}/bin/xonsh";
+  };
+
+  users.users.root.initialPassword = "***REMOVED***";
+
+  programs.ssh.knownHosts.nixos-builder = {
+    hostNames = [ "192.168.0.102" ];
+    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLhQQV3uPgklRz5KZohKyGl1h6VMLbxPOqHF6cCtWzF";
+  };
+
+  nix = {
+    distributedBuilds = false;
+    buildMachines = [ ];
+    settings = {
+      # max-jobs = 0;
+      builders-use-substitutes = true;
+      extra-platforms = [ "aarch64-linux" ];
+      require-sigs = false;
+      trusted-users = [
+        "becker"
+        "@wheel"
+      ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      keep-outputs = true;
+      keep-derivations = true;
+
+      # Official nixos-apple-silicon Cachix binary cache from:
+      # https://github.com/nix-community/nixos-apple-silicon/blob/main/docs/binary-cache.md
+      extra-substituters = [ "https://nixos-apple-silicon.cachix.org" ];
+      extra-trusted-public-keys = [
+        "nixos-apple-silicon.cachix.org-1:8psDu5SA5dAD7qA0zMy5UT292TxeEPzIz8VVEr2Js20="
+      ];
+    };
+  };
+
+  nixpkgs.config.allowUnfree = true;
+  programs.nix-ld.enable = true;
+
+  environment.shells = [ "${pkgs.xonsh}/bin/xonsh" ];
+  environment.etc."distrobox/distrobox.conf".text = ''
+    container_additional_volumes="/nix/store:/nix/store:ro /etc/profiles/per-user:/etc/profiles/per-user:ro /etc/static/profiles/per-user:/etc/static/profiles/per-user:ro"
+  '';
+
+  virtualisation.podman = {
+    enable = false;
+    dockerCompat = true;
+  };
+  virtualisation.docker.enable = true;
+
+  system.stateVersion = "25.05";
+}

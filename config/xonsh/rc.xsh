@@ -12,7 +12,6 @@ aliases['btop'] = 'btm'
 aliases['top'] = 'btm'
 aliases['cpu'] = 'btm --default_widget_type cpu --default_widget_count 1 --expanded'
 aliases['dev'] = 'nix develop -c $SHELL || true'
-aliases['resetxonsh'] = "tmux ls | awk '/^xonsh_reserve_/ {print $1}' | sed 's/:$//' | xargs -r tmux kill-session -t"
 aliases['zed'] = 'zed -n'
 aliases['zed_raw'] = 'zed_raw -n'
 aliases['bluetooth'] = 'bluetuith'
@@ -49,10 +48,16 @@ import os
 REAL_NIX = shutil.which("nix")
 
 def nix(args, stdin=None):
+    if REAL_NIX is None:
+        print("nix: command not found")
+        return 127
+
     if args and args[0] == "develop":
-        os.execv(REAL_NIX, [REAL_NIX, "develop", "-c", "xonsh", *args[1:]])
+        result = subprocess.run([REAL_NIX, "develop", "-c", "xonsh", *args[1:]], stdin=stdin)
     else:
-        os.execv(REAL_NIX, [REAL_NIX, *args])
+        result = subprocess.run([REAL_NIX, *args], stdin=stdin)
+
+    return result.returncode
 
 aliases["nix"] = nix
 

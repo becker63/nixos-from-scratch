@@ -1,0 +1,230 @@
+(defvar volume_percent 0)
+(defvar volume_muted false)
+(defvar volume_kind "vol")
+
+(defpoll keyboard_brightness
+  :interval "500ms"
+  :initial "0"
+  "bash ~/.config/eww/scripts/keyboard-backlight get")
+
+(defwidget volume_segment [percent threshold tier]
+  (label :class {percent >= threshold ? "volume-segment ${tier} active" : "volume-segment ${tier}"}
+         :valign "center"
+         :text ""))
+
+(defwidget volume_meter [percent]
+  (box :class "volume-meter"
+       :orientation "h"
+       :hexpand true
+       :spacing 3
+       :space-evenly true
+    (volume_segment :percent percent :threshold 5 :tier "low")
+    (volume_segment :percent percent :threshold 10 :tier "low")
+    (volume_segment :percent percent :threshold 15 :tier "low")
+    (volume_segment :percent percent :threshold 20 :tier "low")
+    (volume_segment :percent percent :threshold 25 :tier "low")
+    (volume_segment :percent percent :threshold 30 :tier "mid")
+    (volume_segment :percent percent :threshold 35 :tier "mid")
+    (volume_segment :percent percent :threshold 40 :tier "mid")
+    (volume_segment :percent percent :threshold 45 :tier "mid")
+    (volume_segment :percent percent :threshold 50 :tier "mid")
+    (volume_segment :percent percent :threshold 55 :tier "high")
+    (volume_segment :percent percent :threshold 60 :tier "high")
+    (volume_segment :percent percent :threshold 65 :tier "high")
+    (volume_segment :percent percent :threshold 70 :tier "high")
+    (volume_segment :percent percent :threshold 75 :tier "high")
+    (volume_segment :percent percent :threshold 80 :tier "peak")
+    (volume_segment :percent percent :threshold 85 :tier "peak")
+    (volume_segment :percent percent :threshold 90 :tier "peak")
+    (volume_segment :percent percent :threshold 95 :tier "peak")
+    (volume_segment :percent percent :threshold 100 :tier "peak")))
+
+(defwidget power_segment [capacity threshold]
+  (label :class {capacity >= threshold ? "power-segment active" : "power-segment"}
+         :valign "center"
+         :text ""))
+
+(defwidget power_meter [capacity]
+  (box :class "power-meter"
+       :orientation "h"
+       :hexpand true
+       :spacing 4
+       :space-evenly true
+    (power_segment :capacity capacity :threshold 5)
+    (power_segment :capacity capacity :threshold 10)
+    (power_segment :capacity capacity :threshold 15)
+    (power_segment :capacity capacity :threshold 20)
+    (power_segment :capacity capacity :threshold 25)
+    (power_segment :capacity capacity :threshold 30)
+    (power_segment :capacity capacity :threshold 35)
+    (power_segment :capacity capacity :threshold 40)
+    (power_segment :capacity capacity :threshold 45)
+    (power_segment :capacity capacity :threshold 50)
+    (power_segment :capacity capacity :threshold 55)
+    (power_segment :capacity capacity :threshold 60)
+    (power_segment :capacity capacity :threshold 65)
+    (power_segment :capacity capacity :threshold 70)
+    (power_segment :capacity capacity :threshold 75)
+    (power_segment :capacity capacity :threshold 80)
+    (power_segment :capacity capacity :threshold 85)
+    (power_segment :capacity capacity :threshold 90)
+    (power_segment :capacity capacity :threshold 95)
+    (power_segment :capacity capacity :threshold 100)))
+
+(defwidget keyboard_light [percent]
+  (box :class "keyboard-light"
+       :orientation "h"
+       :space-evenly false
+       :valign "center"
+    (label :class "keyboard-light-kind"
+           :xalign 0
+           :text "keys")
+    (scale :class "keyboard-light-scale"
+           :hexpand true
+           :min 0
+           :max 100
+           :round-digits 0
+           :draw-value false
+           :value percent
+           :timeout "2s"
+           :onchange "bash ${EWW_CONFIG_DIR}/scripts/keyboard-backlight set {} && bash ${EWW_CONFIG_DIR}/scripts/power-osd keepalive")
+    (label :class "keyboard-light-value"
+           :xalign 1
+           :text "${percent}%")))
+
+(defwidget volume_osd [percent muted kind]
+  (box :class {muted ? "osd volume muted" : (percent > 100 ? "osd volume boosted" : "osd volume")}
+       :orientation "h"
+       :space-evenly false
+       :valign "center"
+    (label :class "volume-kind"
+           :xalign 0
+           :text kind)
+    (volume_meter :percent percent)
+    (label :class "volume-value"
+           :xalign 1
+           :text "${percent}%")))
+
+(defwidget power_menu [summary rate detail capacity state]
+  (eventbox :onhover "bash ${EWW_CONFIG_DIR}/scripts/power-osd keepalive"
+            :timeout "2s"
+    (box :class "osd power-menu ${state}"
+         :orientation "v"
+         :space-evenly false
+      (box :class "power-readout"
+           :orientation "v"
+           :space-evenly false
+        (label :class "power-summary"
+               :xalign 0
+               :text summary)
+        (power_meter :capacity capacity)
+        (label :class "power-rate"
+               :xalign 0
+               :text rate)
+        (label :class "power-detail"
+               :xalign 0
+               :text detail))
+      (keyboard_light :percent keyboard_brightness)
+      (box :class "power-actions"
+           :orientation "h"
+           :space-evenly false
+        (button :class "action-sleep"
+                :timeout "3s"
+                :onclick "bash ${EWW_CONFIG_DIR}/scripts/power-osd hide && systemctl --no-block suspend"
+          "sleep")
+        (button :class "action-logout"
+                :timeout "3s"
+                :onclick "bash ${EWW_CONFIG_DIR}/scripts/power-osd hide && hyprctl dispatch exit"
+          "log out")
+        (button :class "action-restart"
+                :timeout "3s"
+                :onclick "bash ${EWW_CONFIG_DIR}/scripts/power-osd hide && ${EWW_CMD} open power_confirm --duration 5s --arg action=reboot --arg verb=restart && bash ${EWW_CONFIG_DIR}/scripts/volume-osd reposition"
+          "restart")
+        (button :class "action-poweroff"
+                :timeout "3s"
+                :onclick "bash ${EWW_CONFIG_DIR}/scripts/power-osd hide && ${EWW_CMD} open power_confirm --duration 5s --arg action=poweroff --arg verb='shut down' && bash ${EWW_CONFIG_DIR}/scripts/volume-osd reposition"
+          "shut down")))))
+
+(defwidget power_hotspot_widget []
+  (eventbox :onhover "bash ${EWW_CONFIG_DIR}/scripts/power-osd show"
+            :timeout "3s"
+    (box :class "power-hotspot"
+         :hexpand true
+         :vexpand true)))
+
+(defwidget power_confirmation [action verb]
+  (box :class "osd power-confirm"
+       :orientation "h"
+       :space-evenly false
+    (label :class "confirm-question"
+           :xalign 0
+           :text "${verb}? ")
+    (button :timeout "3s"
+            :onclick "bash ${EWW_CONFIG_DIR}/scripts/power-osd"
+      "cancel")
+    (button :class "confirm-action"
+            :timeout "3s"
+            :onclick "${EWW_CMD} close power_confirm && systemctl --no-block ${action}"
+      "yes")))
+
+(defwindow volume [offset]
+  :monitor 0
+  :geometry (geometry :x "0px"
+                      :y offset
+                      :width "420px"
+                      :height "48px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable "none"
+  :namespace "minimal-osd-volume"
+  :resizable false
+  (volume_osd :percent volume_percent
+              :muted volume_muted
+              :kind volume_kind))
+
+(defwindow power [summary rate detail capacity state]
+  :monitor 0
+  :geometry (geometry :x "0px"
+                      :y "14px"
+                      :width "420px"
+                      :height "184px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable "none"
+  :namespace "minimal-osd-power"
+  :resizable false
+  (power_menu :summary summary
+              :rate rate
+              :detail detail
+              :capacity capacity
+              :state state))
+
+(defwindow power_hotspot []
+  :monitor 0
+  :geometry (geometry :x "0px"
+                      :y "0px"
+                      :width "420px"
+                      :height "14px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable "none"
+  :namespace "minimal-osd-power-hotspot"
+  :resizable false
+  (power_hotspot_widget))
+
+(defwindow power_confirm [action verb]
+  :monitor 0
+  :geometry (geometry :x "0px"
+                      :y "14px"
+                      :width "280px"
+                      :height "52px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable "none"
+  :namespace "minimal-osd-power-confirm"
+  :resizable false
+  (power_confirmation :action action :verb verb))

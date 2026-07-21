@@ -1,0 +1,8 @@
+diff --git a/daemon/gdm-session-worker.c b/daemon/gdm-session-worker.c
+index 94da834..c55e1d6 100644
+--- a/daemon/gdm-session-worker.c
++++ b/daemon/gdm-session-worker.c
+@@ -1660 +1660,2 @@
+-        gdm_session_worker_forward_var(worker, "GDM_X_SESSION_WRAPPER");
++        gdm_session_worker_forward_var (worker, "GDM_X_SESSION_WRAPPER");
++        gdm_session_worker_forward_var(worker, "XDG_DATA_DIRS");

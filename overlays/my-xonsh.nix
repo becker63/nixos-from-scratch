@@ -10,7 +10,6 @@ final: prev: {
       pyclip
       xontrib-prompt-starship
       plumbum
-      libtmux
       rich
       duckdb
       pyarrow

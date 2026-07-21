@@ -1,0 +1,26 @@
+{
+  "name": "opencode-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for OpenCode plugins and tools",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@aeondave/opencode-background-agents": "0.1.1",
+    "@cortexkit/aft": "0.46.0",
+    "@cortexkit/aft-opencode": "0.46.0",
+    "@cortexkit/opencode-magic-context": "0.31.5",
+    "@fission-ai/openspec": "1.5.0",
+    "@opencode-ai/plugin": "1.17.13",
+    "@opencode-ai/sdk": "1.17.13",
+    "@opentui/core": "0.4.2",
+    "@opentui/solid": "0.4.2",
+    "@ramtinj95/opencode-tokenscope": "1.7.2",
+    "@tarquinen/opencode-dcp": "3.1.14",
+    "opencode-adaptive-thinking": "0.1.4",
+    "opencode-model-router": "1.3.0",
+    "opencode-pty": "0.3.6",
+    "openrtk": "0.1.0",
+    "solid-js": "1.9.12",
+    "zig-mcp": "1.4.1"
+  }
+}
