@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-07-25
+- Last refreshed: 2026-07-26
 
 ## What I Build
 
