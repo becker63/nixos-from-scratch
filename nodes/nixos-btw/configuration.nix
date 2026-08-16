@@ -7,6 +7,15 @@
 
 let
   inputs = inputs';
+  peripheralFirmwareSource = ../../firmware;
+  peripheralFirmware = pkgs.runCommand "asahi-peripheral-firmware-source" {
+    nativeBuildInputs = [ pkgs.asahi-fwextract ];
+  } ''
+    mkdir -p "$out"
+    cp ${peripheralFirmwareSource}/all_firmware.tar.gz \
+      ${peripheralFirmwareSource}/kernelcache.release.mac14g "$out/"
+    asahi-fwextract ${peripheralFirmwareSource} "$out"
+  '';
 in
 {
   imports = [
@@ -18,7 +27,11 @@ in
   _module.args.nixosBtwFlakeBuild = true;
 
   hardware.asahi = {
-    peripheralFirmwareDirectory = ../../firmware;
+    enable = true;
+    # asahi-fwextract 0.8 expects a pre-extracted firmware.cpio. Generate it
+    # reproducibly from the tracked installer artifacts before the module's
+    # firmware derivation consumes the directory.
+    peripheralFirmwareDirectory = peripheralFirmware;
     setupAsahiSound = true;
   };
 

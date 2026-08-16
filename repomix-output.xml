@@ -226,6 +226,1617 @@ TEMPLATE.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path="zed-codeql/.git/hooks/applypatch-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to check the commit log message taken by
+# applypatch from an e-mail message.
+#
+# The hook should exit with non-zero status after issuing an
+# appropriate message if it wants to stop the commit.  The hook is
+# allowed to edit the commit message file.
+#
+# To enable this hook, rename this file to "applypatch-msg".
+
+. git-sh-setup
+commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
+test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/commit-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to check the commit log message.
+# Called by "git commit" with one argument, the name of the file
+# that has the commit message.  The hook should exit with non-zero
+# status after issuing an appropriate message if it wants to stop the
+# commit.  The hook is allowed to edit the commit message file.
+#
+# To enable this hook, rename this file to "commit-msg".
+
+# Uncomment the below to add a Signed-off-by line to the message.
+# Doing this in a hook is a bad idea in general, but the prepare-commit-msg
+# hook is more suited to it.
+#
+# SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+# grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+
+# This example catches duplicate Signed-off-by lines.
+
+test "" = "$(grep '^Signed-off-by: ' "$1" |
+	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
+	echo >&2 Duplicate Signed-off-by lines.
+	exit 1
+}
+</file>
+
+<file path="zed-codeql/.git/hooks/fsmonitor-watchman.sample">
+#!/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl
+
+use strict;
+use warnings;
+use IPC::Open2;
+
+# An example hook script to integrate Watchman
+# (https://facebook.github.io/watchman/) with git to speed up detecting
+# new and modified files.
+#
+# The hook is passed a version (currently 2) and last update token
+# formatted as a string and outputs to stdout a new update token and
+# all files that have been modified since the update token. Paths must
+# be relative to the root of the working tree and separated by a single NUL.
+#
+# To enable this hook, rename this file to "query-watchman" and set
+# 'git config core.fsmonitor .git/hooks/query-watchman'
+#
+my ($version, $last_update_token) = @ARGV;
+
+# Uncomment for debugging
+# print STDERR "$0 $version $last_update_token\n";
+
+# Check the hook interface version
+if ($version ne 2) {
+	die "Unsupported query-fsmonitor hook version '$version'.\n" .
+	    "Falling back to scanning...\n";
+}
+
+my $git_work_tree = get_working_dir();
+
+my $retry = 1;
+
+my $json_pkg;
+eval {
+	require JSON::XS;
+	$json_pkg = "JSON::XS";
+	1;
+} or do {
+	require JSON::PP;
+	$json_pkg = "JSON::PP";
+};
+
+launch_watchman();
+
+sub launch_watchman {
+	my $o = watchman_query();
+	if (is_work_tree_watched($o)) {
+		output_result($o->{clock}, @{$o->{files}});
+	}
+}
+
+sub output_result {
+	my ($clockid, @files) = @_;
+
+	# Uncomment for debugging watchman output
+	# open (my $fh, ">", ".git/watchman-output.out");
+	# binmode $fh, ":utf8";
+	# print $fh "$clockid\n@files\n";
+	# close $fh;
+
+	binmode STDOUT, ":utf8";
+	print $clockid;
+	print "\0";
+	local $, = "\0";
+	print @files;
+}
+
+sub watchman_clock {
+	my $response = qx/watchman clock "$git_work_tree"/;
+	die "Failed to get clock id on '$git_work_tree'.\n" .
+		"Falling back to scanning...\n" if $? != 0;
+
+	return $json_pkg->new->utf8->decode($response);
+}
+
+sub watchman_query {
+	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
+	or die "open2() failed: $!\n" .
+	"Falling back to scanning...\n";
+
+	# In the query expression below we're asking for names of files that
+	# changed since $last_update_token but not from the .git folder.
+	#
+	# To accomplish this, we're using the "since" generator to use the
+	# recency index to select candidate nodes and "fields" to limit the
+	# output to file names only. Then we're using the "expression" term to
+	# further constrain the results.
+	my $last_update_line = "";
+	if (substr($last_update_token, 0, 1) eq "c") {
+		$last_update_token = "\"$last_update_token\"";
+		$last_update_line = qq[\n"since": $last_update_token,];
+	}
+	my $query = <<"	END";
+		["query", "$git_work_tree", {$last_update_line
+			"fields": ["name"],
+			"expression": ["not", ["dirname", ".git"]]
+		}]
+	END
+
+	# Uncomment for debugging the watchman query
+	# open (my $fh, ">", ".git/watchman-query.json");
+	# print $fh $query;
+	# close $fh;
+
+	print CHLD_IN $query;
+	close CHLD_IN;
+	my $response = do {local $/; <CHLD_OUT>};
+
+	# Uncomment for debugging the watch response
+	# open ($fh, ">", ".git/watchman-response.json");
+	# print $fh $response;
+	# close $fh;
+
+	die "Watchman: command returned no output.\n" .
+	"Falling back to scanning...\n" if $response eq "";
+	die "Watchman: command returned invalid output: $response\n" .
+	"Falling back to scanning...\n" unless $response =~ /^\{/;
+
+	return $json_pkg->new->utf8->decode($response);
+}
+
+sub is_work_tree_watched {
+	my ($output) = @_;
+	my $error = $output->{error};
+	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
+		$retry--;
+		my $response = qx/watchman watch "$git_work_tree"/;
+		die "Failed to make watchman watch '$git_work_tree'.\n" .
+		    "Falling back to scanning...\n" if $? != 0;
+		$output = $json_pkg->new->utf8->decode($response);
+		$error = $output->{error};
+		die "Watchman: $error.\n" .
+		"Falling back to scanning...\n" if $error;
+
+		# Uncomment for debugging watchman output
+		# open (my $fh, ">", ".git/watchman-output.out");
+		# close $fh;
+
+		# Watchman will always return all files on the first query so
+		# return the fast "everything is dirty" flag to git and do the
+		# Watchman query just to get it over with now so we won't pay
+		# the cost in git to look up each individual file.
+		my $o = watchman_clock();
+		$error = $output->{error};
+
+		die "Watchman: $error.\n" .
+		"Falling back to scanning...\n" if $error;
+
+		output_result($o->{clock}, ("/"));
+		$last_update_token = $o->{clock};
+
+		eval { launch_watchman() };
+		return 0;
+	}
+
+	die "Watchman: $error.\n" .
+	"Falling back to scanning...\n" if $error;
+
+	return 1;
+}
+
+sub get_working_dir {
+	my $working_dir;
+	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
+		$working_dir = Win32::GetCwd();
+		$working_dir =~ tr/\\/\//;
+	} else {
+		require Cwd;
+		$working_dir = Cwd::cwd();
+	}
+
+	return $working_dir;
+}
+</file>
+
+<file path="zed-codeql/.git/hooks/post-update.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to prepare a packed repository for use over
+# dumb transports.
+#
+# To enable this hook, rename this file to "post-update".
+
+exec git update-server-info
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-applypatch.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed
+# by applypatch from an e-mail message.
+#
+# The hook should exit with non-zero status after issuing an
+# appropriate message if it wants to stop the commit.
+#
+# To enable this hook, rename this file to "pre-applypatch".
+
+. git-sh-setup
+precommit="$(git rev-parse --git-path hooks/pre-commit)"
+test -x "$precommit" && exec "$precommit" ${1+"$@"}
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-commit.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed.
+# Called by "git commit" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message if
+# it wants to stop the commit.
+#
+# To enable this hook, rename this file to "pre-commit".
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+# If you want to allow non-ASCII filenames set this variable to true.
+allownonascii=$(git config --type=bool hooks.allownonascii)
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Cross platform projects tend to avoid non-ASCII filenames; prevent
+# them from being added to the repository. We exploit the fact that the
+# printable range starts at the space character and ends with tilde.
+if [ "$allownonascii" != "true" ] &&
+	# Note that the use of brackets around a tr range is ok here, (it's
+	# even required, for portability to Solaris 10's /usr/bin/tr), since
+	# the square bracket bytes happen to fall in the designated range.
+	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
+	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+then
+	cat <<\EOF
+Error: Attempt to add a non-ASCII file name.
+
+This can cause problems if you want to work with people on other platforms.
+
+To be portable it is advisable to rename the file.
+
+If you know what you are doing you can disable this check using:
+
+  git config hooks.allownonascii true
+EOF
+	exit 1
+fi
+
+# If there are whitespace errors, print the offending file names and fail.
+exec git diff-index --check --cached $against --
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-merge-commit.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to verify what is about to be committed.
+# Called by "git merge" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message to
+# stderr if it wants to stop the merge commit.
+#
+# To enable this hook, rename this file to "pre-merge-commit".
+
+. git-sh-setup
+test -x "$GIT_DIR/hooks/pre-commit" &&
+        exec "$GIT_DIR/hooks/pre-commit"
+:
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-push.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to verify what is about to be pushed.  Called by "git
+# push" after it has checked the remote status, but before anything has been
+# pushed.  If this script exits with a non-zero status nothing will be pushed.
+#
+# This hook is called with the following parameters:
+#
+# $1 -- Name of the remote to which the push is being done
+# $2 -- URL to which the push is being done
+#
+# If pushing without using a named remote those arguments will be equal.
+#
+# Information about the commits which are being pushed is supplied as lines to
+# the standard input in the form:
+#
+#   <local ref> <local oid> <remote ref> <remote oid>
+#
+# This sample shows how to prevent push of commits where the log message starts
+# with "WIP" (work in progress).
+
+remote="$1"
+url="$2"
+
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+
+while read local_ref local_oid remote_ref remote_oid
+do
+	if test "$local_oid" = "$zero"
+	then
+		# Handle delete
+		:
+	else
+		if test "$remote_oid" = "$zero"
+		then
+			# New branch, examine all commits
+			range="$local_oid"
+		else
+			# Update to existing branch, examine new commits
+			range="$remote_oid..$local_oid"
+		fi
+
+		# Check for WIP commit
+		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
+		if test -n "$commit"
+		then
+			echo >&2 "Found WIP commit in $local_ref, not pushing"
+			exit 1
+		fi
+	fi
+done
+
+exit 0
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-rebase.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# Copyright (c) 2006, 2008 Junio C Hamano
+#
+# The "pre-rebase" hook is run just before "git rebase" starts doing
+# its job, and can prevent the command from running by exiting with
+# non-zero status.
+#
+# The hook is called with the following parameters:
+#
+# $1 -- the upstream the series was forked from.
+# $2 -- the branch being rebased (or empty when rebasing the current branch).
+#
+# This sample shows how to prevent topic branches that are already
+# merged to 'next' branch from getting rebased, because allowing it
+# would result in rebasing already published history.
+
+publish=next
+basebranch="$1"
+if test "$#" = 2
+then
+	topic="refs/heads/$2"
+else
+	topic=`git symbolic-ref HEAD` ||
+	exit 0 ;# we do not interrupt rebasing detached HEAD
+fi
+
+case "$topic" in
+refs/heads/??/*)
+	;;
+*)
+	exit 0 ;# we do not interrupt others.
+	;;
+esac
+
+# Now we are dealing with a topic branch being rebased
+# on top of master.  Is it OK to rebase it?
+
+# Does the topic really exist?
+git show-ref -q "$topic" || {
+	echo >&2 "No such branch $topic"
+	exit 1
+}
+
+# Is topic fully merged to master?
+not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
+if test -z "$not_in_master"
+then
+	echo >&2 "$topic is fully merged to master; better remove it."
+	exit 1 ;# we could allow it, but there is no point.
+fi
+
+# Is topic ever merged to next?  If so you should not be rebasing it.
+only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
+only_next_2=`git rev-list ^master           ${publish} | sort`
+if test "$only_next_1" = "$only_next_2"
+then
+	not_in_topic=`git rev-list "^$topic" master`
+	if test -z "$not_in_topic"
+	then
+		echo >&2 "$topic is already up to date with master"
+		exit 1 ;# we could allow it, but there is no point.
+	else
+		exit 0
+	fi
+else
+	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
+	/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -e '
+		my $topic = $ARGV[0];
+		my $msg = "* $topic has commits already merged to public branch:\n";
+		my (%not_in_next) = map {
+			/^([0-9a-f]+) /;
+			($1 => 1);
+		} split(/\n/, $ARGV[1]);
+		for my $elem (map {
+				/^([0-9a-f]+) (.*)$/;
+				[$1 => $2];
+			} split(/\n/, $ARGV[2])) {
+			if (!exists $not_in_next{$elem->[0]}) {
+				if ($msg) {
+					print STDERR $msg;
+					undef $msg;
+				}
+				print STDERR " $elem->[1]\n";
+			}
+		}
+	' "$topic" "$not_in_next" "$not_in_master"
+	exit 1
+fi
+
+<<\DOC_END
+
+This sample hook safeguards topic branches that have been
+published from being rewound.
+
+The workflow assumed here is:
+
+ * Once a topic branch forks from "master", "master" is never
+   merged into it again (either directly or indirectly).
+
+ * Once a topic branch is fully cooked and merged into "master",
+   it is deleted.  If you need to build on top of it to correct
+   earlier mistakes, a new topic branch is created by forking at
+   the tip of the "master".  This is not strictly necessary, but
+   it makes it easier to keep your history simple.
+
+ * Whenever you need to test or publish your changes to topic
+   branches, merge them into "next" branch.
+
+The script, being an example, hardcodes the publish branch name
+to be "next", but it is trivial to make it configurable via
+$GIT_DIR/config mechanism.
+
+With this workflow, you would want to know:
+
+(1) ... if a topic branch has ever been merged to "next".  Young
+    topic branches can have stupid mistakes you would rather
+    clean up before publishing, and things that have not been
+    merged into other branches can be easily rebased without
+    affecting other people.  But once it is published, you would
+    not want to rewind it.
+
+(2) ... if a topic branch has been fully merged to "master".
+    Then you can delete it.  More importantly, you should not
+    build on top of it -- other people may already want to
+    change things related to the topic as patches against your
+    "master", so if you need further changes, it is better to
+    fork the topic (perhaps with the same name) afresh from the
+    tip of "master".
+
+Let's look at this example:
+
+		   o---o---o---o---o---o---o---o---o---o "next"
+		  /       /           /           /
+		 /   a---a---b A     /           /
+		/   /               /           /
+	       /   /   c---c---c---c B         /
+	      /   /   /             \         /
+	     /   /   /   b---b C     \       /
+	    /   /   /   /             \     /
+    ---o---o---o---o---o---o---o---o---o---o---o "master"
+
+
+A, B and C are topic branches.
+
+ * A has one fix since it was merged up to "next".
+
+ * B has finished.  It has been fully merged up to "master" and "next",
+   and is ready to be deleted.
+
+ * C has not merged to "next" at all.
+
+We would want to allow C to be rebased, refuse A, and encourage
+B to be deleted.
+
+To compute (1):
+
+	git rev-list ^master ^topic next
+	git rev-list ^master        next
+
+	if these match, topic has not merged in next at all.
+
+To compute (2):
+
+	git rev-list master..topic
+
+	if this is empty, it is fully merged to "master".
+
+DOC_END
+</file>
+
+<file path="zed-codeql/.git/hooks/pre-receive.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to make use of push options.
+# The example simply echoes all push options that start with 'echoback='
+# and rejects all pushes when the "reject" push option is used.
+#
+# To enable this hook, rename this file to "pre-receive".
+
+if test -n "$GIT_PUSH_OPTION_COUNT"
+then
+	i=0
+	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
+	do
+		eval "value=\$GIT_PUSH_OPTION_$i"
+		case "$value" in
+		echoback=*)
+			echo "echo from the pre-receive-hook: ${value#*=}" >&2
+			;;
+		reject)
+			exit 1
+		esac
+		i=$((i + 1))
+	done
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/prepare-commit-msg.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to prepare the commit log message.
+# Called by "git commit" with the name of the file that has the
+# commit message, followed by the description of the commit
+# message's source.  The hook's purpose is to edit the commit
+# message file.  If the hook fails with a non-zero status,
+# the commit is aborted.
+#
+# To enable this hook, rename this file to "prepare-commit-msg".
+
+# This hook includes three examples. The first one removes the
+# "# Please enter the commit message..." help message.
+#
+# The second includes the output of "git diff --name-status -r"
+# into the message, just before the "git status" output.  It is
+# commented because it doesn't cope with --amend or with squashed
+# commits.
+#
+# The third example adds a Signed-off-by line to the message, that can
+# still be edited.  This is rarely a good idea.
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+SHA1=$3
+
+/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
+
+# case "$COMMIT_SOURCE,$SHA1" in
+#  ,|template,)
+#    /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe '
+#       print "\n" . `git diff --cached --name-status -r`
+# 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
+#  *) ;;
+# esac
+
+# SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+# git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
+# if test -z "$COMMIT_SOURCE"
+# then
+#   /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
+# fi
+</file>
+
+<file path="zed-codeql/.git/hooks/push-to-checkout.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to update a checked-out tree on a git push.
+#
+# This hook is invoked by git-receive-pack(1) when it reacts to git
+# push and updates reference(s) in its repository, and when the push
+# tries to update the branch that is currently checked out and the
+# receive.denyCurrentBranch configuration variable is set to
+# updateInstead.
+#
+# By default, such a push is refused if the working tree and the index
+# of the remote repository has any difference from the currently
+# checked out commit; when both the working tree and the index match
+# the current commit, they are updated to match the newly pushed tip
+# of the branch. This hook is to be used to override the default
+# behaviour; however the code below reimplements the default behaviour
+# as a starting point for convenient modification.
+#
+# The hook receives the commit with which the tip of the current
+# branch is going to be updated:
+commit=$1
+
+# It can exit with a non-zero status to refuse the push (when it does
+# so, it must not modify the index or the working tree).
+die () {
+	echo >&2 "$*"
+	exit 1
+}
+
+# Or it can make any necessary changes to the working tree and to the
+# index to bring them to the desired state when the tip of the current
+# branch is updated to the new commit, and exit with a zero status.
+#
+# For example, the hook can simply run git read-tree -u -m HEAD "$1"
+# in order to emulate git fetch that is run in the reverse direction
+# with git push, as the two-tree form of git read-tree -u -m is
+# essentially the same as git switch or git checkout that switches
+# branches while keeping the local changes in the working tree that do
+# not interfere with the difference between the branches.
+
+# The below is a more-or-less exact translation to shell of the C code
+# for the default behaviour for git's push-to-checkout hook defined in
+# the push_to_deploy() function in builtin/receive-pack.c.
+#
+# Note that the hook will be executed from the repository directory,
+# not from the working tree, so if you want to perform operations on
+# the working tree, you will have to adapt your code accordingly, e.g.
+# by adding "cd .." or using relative paths.
+
+if ! git update-index -q --ignore-submodules --refresh
+then
+	die "Up-to-date check failed"
+fi
+
+if ! git diff-files --quiet --ignore-submodules --
+then
+	die "Working directory has unstaged changes"
+fi
+
+# This is a rough translation of:
+#
+#   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
+if git cat-file -e HEAD 2>/dev/null
+then
+	head=HEAD
+else
+	head=$(git hash-object -t tree --stdin </dev/null)
+fi
+
+if ! git diff-index --quiet --cached --ignore-submodules $head --
+then
+	die "Working directory has staged changes"
+fi
+
+if ! git read-tree -u -m "$commit"
+then
+	die "Could not update working tree to new HEAD"
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/sendemail-validate.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+
+# An example hook script to validate a patch (and/or patch series) before
+# sending it via email.
+#
+# The hook should exit with non-zero status after issuing an appropriate
+# message if it wants to prevent the email(s) from being sent.
+#
+# To enable this hook, rename this file to "sendemail-validate".
+#
+# By default, it will only check that the patch(es) can be applied on top of
+# the default upstream branch without conflicts in a secondary worktree. After
+# validation (successful or not) of the last patch of a series, the worktree
+# will be deleted.
+#
+# The following config variables can be set to change the default remote and
+# remote ref that are used to apply the patches against:
+#
+#   sendemail.validateRemote (default: origin)
+#   sendemail.validateRemoteRef (default: HEAD)
+#
+# Replace the TODO placeholders with appropriate checks according to your
+# needs.
+
+validate_cover_letter () {
+	file="$1"
+	# TODO: Replace with appropriate checks (e.g. spell checking).
+	true
+}
+
+validate_patch () {
+	file="$1"
+	# Ensure that the patch applies without conflicts.
+	git am -3 "$file" || return
+	# TODO: Replace with appropriate checks for this patch
+	# (e.g. checkpatch.pl).
+	true
+}
+
+validate_series () {
+	# TODO: Replace with appropriate checks for the whole series
+	# (e.g. quick build, coding style checks, etc.).
+	true
+}
+
+# main -------------------------------------------------------------------------
+
+if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
+then
+	remote=$(git config --default origin --get sendemail.validateRemote) &&
+	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
+	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
+	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
+	git config --replace-all sendemail.validateWorktree "$worktree"
+else
+	worktree=$(git config --get sendemail.validateWorktree)
+fi || {
+	echo "sendemail-validate: error: failed to prepare worktree" >&2
+	exit 1
+}
+
+unset GIT_DIR GIT_WORK_TREE
+cd "$worktree" &&
+
+if grep -q "^diff --git " "$1"
+then
+	validate_patch "$1"
+else
+	validate_cover_letter "$1"
+fi &&
+
+if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
+then
+	git config --unset-all sendemail.validateWorktree &&
+	trap 'git worktree remove -ff "$worktree"' EXIT &&
+	validate_series
+fi
+</file>
+
+<file path="zed-codeql/.git/hooks/update.sample">
+#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
+#
+# An example hook script to block unannotated tags from entering.
+# Called by "git receive-pack" with arguments: refname sha1-old sha1-new
+#
+# To enable this hook, rename this file to "update".
+#
+# Config
+# ------
+# hooks.allowunannotated
+#   This boolean sets whether unannotated tags will be allowed into the
+#   repository.  By default they won't be.
+# hooks.allowdeletetag
+#   This boolean sets whether deleting tags will be allowed in the
+#   repository.  By default they won't be.
+# hooks.allowmodifytag
+#   This boolean sets whether a tag may be modified after creation. By default
+#   it won't be.
+# hooks.allowdeletebranch
+#   This boolean sets whether deleting branches will be allowed in the
+#   repository.  By default they won't be.
+# hooks.denycreatebranch
+#   This boolean sets whether remotely creating branches will be denied
+#   in the repository.  By default this is allowed.
+#
+
+# --- Command line
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+# --- Safety check
+if [ -z "$GIT_DIR" ]; then
+	echo "Don't run this script from the command line." >&2
+	echo " (if you want, you could supply GIT_DIR then run" >&2
+	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+	exit 1
+fi
+
+if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+	exit 1
+fi
+
+# --- Config
+allowunannotated=$(git config --type=bool hooks.allowunannotated)
+allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
+denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
+allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
+allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
+
+# check for no description
+projectdesc=$(sed -e '1q' "$GIT_DIR/description")
+case "$projectdesc" in
+"Unnamed repository"* | "")
+	echo "*** Project description file hasn't been set" >&2
+	exit 1
+	;;
+esac
+
+# --- Check types
+# if $newrev is 0000...0000, it's a commit to delete a ref.
+zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+if [ "$newrev" = "$zero" ]; then
+	newrev_type=delete
+else
+	newrev_type=$(git cat-file -t $newrev)
+fi
+
+case "$refname","$newrev_type" in
+	refs/tags/*,commit)
+		# un-annotated tag
+		short_refname=${refname##refs/tags/}
+		if [ "$allowunannotated" != "true" ]; then
+			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
+			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
+			exit 1
+		fi
+		;;
+	refs/tags/*,delete)
+		# delete tag
+		if [ "$allowdeletetag" != "true" ]; then
+			echo "*** Deleting a tag is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/tags/*,tag)
+		# annotated tag
+		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
+		then
+			echo "*** Tag '$refname' already exists." >&2
+			echo "*** Modifying a tag is not allowed in this repository." >&2
+			exit 1
+		fi
+		;;
+	refs/heads/*,commit)
+		# branch
+		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
+			echo "*** Creating a branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/heads/*,delete)
+		# delete branch
+		if [ "$allowdeletebranch" != "true" ]; then
+			echo "*** Deleting a branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	refs/remotes/*,commit)
+		# tracking branch
+		;;
+	refs/remotes/*,delete)
+		# delete tracking branch
+		if [ "$allowdeletebranch" != "true" ]; then
+			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
+			exit 1
+		fi
+		;;
+	*)
+		# Anything else (is there anything else?)
+		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
+		exit 1
+		;;
+esac
+
+# --- Finished
+exit 0
+</file>
+
+<file path="zed-codeql/.git/info/exclude">
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~
+</file>
+
+<file path="zed-codeql/.git/logs/refs/heads/main">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/logs/refs/remotes/origin/HEAD">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/logs/HEAD">
+0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
+</file>
+
+<file path="zed-codeql/.git/refs/heads/main">
+0049551f3ab08881db3ac4fd5ce9b112548b0d8c
+</file>
+
+<file path="zed-codeql/.git/refs/remotes/origin/HEAD">
+ref: refs/remotes/origin/main
+</file>
+
+<file path="zed-codeql/.git/config">
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/blacktop/zed-codeql
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+</file>
+
+<file path="zed-codeql/.git/description">
+Unnamed repository; edit this file 'description' to name the repository.
+</file>
+
+<file path="zed-codeql/.git/HEAD">
+ref: refs/heads/main
+</file>
+
+<file path="zed-codeql/.git/packed-refs">
+# pack-refs with: peeled fully-peeled sorted 
+0049551f3ab08881db3ac4fd5ce9b112548b0d8c refs/remotes/origin/main
+</file>
+
+<file path="zed-codeql/languages/codeql/brackets.scm">
+; Bracket pairs for CodeQL
+("(" @open ")" @close)
+("[" @open "]" @close)
+("{" @open "}" @close)
+</file>
+
+<file path="zed-codeql/languages/codeql/config.toml">
+name = "CodeQL"
+grammar = "ql"
+path_suffixes = ["ql", "qll", "qlref", "dbscheme"]
+line_comments = ["//"]
+block_comment = ["/**", "*/"]
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = false },
+    { start = "(", end = ")", close = true, newline = false }
+]
+auto_pairs = [
+    { start = "{", end = "}" },
+    { start = "[", end = "]" },
+    { start = "(", end = ")" },
+    { start = "\"", end = "\"" },
+    { start = "'", end = "'" },
+    { start = "`", end = "`" }
+]
+</file>
+
+<file path="zed-codeql/languages/codeql/folds.scm">
+; Folding rules for CodeQL
+
+; Fold predicates
+(memberPredicate) @fold
+
+; Fold classes
+(dataclass) @fold
+
+; Fold modules
+(module) @fold
+
+; Fold select clauses
+(select) @fold
+
+; Fold block comments
+(block_comment) @fold
+
+; Fold QLDoc comments
+(qldoc) @fold
+</file>
+
+<file path="zed-codeql/languages/codeql/highlights.scm">
+[
+  "and"
+  "any"
+  "as"
+  "asc"
+  "avg"
+  "by"
+  "class"
+  "concat"
+  "count"
+  "desc"
+  "else"
+  "exists"
+  "extends"
+  "forall"
+  "forex"
+  "from"
+  "if"
+  "implements"
+  "implies"
+  "import"
+  "in"
+  "instanceof"
+  "max"
+  "min"
+  "module"
+  "newtype"
+  "not"
+  "or"
+  "order"
+  "rank"
+  "select"
+  "strictconcat"
+  "strictcount"
+  "strictsum"
+  "sum"
+  "then"
+  "where"
+
+  (false)
+  (predicate)
+  (result)
+  (specialId)
+  (super)
+  (this)
+  (true)
+] @keyword
+
+[
+  "boolean"
+  "float"
+  "int"
+  "date"
+  "string"
+] @type.builtin
+
+(annotName) @attribute
+
+[
+  "<"
+  "<="
+  "="
+  ">"
+  ">="
+  "-"
+  "!="
+  "/"
+  "*"
+  "%"
+  "+"
+  "::"
+] @operator
+
+[
+  "("
+  ")"
+  "{"
+  "}"
+  "["
+  "]"
+] @punctuation.bracket
+
+[
+  ","
+  "|"
+] @punctuation.delimiter
+
+(className) @type
+
+(varName) @variable
+
+(integer) @number
+(float) @number
+
+(string) @string
+
+(aritylessPredicateExpr (literalId) @function)
+(predicateName) @function
+
+[
+  (line_comment)
+  (block_comment)
+  (qldoc)
+] @comment
+</file>
+
+<file path="zed-codeql/languages/codeql/indents.scm">
+; Indentation rules for CodeQL
+
+; Indent inside blocks
+[
+  (body)
+] @indent
+
+; Indent inside parentheses and brackets
+[
+  "("
+  "["
+  "{"
+] @indent
+
+; Dedent closing brackets
+[
+  ")"
+  "]"
+  "}"
+] @outdent
+
+; Indent after these keywords
+[
+  "from"
+  "where"
+  "select"
+  "order"
+  "if"
+  "then"
+  "else"
+] @indent
+
+; Keep same indent for continuation
+[
+  "and"
+  "or"
+  ","
+  "|"
+] @indent.auto
+</file>
+
+<file path="zed-codeql/languages/codeql/injections.scm">
+; Language injections for CodeQL
+
+; QDoc comments contain Markdown
+((qldoc) @content
+ (#set! "language" "markdown"))
+
+; Regex patterns in strings
+((string) @content
+ (#match? @content "^[\"']/.*?/[gimsu]*[\"']$")
+ (#set! "language" "regex"))
+
+; SQL in string literals (common in security queries)
+((string) @content
+ (#match? @content "(?i)(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\\s")
+ (#set! "language" "sql"))
+
+; JavaScript/TypeScript in strings (for JS/TS analysis queries)
+((string) @content
+ (#match? @content "(function|const|let|var|=>|class|import|export)\\s")
+ (#set! "language" "javascript"))
+
+; HTML/XML in strings (for web security queries)
+((string) @content
+ (#match? @content "^[\"']<(html|div|script|style|xml|svg)")
+ (#set! "language" "html"))
+
+; JSON in strings
+((string) @content
+ (#match? @content "^[\"']\\{.*\\}[\"']$")
+ (#set! "language" "json"))
+
+; YAML in strings (for config analysis)
+((string) @content
+ (#match? @content "^[\"']---")
+ (#set! "language" "yaml"))
+</file>
+
+<file path="zed-codeql/languages/codeql/outline.scm">
+; Simplified outline/symbols for CodeQL
+
+; Import statements
+(importDirective
+  (moduleName) @name) @item
+
+; Class definitions
+(dataclass
+  name: (className) @name) @item
+
+; Predicate definitions
+(memberPredicate
+  name: (predicateName) @name) @item
+
+; Module definitions
+(module
+  name: (moduleName) @name) @item
+
+; Select clauses (queries)
+(select) @item
+</file>
+
+<file path="zed-codeql/languages/codeql/tags.scm">
+; Tags for CodeQL - enables jump to definition
+
+; Class definitions
+(dataclass
+  name: (className) @name) @definition.class
+
+; Module definitions
+(module
+  name: (moduleName) @name) @definition.module
+
+; Predicate definitions
+(memberPredicate
+  name: (predicateName) @name) @definition.function
+
+; Import statements
+(importDirective) @reference.import
+
+; Class references
+(className) @reference.class
+
+; Module references
+(moduleName) @reference.module
+
+; Predicate references
+(predicateName) @reference.call
+
+; Variable references
+(varName) @reference.variable
+</file>
+
+<file path="zed-codeql/languages/codeql/textobjects.scm">
+; Text objects for CodeQL
+
+; Predicates
+(memberPredicate) @function.outer
+
+; Classes
+(dataclass) @class.outer
+
+; Modules
+(module) @namespace.outer
+
+; Select statements (queries)
+(select) @statement.outer
+
+; Comments
+(line_comment) @comment.outer
+(block_comment) @comment.outer
+(qldoc) @comment.outer
+
+; Import statements
+(importDirective) @import.outer
+
+; String literals
+(string) @string.outer
+</file>
+
+<file path="zed-codeql/src/lib.rs">
+use zed_extension_api::{
+    self as zed, CodeLabel, CodeLabelSpan, Command, LanguageServerId, Result, Worktree,
+};
+
+struct CodeQLExtension {
+    cached_binary_path: Option<String>,
+}
+
+impl CodeQLExtension {
+    fn find_codeql_cli(&mut self, worktree: &Worktree) -> Option<String> {
+        // Return cached path if available
+        if let Some(path) = &self.cached_binary_path {
+            return Some(path.clone());
+        }
+
+        // Use Zed's which function to find codeql in PATH
+        // This works properly in WASM environment
+        if let Some(path) = worktree.which("codeql") {
+            // Cache the path for future use
+            self.cached_binary_path = Some(path.clone());
+            Some(path)
+        } else {
+            None
+        }
+    }
+}
+
+impl zed::Extension for CodeQLExtension {
+    fn new() -> Self {
+        Self {
+            cached_binary_path: None,
+        }
+    }
+
+    fn language_server_command(
+        &mut self,
+        _language_server_id: &LanguageServerId,
+        worktree: &Worktree,
+    ) -> Result<Command> {
+        let codeql_path = self.find_codeql_cli(worktree).ok_or_else(|| {
+            concat!(
+                "CodeQL CLI not found in PATH.\n",
+                "Please install CodeQL CLI:\n",
+                "  • Homebrew: brew install codeql\n",
+                "  • Download: https://github.com/github/codeql-action/releases\n",
+                "Then restart Zed to detect the installation."
+            ).to_string()
+        })?;
+
+        Ok(Command {
+            command: codeql_path,
+            args: vec![
+                "execute".to_string(),
+                "language-server".to_string(),
+                "--check-errors=ON_CHANGE".to_string(),
+            ],
+            env: Default::default(),
+        })
+    }
+
+    fn language_server_workspace_configuration(
+        &mut self,
+        _server_id: &LanguageServerId,
+        worktree: &Worktree,
+    ) -> Result<Option<serde_json::Value>> {
+        // CodeQL language server configuration options
+        // Using conservative defaults that work on most systems
+        let settings = serde_json::json!({
+            "codeql": {
+                "cli": {
+                    "executablePath": self.find_codeql_cli(worktree)
+                },
+                "runningQueries": {
+                    "numberOfThreads": 2,     // Conservative default for compatibility
+                    "saveCache": false,
+                    "cacheSize": 1024,        // 1GB cache size
+                    "timeout": 600,           // 10 minutes for complex queries
+                    "memory": 1024,           // 1GB memory limit
+                    "debug": false,
+                    "customLogDirectory": ""
+                },
+                "runningTests": {
+                    "numberOfThreads": 1,     // Single thread for tests
+                    "saveCache": false,
+                    "cacheSize": 512,         // 512MB cache for tests
+                    "timeout": 300,           // 5 minutes for tests
+                    "memory": 512,            // 512MB memory for tests
+                    "customLogDirectory": ""
+                }
+            }
+        });
+
+        Ok(Some(settings))
+    }
+
+    fn label_for_completion(
+        &self,
+        _language_server_id: &LanguageServerId,
+        completion: zed::lsp::Completion,
+    ) -> Option<CodeLabel> {
+        match completion.kind? {
+            zed::lsp::CompletionKind::Class | zed::lsp::CompletionKind::Module => {
+                let label = completion.label.clone();
+                let name_span = CodeLabelSpan::literal(&label, Some("type".to_string()));
+                Some(CodeLabel {
+                    code: label,
+                    spans: vec![name_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            zed::lsp::CompletionKind::Method | zed::lsp::CompletionKind::Function => {
+                let label = format!("{}()", completion.label);
+                let name_span =
+                    CodeLabelSpan::literal(&completion.label, Some("function".to_string()));
+                let paren_span = CodeLabelSpan::literal("()", None);
+                Some(CodeLabel {
+                    code: label.clone(),
+                    spans: vec![name_span, paren_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            zed::lsp::CompletionKind::Keyword => {
+                let name_span =
+                    CodeLabelSpan::literal(&completion.label, Some("keyword".to_string()));
+                Some(CodeLabel {
+                    code: completion.label.clone(),
+                    spans: vec![name_span],
+                    filter_range: (0..completion.label.len()).into(),
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn label_for_symbol(
+        &self,
+        _language_server_id: &LanguageServerId,
+        symbol: zed::lsp::Symbol,
+    ) -> Option<CodeLabel> {
+        let name = symbol.name.clone();
+
+        let (code, highlight) = match symbol.kind {
+            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Interface => {
+                (format!("class {}", name), Some("type".to_string()))
+            }
+            zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
+                (format!("{}()", name), Some("function".to_string()))
+            }
+            zed::lsp::SymbolKind::Module | zed::lsp::SymbolKind::Namespace => {
+                (format!("module {}", name), Some("module".to_string()))
+            }
+            _ => (name.clone(), None),
+        };
+
+        let name_span = CodeLabelSpan::literal(&name, highlight);
+        Some(CodeLabel {
+            code: code.clone(),
+            spans: vec![name_span],
+            filter_range: (0..name.len()).into(),
+        })
+    }
+}
+
+zed::register_extension!(CodeQLExtension);
+</file>
+
+<file path="zed-codeql/.gitignore">
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Zed extension build
+*.wasm
+/grammars
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.sarif
+*.bqrs
+
+# CodeQL databases
+*.codeql/
+/databases/
+
+# AI files
+AGENTS.md
+ARCHITECTURE.md
+</file>
+
+<file path="zed-codeql/Cargo.toml">
+[package]
+name = "zed-codeql"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.7.0"
+serde_json = "1.0"
+</file>
+
+<file path="zed-codeql/extension.toml">
+id = "codeql"
+name = "CodeQL"
+description = "CodeQL language support with syntax highlighting and language server for Zed"
+version = "0.1.0"
+schema_version = 1
+authors = ["blacktop"]
+repository = "https://github.com/blacktop/zed-codeql"
+
+[language_servers.codeql]
+name = "codeql"
+languages = ["CodeQL"]
+
+[grammars.ql]
+repository = "https://github.com/tree-sitter/tree-sitter-ql"
+commit = "1fd627a4e8bff8c24c11987474bd33112bead857"
+</file>
+
+<file path="zed-codeql/LICENSE">
+MIT License
+
+Copyright (c) 2025 blacktop
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="zed-codeql/README.md">
+# zed-codeql
+
+CodeQL language support for [Zed](https://zed.dev).
+
+## Features
+
+- Syntax highlighting for `.ql`, `.qll`, `.qlref`, and `.dbscheme` files
+- Language server integration with CodeQL CLI
+- Code completion
+- Go to definition
+- Hover documentation
+- Error diagnostics
+
+## Requirements
+
+CodeQL CLI must be installed and available in your PATH.
+
+### Installation via Homebrew
+```bash
+brew install codeql
+```
+
+### Manual Installation
+Download from [GitHub CodeQL releases](https://github.com/github/codeql-action/releases).
+
+## Installation
+
+Install from Zed's extension gallery or build from source.
+
+## Language Server
+
+The extension automatically starts the CodeQL language server when you open a CodeQL file.
+
+The extension searches for CodeQL CLI in your system PATH.
+
+## Credit
+
+Inspired by <https://github.com/pwntester/codeql.nvim>
+
+## License
+
+MIT Copyright (c) 2025 blacktop
+</file>
+
+<file path=".github/workflows/language-stats.yml">
+name: Update Language Statistics
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate language analytics
+        uses: StefVuck/Github-Language-Stats@v1.2.0
+        with:
+          github_token: ${{ secrets.STATS_TOKEN }}
+          visualization_types: "leaderboard"
+          output_path: "stats"
+</file>
+
 <file path="checks/default.nix">
 {
   config,
@@ -2460,6 +4071,61 @@ in
 }
 </file>
 
+<file path="config/alacritty/alacritty.toml">
+[window]
+#opacity = 0.92
+
+[window.padding]
+y = 6
+x = 6
+
+[selection]
+save_to_clipboard = true
+
+[font]
+normal = { family = "JetBrainsMono Nerd Font Propo", style = "Regular" }
+size = 12
+
+[colors.normal]
+black = "#000000"
+red = "#d54e53"
+green = "#b9ca4a"
+yellow = "#e6c547"
+blue = "#7aa6da"
+magenta = "#c397d8"
+cyan = "#70c0ba"
+white = "#eaeaea"
+
+[colors.bright]
+black = "#666666"
+red = "#ff3334"
+green = "#9ec400"
+yellow = "#e7c547"
+blue = "#7aa6da"
+magenta = "#b77ee0"
+cyan = "#54ced6"
+white = "#ffffff"
+
+
+[colors.primary]
+background = "#000000"
+foreground = "#a9b1d6"
+</file>
+
+<file path="config/atuin/config.toml">
+auto_sync = true
+style = "compact"
+prefers_reduced_motion = true
+#enter_accept = true
+command_chaining = true
+show_tabs = false
+workspaces = true
+invert = false
+
+[sync]
+records = true
+</file>
+
 <file path="config/eww/scripts/keyboard-backlight">
 #!/usr/bin/env bash
 set -euo pipefail
@@ -3385,6 +5051,855 @@ scale.keyboard-light-scale trough slider {
     }
   ]
 }
+</file>
+
+<file path="config/starship/starship.toml">
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+[username]
+show_always = true
+</file>
+
+<file path="config/sway/config">
+# Default config for sway
+#
+# Copy this to ~/.config/sway/config and edit it to your liking.
+#
+# Read `man 5 sway` for a complete reference.
+
+### Variables
+#
+# Logo key. Use Mod1 for Alt.
+set $mod Mod1
+# Home row direction keys, like vim
+set $left h
+set $down j
+set $up k
+set $right l
+# Your preferred terminal emulator
+set $term alacritty
+# Your preferred application launcher
+set $menu tofi-drun
+
+### Output configuration
+#
+# Default wallpaper (more resolutions are available in /run/current-system/sw/share/backgrounds/sway/)
+#output * bg  /home/becker/nixos-from-scratch/walls/wallpaper4.jpg fill
+output eDP-1 scale 1.6
+
+input type:keyboard {
+    xkb_layout us
+    xkb_model apple
+    xkb_options ctrl:swap_lwin_lctl,caps:super
+}
+
+#
+# Example configuration:
+#
+#   output HDMI-A-1 resolution 1920x1080 position 1920,0
+#
+# You can get the names of your outputs by running: swaymsg -t get_outputs
+
+### Idle configuration
+#
+# Example configuration:
+#
+# exec swayidle -w \
+#          timeout 300 'swaylock -f -c 000000' \
+#          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+#          before-sleep 'swaylock -f -c 000000'
+#
+# This will lock your screen after 300 seconds of inactivity, then turn off
+# your displays after another 300 seconds, and turn your screens back on when
+# resumed. It will also lock your screen before your computer goes to sleep.
+
+### Input configuration
+#
+# Example configuration:
+#
+#   input "2:14:SynPS/2_Synaptics_TouchPad" {
+#       dwt enabled
+#       tap enabled
+#       natural_scroll enabled
+#       middle_emulation enabled
+#   }
+#
+# You can get the names of your inputs by running: swaymsg -t get_inputs
+# Read `man 5 sway-input` for more information about this section.
+
+### Key bindings
+#
+# Basics:
+#
+    # Start a terminal
+    bindsym $mod+Return exec $term
+
+    # Kill focused window
+    bindsym $mod+q kill
+
+    # Start your launcher
+    bindsym $mod+space exec $menu
+
+    # Drag floating windows by holding down $mod and left mouse button.
+    # Resize them with right mouse button + $mod.
+    # Despite the name, also works for non-floating windows.
+    # Change normal to inverse to use left mouse button for resizing and right
+    # mouse button for dragging.
+    floating_modifier $mod normal
+
+    # Reload the configuration file
+    bindsym $mod+Shift+c reload
+
+    # Exit sway (logs you out of your Wayland session)
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+#
+# Moving around:
+#
+    # Move your focus around
+    bindsym $mod+$left focus left
+    bindsym $mod+$down focus down
+    bindsym $mod+$up focus up
+    bindsym $mod+$right focus right
+    # Or use $mod+[up|down|left|right]
+    bindsym $mod+Left focus left
+    bindsym $mod+Down focus down
+    bindsym $mod+Up focus up
+    bindsym $mod+Right focus right
+
+    # Move the focused window with the same, but add Shift
+    bindsym $mod+Shift+$left move left
+    bindsym $mod+Shift+$down move down
+    bindsym $mod+Shift+$up move up
+    bindsym $mod+Shift+$right move right
+    # Ditto, with arrow keys
+    bindsym $mod+Shift+Left move left
+    bindsym $mod+Shift+Down move down
+    bindsym $mod+Shift+Up move up
+    bindsym $mod+Shift+Right move right
+#
+# Workspaces:
+#
+    # Switch to workspace
+    bindsym $mod+1 workspace number 1
+    bindsym $mod+2 workspace number 2
+    bindsym $mod+3 workspace number 3
+    bindsym $mod+4 workspace number 4
+    bindsym $mod+5 workspace number 5
+    bindsym $mod+6 workspace number 6
+    bindsym $mod+7 workspace number 7
+    bindsym $mod+8 workspace number 8
+    bindsym $mod+9 workspace number 9
+    bindsym $mod+0 workspace number 10
+    # Move focused container to workspace
+    bindsym $mod+Shift+1 move container to workspace number 1
+    bindsym $mod+Shift+2 move container to workspace number 2
+    bindsym $mod+Shift+3 move container to workspace number 3
+    bindsym $mod+Shift+4 move container to workspace number 4
+    bindsym $mod+Shift+5 move container to workspace number 5
+    bindsym $mod+Shift+6 move container to workspace number 6
+    bindsym $mod+Shift+7 move container to workspace number 7
+    bindsym $mod+Shift+8 move container to workspace number 8
+    bindsym $mod+Shift+9 move container to workspace number 9
+    bindsym $mod+Shift+0 move container to workspace number 10
+    # Note: workspaces can have any name you want, not just numbers.
+    # We just use 1-10 as the default.
+#
+# Layout stuff:
+#
+    # You can "split" the current object of your focus with
+    # $mod+b or $mod+v, for horizontal and vertical splits
+    # respectively.
+    bindsym $mod+b splith
+    bindsym $mod+v splitv
+
+    # Switch the current container between different layout styles
+    bindsym $mod+s layout stacking
+    bindsym $mod+w layout tabbed
+    bindsym $mod+e layout toggle split
+
+    # Make the current focus fullscreen
+    bindsym $mod+f fullscreen
+
+    # Toggle the current focus between tiling and floating mode
+    bindsym $mod+Shift+space floating toggle
+
+    # Swap focus between the tiling area and the floating area
+    #bindsym $mod+space focus mode_toggle
+
+    # Move focus to the parent container
+    bindsym $mod+a focus parent
+#
+# Scratchpad:
+#
+    # Sway has a "scratchpad", which is a bag of holding for windows.
+    # You can send windows there and get them back later.
+
+    # Move the currently focused window to the scratchpad
+    bindsym $mod+Shift+minus move scratchpad
+
+    # Show the next scratchpad window or hide the focused scratchpad window.
+    # If there are multiple scratchpad windows, this command cycles through them.
+    bindsym $mod+minus scratchpad show
+#
+# Resizing containers:
+#
+set $super Mod4
+bindsym $mod+$super+Right  resize shrink width 80px
+bindsym $mod+$super+Left resize grow   width 80px
+bindsym $mod+$super+Up    resize shrink height 80px
+bindsym $mod+$super+Down  resize grow   height 80px
+focus_follows_mouse yes
+focus_on_window_activation smart
+
+#
+# Utilities:
+#
+    # Special keys to adjust volume via PulseAudio
+    bindsym --locked XF86AudioMute exec pactl set-sink-mute \@DEFAULT_SINK@ toggle
+    bindsym --locked XF86AudioLowerVolume exec pactl set-sink-volume \@DEFAULT_SINK@ -5%
+    bindsym --locked XF86AudioRaiseVolume exec pactl set-sink-volume \@DEFAULT_SINK@ +5%
+    bindsym --locked XF86AudioMicMute exec pactl set-source-mute \@DEFAULT_SOURCE@ toggle
+    # Special keys to adjust brightness via brightnessctl
+    bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
+    bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
+    # Special key to take a screenshot with grim
+    bindsym Print exec grim
+
+# Shadows (soft, dark glow like Hyprland)
+shadows disable
+shadows_on_csd disable
+shadow_blur_radius 60
+shadow_color #000000AA            # ~80% black
+shadow_inactive_color #00000066   # lighter when inactive
+shadow_offset 0 0
+
+# Gaps (Hyprland gaps_in/out)
+gaps inner 0
+gaps outer 0
+smart_gaps off
+
+# Slightly dim inactive windows (Hyprland's “ghosty” focus look)
+#default_dim_inactive 0.05
+#dim_inactive_colors.unfocused #000000FF
+#dim_inactive_colors.urgent #900000FF
+
+
+default_border pixel 0
+titlebar_separator disable
+for_window [all] csd disable
+
+include /etc/sway/config.d/*
+
+for_window [app_id="Alacritty"] opacity 0.85
+for_window [app_id="obsidian"] opacity 0.85
+for_window [app_id="dev.zed.Zed"] opacity 0.9
+
+exec_always --no-startup-id swaybg -i /home/becker/nixos-from-scratch/walls/wallpaper4.jpg -m fill
+</file>
+
+<file path="config/zed/themes/maxTransparent.json">
+{
+  "$schema": "https://zed.dev/schema/themes/v0.1.0.json",
+  "name": "One Dark Pro Max Transparent",
+  "author": "Kusuma (modified for transparency)",
+  "themes": [
+    {
+      "name": "One Dark Pro Max Transparent",
+      "appearance": "dark",
+      "style": {
+        "background.appearance": "blurred",
+        "background": "#080909aa",
+        "surface.background": "#080909aa",
+        "elevated_surface.background": "#080909aa",
+        "panel.background": "#080909aa",
+        "title_bar.background": "#080909f0",
+        "toolbar.background": "#080909aa",
+        "tab_bar.background": "#080909aa",
+        "status_bar.background": "#080909f0",
+        "tab.active_background": "#080909aa",
+        "tab.inactive_background": "#080909aa",
+        "editor.background": "#080909aa",
+        "editor.gutter.background": "#080909aa",
+        "editor.active_line.background": "#08090900",
+        "editor.subheader.background": "#080909aa",
+        "terminal.background": "#080909aa",
+        "scrollbar.track.background": "#08090900",
+        "scrollbar.track.border": "#00000000",
+        "scrollbar.thumb.background": "#4e566680",
+        "scrollbar.thumb.hover_background": "#5a6375aa",
+        "scrollbar.thumb.border": "#4e5666aa",
+        "syntax": {
+          "comment": {
+            "color": "#7F838C",
+            "font_style": null,
+            "font_weight": null
+          },
+          "attribute": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "boolean": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "constant": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "constructor": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "embedded": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "emphasis": {
+            "color": "#c678dd",
+            "font_style": null,
+            "font_weight": null
+          },
+          "enum": {
+            "color": "#56b6c2",
+            "font_style": null,
+            "font_weight": null
+          },
+          "function": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "keyword": {
+            "color": "#c678dd",
+            "font_style": null,
+            "font_weight": null
+          },
+          "link_text": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "link_uri": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "number": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "operator": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "predictive": {
+            "color": "#4d5970",
+            "font_style": "italic",
+            "font_weight": null
+          },
+          "property": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation.list_marker": {
+            "color": "#d07277ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string": {
+            "color": "#98c379",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.escape": {
+            "color": "#56b6c2",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.regex": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.special": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.special.symbol": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "tag": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "text.literal": {
+            "color": "#98c379",
+            "font_style": null,
+            "font_weight": null
+          },
+          "title": {
+            "color": "#d07277ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "type": {
+            "color": "#e5c07b",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variable": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variable.special": {
+            "color": "#e5c07b",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variant": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          }
+        }
+      }
+    }
+  ]
+}
+</file>
+
+<file path="config/zed/themes/oneBlackMax.json">
+{
+  "$schema": "https://zed.dev/schema/themes/v0.1.0.json",
+  "name": "One Black Max",
+  "author": "Taylor Johnson",
+  "themes": [
+    {
+      "name": "One Black Max",
+      "appearance": "dark",
+      "style": {
+        "border": "#141414ff",
+        "border.variant": "#141414ff",
+        "border.focused": "#293b5bff",
+        "border.selected": "#293b5bff",
+        "border.transparent": "#03030300",
+        "border.disabled": "#414754ff",
+        "elevated_surface.background": "#000000ff",
+        "surface.background": "#000000ff",
+        "background": "#000000ff",
+        "element.background": "#262626ff",
+        "element.hover": "#262626ff",
+        "element.active": "#262626ff",
+        "element.selected": "#262626ff",
+        "element.disabled": "#2e343eff",
+        "drop_target.background": "#57575780",
+        "ghost_element.background": "#03030300",
+        "ghost_element.hover": "#1a1a1aff",
+        "ghost_element.active": "#262626ff",
+        "ghost_element.selected": "#262626ff",
+        "ghost_element.disabled": "#2e343eff",
+        "text": "#737373ff",
+        "text.muted": "#757575ff",
+        "text.placeholder": "#4c4c4c",
+        "text.disabled": "#4c4c4c",
+        "text.accent": "#a7a7a7ff",
+        "icon": "#c8ccd4ff",
+        "icon.muted": "#757575ff",
+        "icon.disabled": "#696B77ff",
+        "icon.placeholder": "#575757ff",
+        "icon.accent": "#74ade8ff",
+        "status_bar.background": "#000000ff",
+        "title_bar.background": "#000000ff",
+        "title_bar.inactive_background": "#2e343eff",
+        "toolbar.background": "#030303ff",
+        "tab_bar.background": "#0c0c0cff",
+        "tab.inactive_background": "#0c0c0cff",
+        "tab.active_background": "#030303ff",
+        "search.match_background": "#303030FF",
+        "panel.background": "#000000ff",
+        "panel.focused_border": null,
+        "pane.focused_border": null,
+        "scrollbar.thumb.background": "#4c4c4c4c",
+        "scrollbar.thumb.hover_background": "#4c4c4c4c",
+        "scrollbar.thumb.border": "#4c4c4c4c",
+        "scrollbar.track.background": "#03030300",
+        "scrollbar.track.border": "#141414ff",
+        "editor.foreground": "#acb2beff",
+        "editor.background": "#030303ff",
+        "editor.gutter.background": "#030303ff",
+        "editor.subheader.background": "#0c0c0cff",
+        "editor.active_line.background": "#6464640F",
+        "editor.highlighted_line.background": "#ffffff1E",
+        "editor.line_number": "#ffffff59",
+        "editor.active_line_number": "#c8ccd4ff",
+        "editor.invisible": "#3b3b3bff",
+        "editor.wrap_guide": "#c8ccd40d",
+        "editor.active_wrap_guide": "#c8ccd41a",
+        "editor.document_highlight.read_background": "#292929ff",
+        "terminal.background": "#030303ff",
+        "terminal.foreground": "#c8ccd4ff",
+        "terminal.bright_foreground": "#c8ccd4ff",
+        "terminal.dim_foreground": "#030303ff",
+        "terminal.ansi.black": "#030303ff",
+        "terminal.ansi.bright_black": "#525561ff",
+        "terminal.ansi.dim_black": "#c8ccd4ff",
+        "terminal.ansi.red": "#d07277ff",
+        "terminal.ansi.bright_red": "#673a3cff",
+        "terminal.ansi.dim_red": "#eab7b9ff",
+        "terminal.ansi.green": "#a1c181ff",
+        "terminal.ansi.bright_green": "#4d6140ff",
+        "terminal.ansi.dim_green": "#d1e0bfff",
+        "terminal.ansi.yellow": "#dec184ff",
+        "terminal.ansi.bright_yellow": "#786441ff",
+        "terminal.ansi.dim_yellow": "#f1dfc1ff",
+        "terminal.ansi.blue": "#74ade8ff",
+        "terminal.ansi.bright_blue": "#385378ff",
+        "terminal.ansi.dim_blue": "#bed5f4ff",
+        "terminal.ansi.magenta": "#be5046ff",
+        "terminal.ansi.bright_magenta": "#5e2b26ff",
+        "terminal.ansi.dim_magenta": "#e6a79eff",
+        "terminal.ansi.cyan": "#6cabc8ff",
+        "terminal.ansi.bright_cyan": "#3a565bff",
+        "terminal.ansi.dim_cyan": "#b9d9dfff",
+        "terminal.ansi.white": "#c8ccd4ff",
+        "terminal.ansi.bright_white": "#c8ccd4ff",
+        "terminal.ansi.dim_white": "#575d65ff",
+        "link_text.hover": "#74ade8ff",
+        "conflict": "#dec184ff",
+        "conflict.background": "#dec1841a",
+        "conflict.border": "#5d4c2fff",
+        "created": "#98c16eff",
+        "created.background": "#a1c1811a",
+        "created.border": "#38482fff",
+        "deleted": "#d0484fff",
+        "deleted.background": "#d072771a",
+        "deleted.border": "#4c2b2cff",
+        "error": "#ff7169ff",
+        "error.background": "#2f0d0dff",
+        "error.border": "#520d0dff",
+        "hidden": "#696B77ff",
+        "hidden.background": "#696B771a",
+        "hidden.border": "#414754ff",
+        "hint": "#4c4c4cff",
+        "hint.background": "#5a6f891a",
+        "hint.border": "#293b5bff",
+        "ignored": "#4c4c4c",
+        "ignored.background": "#696B771a",
+        "ignored.border": "#464b57ff",
+        "info": "#74ade8ff",
+        "info.background": "#74ade81a",
+        "info.border": "#293b5bff",
+        "modified": "#deba6dff",
+        "modified.background": "#dec1841a",
+        "modified.border": "#5d4c2fff",
+        "predictive": "#5a6a87ff",
+        "predictive.background": "#5a6a871a",
+        "predictive.border": "#38482fff",
+        "renamed": "#74ade8ff",
+        "renamed.background": "#74ade81a",
+        "renamed.border": "#293b5bff",
+        "success": "#a1c181ff",
+        "success.background": "#a1c1811a",
+        "success.border": "#38482fff",
+        "unreachable": "#575757ff",
+        "unreachable.background": "#5757571a",
+        "unreachable.border": "#464b57ff",
+        "warning": "#dec184ff",
+        "warning.background": "#dec1841a",
+        "warning.border": "#5d4c2fff",
+        "players": [
+          {
+            "cursor": "#ffffff5A",
+            "background": "#ffffff5A",
+            "selection": "#ffffff14"
+          },
+          {
+            "cursor": "#be5046ff",
+            "background": "#be5046ff",
+            "selection": "#be50463d"
+          },
+          {
+            "cursor": "#bf956aff",
+            "background": "#bf956aff",
+            "selection": "#bf956a3d"
+          },
+          {
+            "cursor": "#b477cfff",
+            "background": "#b477cfff",
+            "selection": "#b477cf3d"
+          },
+          {
+            "cursor": "#6eb4bfff",
+            "background": "#6eb4bfff",
+            "selection": "#6eb4bf3d"
+          },
+          {
+            "cursor": "#d07277ff",
+            "background": "#d07277ff",
+            "selection": "#d072773d"
+          },
+          {
+            "cursor": "#dec184ff",
+            "background": "#dec184ff",
+            "selection": "#dec1843d"
+          },
+          {
+            "cursor": "#a1c181ff",
+            "background": "#a1c181ff",
+            "selection": "#a1c1813d"
+          }
+        ],
+        "syntax": {
+          "comment": {
+            "color": "#7F838C",
+            "font_style": null,
+            "font_weight": null
+          },
+          "attribute": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "boolean": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "constant": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "constructor": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "embedded": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "emphasis": {
+            "color": "#c678dd",
+            "font_style": null,
+            "font_weight": null
+          },
+          "enum": {
+            "color": "#56b6c2",
+            "font_style": null,
+            "font_weight": null
+          },
+          "function": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "keyword": {
+            "color": "#c678dd",
+            "font_style": null,
+            "font_weight": null
+          },
+          "link_text": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "link_uri": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          },
+          "number": {
+            "color": "#d19a66",
+            "font_style": null,
+            "font_weight": null
+          },
+          "operator": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "predictive": {
+            "color": "#4d5970",
+            "font_style": "italic",
+            "font_weight": null
+          },
+          "property": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation": {
+            "color": "#abb2bf",
+            "font_style": null,
+            "font_weight": null
+          },
+          "punctuation.list_marker": {
+            "color": "#d07277ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string": {
+            "color": "#98c379",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.escape": {
+            "color": "#56b6c2",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.regex": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.special": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "string.special.symbol": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "tag": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "text.literal": {
+            "color": "#98c379",
+            "font_style": null,
+            "font_weight": null
+          },
+          "title": {
+            "color": "#d07277ff",
+            "font_style": null,
+            "font_weight": null
+          },
+          "type": {
+            "color": "#e5c07b",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variable": {
+            "color": "#E15687",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variable.special": {
+            "color": "#e5c07b",
+            "font_style": null,
+            "font_weight": null
+          },
+          "variant": {
+            "color": "#61afef",
+            "font_style": null,
+            "font_weight": null
+          }
+        }
+      }
+    }
+  ]
+}
+</file>
+
+<file path="config/zed/keymap.json">
+[
+  {
+    "context": "Editor && edit_prediction",
+    "bindings": {
+      "tab": "editor::AcceptEditPrediction"
+    }
+  },
+  {
+    "context": "Editor && edit_prediction_conflict",
+    "bindings": {
+      "tab": "editor::AcceptEditPrediction"
+    }
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "alt-c": ["task::Spawn", { "task_name": "Sync active Zed file to Codex" }]
+    }
+  },
+  {
+    "context": "Editor && extension == gleam",
+    "bindings": {
+      "ctrl-s": [
+        "task::Spawn",
+        { "task_name": "Attune: hot design feedback" }
+      ]
+    }
+  }
+]
+</file>
+
+<file path="config/zed/tasks.json">
+[
+  {
+    "label": "File Finder",
+    "command": "bash -c 'zed \"$(tv files)\"'",
+    "hide": "always",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": true
+  },
+  {
+    "label": "Find in Files",
+    "command": "bash -c 'zed \"$(tv text)\"'",
+    "hide": "always",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": true
+  },
+  {
+    "label": "Sync active Zed file to Codex",
+    "command": "sh",
+    "args": [
+      "-c",
+      "printf '%s\\n%s\\n' \"$1\" \"$2\" > /tmp/zed-codex-active-file",
+      "sh",
+      "$ZED_WORKTREE_ROOT",
+      "$ZED_FILE"
+    ],
+    "save": "current",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": false,
+    "reveal": "never",
+    "hide": "always"
+  },
+  {
+    "label": "Attune: hot design feedback",
+    "command": "true",
+    "save": "current",
+    "allow_concurrent_runs": false,
+    "use_new_terminal": false,
+    "reveal": "never",
+    "hide": "always"
+  }
+]
 </file>
 
 <file path="lib/default.nix">
@@ -6573,6 +9088,24 @@ in
 }
 </file>
 
+<file path="overlays/hascard.nix">
+final: prev: {
+  haskellPackages = prev.haskellPackages.override {
+    overrides = self: super: {
+      hascard = let
+        base = prev.haskell.lib.overrideCabal
+          (super.hascard or (self.callHackageDirect {
+            pkg = "hascard";
+            ver = "0.6.0.2";
+            sha256 = "sha256-7MepVFNGcEwnXo/tulH/Ko84QoBDY2u7j+Vn7/MmU+U=";
+          } { })) (old: { jailbreak = true; });
+      in base.overrideAttrs
+      (old: { meta = (old.meta or { }) // { broken = false; }; });
+    };
+  };
+}
+</file>
+
 <file path="overlays/hyprland-stable.nix">
 { hyprland-pinned-nixpkgs }:
 final: prev:
@@ -6597,6 +9130,45 @@ in
   hyprutils = pinned.hyprutils;
   hyprwayland-scanner = pinned.hyprwayland-scanner;
   xdg-desktop-portal-hyprland = pinned.xdg-desktop-portal-hyprland;
+}
+</file>
+
+<file path="overlays/scripts.nix">
+final: prev: {
+  xonsh = final.python-env;
+  scripts = prev.stdenv.mkDerivation {
+    pname = "scripts";
+    version = "0.1.0";
+    src = ./../scripts;
+
+    nativeBuildInputs = [ prev.makeWrapper ];
+
+    installPhase = ''
+      mkdir -p $out/bin
+      for f in $src/*.py; do
+        name=$(basename "$f" .py)
+        cp "$f" "$out/bin/$name.py"
+        chmod +x "$out/bin/$name.py"
+
+        makeWrapper ${final.python-env}/bin/python $out/bin/$name \
+          --add-flags $out/bin/$name.py
+      done
+    '';
+  };
+}
+</file>
+
+<file path="packages/opencode-cursor-runtime/package.json">
+{
+  "name": "opencode-cursor-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for OpenCode + Cursor integration",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "2.0.47",
+    "@rama_nigg/open-cursor": "2.4.4"
+  }
 }
 </file>
 
@@ -6629,1670 +9201,304 @@ in
 }
 </file>
 
-<file path="zed-codeql/.git/hooks/applypatch-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to check the commit log message taken by
-# applypatch from an e-mail message.
-#
-# The hook should exit with non-zero status after issuing an
-# appropriate message if it wants to stop the commit.  The hook is
-# allowed to edit the commit message file.
-#
-# To enable this hook, rename this file to "applypatch-msg".
+<file path="scripts/smart_cd.py">
+#!/usr/bin/env python3
+from pathlib import Path
+from plumbum import local, ProcessExecutionError
+import os, sys
 
-. git-sh-setup
-commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
-test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
-:
+def smart_cd(args):
+    target = args[0] if args else None
+    cwd = Path.cwd()
+
+    # Default no-arg behavior: jump to git root or home
+    if not target:
+        try:
+            git_root = Path(local["git"]("rev-parse", "--show-toplevel").strip())
+            if cwd != git_root:
+                return git_root
+        except ProcessExecutionError:
+            pass
+        return Path.home()
+
+    # If it's a direct path
+    tpath = Path(target).expanduser()
+    if tpath.is_dir() or target in {".", ".."}:
+        return tpath.resolve()
+
+    # Otherwise try prefix match with fd
+    try:
+        matches = local["fd"]("--max-depth", "1", "-t", "d", f"^{target}", ".").splitlines()
+        if len(matches) == 1:
+            return Path(matches[0]).resolve()
+    except ProcessExecutionError:
+        pass
+
+    # Fallback to zoxide
+    try:
+        path = Path(local["zoxide"]("query", target).strip())
+        if path.is_dir():
+            return path
+    except ProcessExecutionError:
+        pass
+
+    return cwd
+
+
+if __name__ == "__main__":
+    newdir = smart_cd(sys.argv[1:])
+    if newdir:
+        os.chdir(newdir)
+        print(str(newdir))
 </file>
 
-<file path="zed-codeql/.git/hooks/commit-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to check the commit log message.
-# Called by "git commit" with one argument, the name of the file
-# that has the commit message.  The hook should exit with non-zero
-# status after issuing an appropriate message if it wants to stop the
-# commit.  The hook is allowed to edit the commit message file.
-#
-# To enable this hook, rename this file to "commit-msg".
-
-# Uncomment the below to add a Signed-off-by line to the message.
-# Doing this in a hook is a bad idea in general, but the prepare-commit-msg
-# hook is more suited to it.
-#
-# SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-# grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
-
-# This example catches duplicate Signed-off-by lines.
-
-test "" = "$(grep '^Signed-off-by: ' "$1" |
-	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
-	echo >&2 Duplicate Signed-off-by lines.
-	exit 1
-}
+<file path=".bashrc">
+export BUN_INSTALL="/home/becker/.bun"
+export PATH="$BUN_INSTALL/bin:/nix/store/rr74d79lmba7j6gms3a8lmn6gy3fps2w-fzf-0.67.0/bin:/nix/store/qz4k80cgcrz0qhac0jnb19nsjgy21ind-ripgrep-15.1.0/bin:/run/wrappers/bin:/home/becker/.nix-profile/bin:/nix/profile/bin:/home/becker/.local/state/nix/profile/bin:/etc/profiles/per-user/becker/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/nix/store/fhmb82a3q7nbsz3w9yj28nyscykrj87p-binutils-wrapper-2.44/bin:/nix/store/k2vcgfv92wadz9fh0rbixp5dmxfkyy6s-hyprland-qtutils-0.1.5/bin:/nix/store/gy7mvvsfqzg03wbm02hcdiabajna8zb6-pciutils-3.14.0/bin:/nix/store/s9ncdhslhxmpwkydf2cykdcjlap8m0z9-pkgconf-wrapper-2.4.3/bin:/home/becker/.local/bin:/home/becker/.local/bin"
 </file>
 
-<file path="zed-codeql/.git/hooks/fsmonitor-watchman.sample">
-#!/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl
+<file path=".codex">
 
-use strict;
-use warnings;
-use IPC::Open2;
+</file>
 
-# An example hook script to integrate Watchman
-# (https://facebook.github.io/watchman/) with git to speed up detecting
-# new and modified files.
-#
-# The hook is passed a version (currently 2) and last update token
-# formatted as a string and outputs to stdout a new update token and
-# all files that have been modified since the update token. Paths must
-# be relative to the root of the working tree and separated by a single NUL.
-#
-# To enable this hook, rename this file to "query-watchman" and set
-# 'git config core.fsmonitor .git/hooks/query-watchman'
-#
-my ($version, $last_update_token) = @ARGV;
+<file path=".envrc">
+use flake
+</file>
 
-# Uncomment for debugging
-# print STDERR "$0 $version $last_update_token\n";
+<file path=".gitignore">
+#hardware-configuration.nix
+</file>
 
-# Check the hook interface version
-if ($version ne 2) {
-	die "Unsupported query-fsmonitor hook version '$version'.\n" .
-	    "Falling back to scanning...\n";
+<file path="bak">
+monitor=eDP-1,preferred,auto,1.6
+
+render {
+    explicit_sync = 0
 }
+env = WLR_DRM_NO_ATOMIC,1
 
-my $git_work_tree = get_working_dir();
-
-my $retry = 1;
-
-my $json_pkg;
-eval {
-	require JSON::XS;
-	$json_pkg = "JSON::XS";
-	1;
-} or do {
-	require JSON::PP;
-	$json_pkg = "JSON::PP";
-};
-
-launch_watchman();
-
-sub launch_watchman {
-	my $o = watchman_query();
-	if (is_work_tree_watched($o)) {
-		output_result($o->{clock}, @{$o->{files}});
-	}
+xwayland {
+    force_zero_scaling = true
 }
 
-sub output_result {
-	my ($clockid, @files) = @_;
+$terminal = alacritty
+$fileManager = nautilus
+$menu = tofi-drun --drun-launch=false --terminal "alacritty -e"
 
-	# Uncomment for debugging watchman output
-	# open (my $fh, ">", ".git/watchman-output.out");
-	# binmode $fh, ":utf8";
-	# print $fh "$clockid\n@files\n";
-	# close $fh;
 
-	binmode STDOUT, ":utf8";
-	print $clockid;
-	print "\0";
-	local $, = "\0";
-	print @files;
+general {
+    gaps_in = 9
+    gaps_out = 18
+
+    border_size = 0
+    layout = dwindle
 }
 
-sub watchman_clock {
-	my $response = qx/watchman clock "$git_work_tree"/;
-	die "Failed to get clock id on '$git_work_tree'.\n" .
-		"Falling back to scanning...\n" if $? != 0;
 
-	return $json_pkg->new->utf8->decode($response);
+decoration {
+    shadow {
+        enabled = true
+        range = 60
+        render_power = 4
+
+        color = 0xaa000000       # ~80% black
+        #0x11000000
+        color_inactive = 0x66000000
+
+        offset = 0 0
+        scale = 1.1
+    }
+    rounding = 5
+    rounding_power = 4
+    blur:enabled = false
 }
 
-sub watchman_query {
-	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
-	or die "open2() failed: $!\n" .
-	"Falling back to scanning...\n";
-
-	# In the query expression below we're asking for names of files that
-	# changed since $last_update_token but not from the .git folder.
-	#
-	# To accomplish this, we're using the "since" generator to use the
-	# recency index to select candidate nodes and "fields" to limit the
-	# output to file names only. Then we're using the "expression" term to
-	# further constrain the results.
-	my $last_update_line = "";
-	if (substr($last_update_token, 0, 1) eq "c") {
-		$last_update_token = "\"$last_update_token\"";
-		$last_update_line = qq[\n"since": $last_update_token,];
-	}
-	my $query = <<"	END";
-		["query", "$git_work_tree", {$last_update_line
-			"fields": ["name"],
-			"expression": ["not", ["dirname", ".git"]]
-		}]
-	END
-
-	# Uncomment for debugging the watchman query
-	# open (my $fh, ">", ".git/watchman-query.json");
-	# print $fh $query;
-	# close $fh;
-
-	print CHLD_IN $query;
-	close CHLD_IN;
-	my $response = do {local $/; <CHLD_OUT>};
-
-	# Uncomment for debugging the watch response
-	# open ($fh, ">", ".git/watchman-response.json");
-	# print $fh $response;
-	# close $fh;
-
-	die "Watchman: command returned no output.\n" .
-	"Falling back to scanning...\n" if $response eq "";
-	die "Watchman: command returned invalid output: $response\n" .
-	"Falling back to scanning...\n" unless $response =~ /^\{/;
-
-	return $json_pkg->new->utf8->decode($response);
+dwindle {
+    pseudotile = true
+    preserve_split = true
 }
 
-sub is_work_tree_watched {
-	my ($output) = @_;
-	my $error = $output->{error};
-	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
-		$retry--;
-		my $response = qx/watchman watch "$git_work_tree"/;
-		die "Failed to make watchman watch '$git_work_tree'.\n" .
-		    "Falling back to scanning...\n" if $? != 0;
-		$output = $json_pkg->new->utf8->decode($response);
-		$error = $output->{error};
-		die "Watchman: $error.\n" .
-		"Falling back to scanning...\n" if $error;
+exec-once = swaybg -i ~/nixos-from-scratch/walls/wallpaper4.jpg -m fil
 
-		# Uncomment for debugging watchman output
-		# open (my $fh, ">", ".git/watchman-output.out");
-		# close $fh;
+animations {
+    #enabled = true
 
-		# Watchman will always return all files on the first query so
-		# return the fast "everything is dirty" flag to git and do the
-		# Watchman query just to get it over with now so we won't pay
-		# the cost in git to look up each individual file.
-		my $o = watchman_clock();
-		$error = $output->{error};
+    # curves
+    bezier = ghostCurveIntro, 0.25, 1, 0.25, 1   # soft, lingering
+    bezier = ghostCurve, 0.5, 1, 0.5, 1          # balanced
 
-		die "Watchman: $error.\n" .
-		"Falling back to scanning...\n" if $error;
+    # no spawn pop, fade handles it
+    animation = windows, 0, 1, default
 
-		output_result($o->{clock}, ("/"));
-		$last_update_token = $o->{clock};
+    # movement: short + subtle (snappy, not floaty)
+    animation = windowsMove, 1, 3, ghostCurve
 
-		eval { launch_watchman() };
-		return 0;
-	}
+    # borders: instant
+    animation = border, 0, 1, default
 
-	die "Watchman: $error.\n" .
-	"Falling back to scanning...\n" if $error;
+    # fades: ghosty spawn linger, snappy close
+    animation = fadeIn, 1, 18, ghostCurveIntro   # long + dreamy
+    animation = fadeOut, 1, 8, ghostCurve        # shorter, clean
 
-	return 1;
+    # workspaces: medium glide
+    animation = workspaces, 1, 9, ghostCurveIntro, slide
 }
 
-sub get_working_dir {
-	my $working_dir;
-	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
-		$working_dir = Win32::GetCwd();
-		$working_dir =~ tr/\\/\//;
-	} else {
-		require Cwd;
-		$working_dir = Cwd::cwd();
-	}
 
-	return $working_dir;
-}
-</file>
+windowrulev2 = opacity 0.85, class:^(dev\.zed\.Zed)$
+windowrule = opacity 0.85, class:obsidian
+windowrule = opacity 0.85, class:Alacritty
 
-<file path="zed-codeql/.git/hooks/post-update.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to prepare a packed repository for use over
-# dumb transports.
-#
-# To enable this hook, rename this file to "post-update".
 
-exec git update-server-info
-</file>
+# =====================
+# Input Settings
+# =====================
 
-<file path="zed-codeql/.git/hooks/pre-applypatch.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed
-# by applypatch from an e-mail message.
-#
-# The hook should exit with non-zero status after issuing an
-# appropriate message if it wants to stop the commit.
-#
-# To enable this hook, rename this file to "pre-applypatch".
+input {
+    kb_layout = us
+    kb_model = apple         # IMPORTANT for Mac keyboards
+    kb_variant =
+    # this option swaps Left Ctrl and Left Super (Command)
+    kb_options = ctrl:swap_lwin_lctl,caps:super
 
-. git-sh-setup
-precommit="$(git rev-parse --git-path hooks/pre-commit)"
-test -x "$precommit" && exec "$precommit" ${1+"$@"}
-:
-</file>
+    follow_mouse = 1
+    accel_profile = flat
+    sensitivity = 0
+    natural_scroll = true
 
-<file path="zed-codeql/.git/hooks/pre-commit.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed.
-# Called by "git commit" with no arguments.  The hook should
-# exit with non-zero status after issuing an appropriate message if
-# it wants to stop the commit.
-#
-# To enable this hook, rename this file to "pre-commit".
-
-if git rev-parse --verify HEAD >/dev/null 2>&1
-then
-	against=HEAD
-else
-	# Initial commit: diff against an empty tree object
-	against=$(git hash-object -t tree /dev/null)
-fi
-
-# If you want to allow non-ASCII filenames set this variable to true.
-allownonascii=$(git config --type=bool hooks.allownonascii)
-
-# Redirect output to stderr.
-exec 1>&2
-
-# Cross platform projects tend to avoid non-ASCII filenames; prevent
-# them from being added to the repository. We exploit the fact that the
-# printable range starts at the space character and ends with tilde.
-if [ "$allownonascii" != "true" ] &&
-	# Note that the use of brackets around a tr range is ok here, (it's
-	# even required, for portability to Solaris 10's /usr/bin/tr), since
-	# the square bracket bytes happen to fall in the designated range.
-	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
-	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
-then
-	cat <<\EOF
-Error: Attempt to add a non-ASCII file name.
-
-This can cause problems if you want to work with people on other platforms.
-
-To be portable it is advisable to rename the file.
-
-If you know what you are doing you can disable this check using:
-
-  git config hooks.allownonascii true
-EOF
-	exit 1
-fi
-
-# If there are whitespace errors, print the offending file names and fail.
-exec git diff-index --check --cached $against --
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-merge-commit.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to verify what is about to be committed.
-# Called by "git merge" with no arguments.  The hook should
-# exit with non-zero status after issuing an appropriate message to
-# stderr if it wants to stop the merge commit.
-#
-# To enable this hook, rename this file to "pre-merge-commit".
-
-. git-sh-setup
-test -x "$GIT_DIR/hooks/pre-commit" &&
-        exec "$GIT_DIR/hooks/pre-commit"
-:
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-push.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to verify what is about to be pushed.  Called by "git
-# push" after it has checked the remote status, but before anything has been
-# pushed.  If this script exits with a non-zero status nothing will be pushed.
-#
-# This hook is called with the following parameters:
-#
-# $1 -- Name of the remote to which the push is being done
-# $2 -- URL to which the push is being done
-#
-# If pushing without using a named remote those arguments will be equal.
-#
-# Information about the commits which are being pushed is supplied as lines to
-# the standard input in the form:
-#
-#   <local ref> <local oid> <remote ref> <remote oid>
-#
-# This sample shows how to prevent push of commits where the log message starts
-# with "WIP" (work in progress).
-
-remote="$1"
-url="$2"
-
-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-
-while read local_ref local_oid remote_ref remote_oid
-do
-	if test "$local_oid" = "$zero"
-	then
-		# Handle delete
-		:
-	else
-		if test "$remote_oid" = "$zero"
-		then
-			# New branch, examine all commits
-			range="$local_oid"
-		else
-			# Update to existing branch, examine new commits
-			range="$remote_oid..$local_oid"
-		fi
-
-		# Check for WIP commit
-		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
-		if test -n "$commit"
-		then
-			echo >&2 "Found WIP commit in $local_ref, not pushing"
-			exit 1
-		fi
-	fi
-done
-
-exit 0
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-rebase.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# Copyright (c) 2006, 2008 Junio C Hamano
-#
-# The "pre-rebase" hook is run just before "git rebase" starts doing
-# its job, and can prevent the command from running by exiting with
-# non-zero status.
-#
-# The hook is called with the following parameters:
-#
-# $1 -- the upstream the series was forked from.
-# $2 -- the branch being rebased (or empty when rebasing the current branch).
-#
-# This sample shows how to prevent topic branches that are already
-# merged to 'next' branch from getting rebased, because allowing it
-# would result in rebasing already published history.
-
-publish=next
-basebranch="$1"
-if test "$#" = 2
-then
-	topic="refs/heads/$2"
-else
-	topic=`git symbolic-ref HEAD` ||
-	exit 0 ;# we do not interrupt rebasing detached HEAD
-fi
-
-case "$topic" in
-refs/heads/??/*)
-	;;
-*)
-	exit 0 ;# we do not interrupt others.
-	;;
-esac
-
-# Now we are dealing with a topic branch being rebased
-# on top of master.  Is it OK to rebase it?
-
-# Does the topic really exist?
-git show-ref -q "$topic" || {
-	echo >&2 "No such branch $topic"
-	exit 1
-}
-
-# Is topic fully merged to master?
-not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
-if test -z "$not_in_master"
-then
-	echo >&2 "$topic is fully merged to master; better remove it."
-	exit 1 ;# we could allow it, but there is no point.
-fi
-
-# Is topic ever merged to next?  If so you should not be rebasing it.
-only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
-only_next_2=`git rev-list ^master           ${publish} | sort`
-if test "$only_next_1" = "$only_next_2"
-then
-	not_in_topic=`git rev-list "^$topic" master`
-	if test -z "$not_in_topic"
-	then
-		echo >&2 "$topic is already up to date with master"
-		exit 1 ;# we could allow it, but there is no point.
-	else
-		exit 0
-	fi
-else
-	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
-	/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -e '
-		my $topic = $ARGV[0];
-		my $msg = "* $topic has commits already merged to public branch:\n";
-		my (%not_in_next) = map {
-			/^([0-9a-f]+) /;
-			($1 => 1);
-		} split(/\n/, $ARGV[1]);
-		for my $elem (map {
-				/^([0-9a-f]+) (.*)$/;
-				[$1 => $2];
-			} split(/\n/, $ARGV[2])) {
-			if (!exists $not_in_next{$elem->[0]}) {
-				if ($msg) {
-					print STDERR $msg;
-					undef $msg;
-				}
-				print STDERR " $elem->[1]\n";
-			}
-		}
-	' "$topic" "$not_in_next" "$not_in_master"
-	exit 1
-fi
-
-<<\DOC_END
-
-This sample hook safeguards topic branches that have been
-published from being rewound.
-
-The workflow assumed here is:
-
- * Once a topic branch forks from "master", "master" is never
-   merged into it again (either directly or indirectly).
-
- * Once a topic branch is fully cooked and merged into "master",
-   it is deleted.  If you need to build on top of it to correct
-   earlier mistakes, a new topic branch is created by forking at
-   the tip of the "master".  This is not strictly necessary, but
-   it makes it easier to keep your history simple.
-
- * Whenever you need to test or publish your changes to topic
-   branches, merge them into "next" branch.
-
-The script, being an example, hardcodes the publish branch name
-to be "next", but it is trivial to make it configurable via
-$GIT_DIR/config mechanism.
-
-With this workflow, you would want to know:
-
-(1) ... if a topic branch has ever been merged to "next".  Young
-    topic branches can have stupid mistakes you would rather
-    clean up before publishing, and things that have not been
-    merged into other branches can be easily rebased without
-    affecting other people.  But once it is published, you would
-    not want to rewind it.
-
-(2) ... if a topic branch has been fully merged to "master".
-    Then you can delete it.  More importantly, you should not
-    build on top of it -- other people may already want to
-    change things related to the topic as patches against your
-    "master", so if you need further changes, it is better to
-    fork the topic (perhaps with the same name) afresh from the
-    tip of "master".
-
-Let's look at this example:
-
-		   o---o---o---o---o---o---o---o---o---o "next"
-		  /       /           /           /
-		 /   a---a---b A     /           /
-		/   /               /           /
-	       /   /   c---c---c---c B         /
-	      /   /   /             \         /
-	     /   /   /   b---b C     \       /
-	    /   /   /   /             \     /
-    ---o---o---o---o---o---o---o---o---o---o---o "master"
-
-
-A, B and C are topic branches.
-
- * A has one fix since it was merged up to "next".
-
- * B has finished.  It has been fully merged up to "master" and "next",
-   and is ready to be deleted.
-
- * C has not merged to "next" at all.
-
-We would want to allow C to be rebased, refuse A, and encourage
-B to be deleted.
-
-To compute (1):
-
-	git rev-list ^master ^topic next
-	git rev-list ^master        next
-
-	if these match, topic has not merged in next at all.
-
-To compute (2):
-
-	git rev-list master..topic
-
-	if this is empty, it is fully merged to "master".
-
-DOC_END
-</file>
-
-<file path="zed-codeql/.git/hooks/pre-receive.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to make use of push options.
-# The example simply echoes all push options that start with 'echoback='
-# and rejects all pushes when the "reject" push option is used.
-#
-# To enable this hook, rename this file to "pre-receive".
-
-if test -n "$GIT_PUSH_OPTION_COUNT"
-then
-	i=0
-	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
-	do
-		eval "value=\$GIT_PUSH_OPTION_$i"
-		case "$value" in
-		echoback=*)
-			echo "echo from the pre-receive-hook: ${value#*=}" >&2
-			;;
-		reject)
-			exit 1
-		esac
-		i=$((i + 1))
-	done
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/prepare-commit-msg.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to prepare the commit log message.
-# Called by "git commit" with the name of the file that has the
-# commit message, followed by the description of the commit
-# message's source.  The hook's purpose is to edit the commit
-# message file.  If the hook fails with a non-zero status,
-# the commit is aborted.
-#
-# To enable this hook, rename this file to "prepare-commit-msg".
-
-# This hook includes three examples. The first one removes the
-# "# Please enter the commit message..." help message.
-#
-# The second includes the output of "git diff --name-status -r"
-# into the message, just before the "git status" output.  It is
-# commented because it doesn't cope with --amend or with squashed
-# commits.
-#
-# The third example adds a Signed-off-by line to the message, that can
-# still be edited.  This is rarely a good idea.
-
-COMMIT_MSG_FILE=$1
-COMMIT_SOURCE=$2
-SHA1=$3
-
-/nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
-
-# case "$COMMIT_SOURCE,$SHA1" in
-#  ,|template,)
-#    /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe '
-#       print "\n" . `git diff --cached --name-status -r`
-# 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
-#  *) ;;
-# esac
-
-# SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-# git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
-# if test -z "$COMMIT_SOURCE"
-# then
-#   /nix/store/zrl1jx5k8jsmp8ry4g8vn010mnkd0h1i-perl-5.40.0/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
-# fi
-</file>
-
-<file path="zed-codeql/.git/hooks/push-to-checkout.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to update a checked-out tree on a git push.
-#
-# This hook is invoked by git-receive-pack(1) when it reacts to git
-# push and updates reference(s) in its repository, and when the push
-# tries to update the branch that is currently checked out and the
-# receive.denyCurrentBranch configuration variable is set to
-# updateInstead.
-#
-# By default, such a push is refused if the working tree and the index
-# of the remote repository has any difference from the currently
-# checked out commit; when both the working tree and the index match
-# the current commit, they are updated to match the newly pushed tip
-# of the branch. This hook is to be used to override the default
-# behaviour; however the code below reimplements the default behaviour
-# as a starting point for convenient modification.
-#
-# The hook receives the commit with which the tip of the current
-# branch is going to be updated:
-commit=$1
-
-# It can exit with a non-zero status to refuse the push (when it does
-# so, it must not modify the index or the working tree).
-die () {
-	echo >&2 "$*"
-	exit 1
-}
-
-# Or it can make any necessary changes to the working tree and to the
-# index to bring them to the desired state when the tip of the current
-# branch is updated to the new commit, and exit with a zero status.
-#
-# For example, the hook can simply run git read-tree -u -m HEAD "$1"
-# in order to emulate git fetch that is run in the reverse direction
-# with git push, as the two-tree form of git read-tree -u -m is
-# essentially the same as git switch or git checkout that switches
-# branches while keeping the local changes in the working tree that do
-# not interfere with the difference between the branches.
-
-# The below is a more-or-less exact translation to shell of the C code
-# for the default behaviour for git's push-to-checkout hook defined in
-# the push_to_deploy() function in builtin/receive-pack.c.
-#
-# Note that the hook will be executed from the repository directory,
-# not from the working tree, so if you want to perform operations on
-# the working tree, you will have to adapt your code accordingly, e.g.
-# by adding "cd .." or using relative paths.
-
-if ! git update-index -q --ignore-submodules --refresh
-then
-	die "Up-to-date check failed"
-fi
-
-if ! git diff-files --quiet --ignore-submodules --
-then
-	die "Working directory has unstaged changes"
-fi
-
-# This is a rough translation of:
-#
-#   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
-if git cat-file -e HEAD 2>/dev/null
-then
-	head=HEAD
-else
-	head=$(git hash-object -t tree --stdin </dev/null)
-fi
-
-if ! git diff-index --quiet --cached --ignore-submodules $head --
-then
-	die "Working directory has staged changes"
-fi
-
-if ! git read-tree -u -m "$commit"
-then
-	die "Could not update working tree to new HEAD"
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/sendemail-validate.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-
-# An example hook script to validate a patch (and/or patch series) before
-# sending it via email.
-#
-# The hook should exit with non-zero status after issuing an appropriate
-# message if it wants to prevent the email(s) from being sent.
-#
-# To enable this hook, rename this file to "sendemail-validate".
-#
-# By default, it will only check that the patch(es) can be applied on top of
-# the default upstream branch without conflicts in a secondary worktree. After
-# validation (successful or not) of the last patch of a series, the worktree
-# will be deleted.
-#
-# The following config variables can be set to change the default remote and
-# remote ref that are used to apply the patches against:
-#
-#   sendemail.validateRemote (default: origin)
-#   sendemail.validateRemoteRef (default: HEAD)
-#
-# Replace the TODO placeholders with appropriate checks according to your
-# needs.
-
-validate_cover_letter () {
-	file="$1"
-	# TODO: Replace with appropriate checks (e.g. spell checking).
-	true
-}
-
-validate_patch () {
-	file="$1"
-	# Ensure that the patch applies without conflicts.
-	git am -3 "$file" || return
-	# TODO: Replace with appropriate checks for this patch
-	# (e.g. checkpatch.pl).
-	true
-}
-
-validate_series () {
-	# TODO: Replace with appropriate checks for the whole series
-	# (e.g. quick build, coding style checks, etc.).
-	true
-}
-
-# main -------------------------------------------------------------------------
-
-if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
-then
-	remote=$(git config --default origin --get sendemail.validateRemote) &&
-	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
-	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
-	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
-	git config --replace-all sendemail.validateWorktree "$worktree"
-else
-	worktree=$(git config --get sendemail.validateWorktree)
-fi || {
-	echo "sendemail-validate: error: failed to prepare worktree" >&2
-	exit 1
-}
-
-unset GIT_DIR GIT_WORK_TREE
-cd "$worktree" &&
-
-if grep -q "^diff --git " "$1"
-then
-	validate_patch "$1"
-else
-	validate_cover_letter "$1"
-fi &&
-
-if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
-then
-	git config --unset-all sendemail.validateWorktree &&
-	trap 'git worktree remove -ff "$worktree"' EXIT &&
-	validate_series
-fi
-</file>
-
-<file path="zed-codeql/.git/hooks/update.sample">
-#!/nix/store/6cankpvayjgidrbx5sj1gms2s13nvfvh-bash-5.3p3/bin/bash
-#
-# An example hook script to block unannotated tags from entering.
-# Called by "git receive-pack" with arguments: refname sha1-old sha1-new
-#
-# To enable this hook, rename this file to "update".
-#
-# Config
-# ------
-# hooks.allowunannotated
-#   This boolean sets whether unannotated tags will be allowed into the
-#   repository.  By default they won't be.
-# hooks.allowdeletetag
-#   This boolean sets whether deleting tags will be allowed in the
-#   repository.  By default they won't be.
-# hooks.allowmodifytag
-#   This boolean sets whether a tag may be modified after creation. By default
-#   it won't be.
-# hooks.allowdeletebranch
-#   This boolean sets whether deleting branches will be allowed in the
-#   repository.  By default they won't be.
-# hooks.denycreatebranch
-#   This boolean sets whether remotely creating branches will be denied
-#   in the repository.  By default this is allowed.
-#
-
-# --- Command line
-refname="$1"
-oldrev="$2"
-newrev="$3"
-
-# --- Safety check
-if [ -z "$GIT_DIR" ]; then
-	echo "Don't run this script from the command line." >&2
-	echo " (if you want, you could supply GIT_DIR then run" >&2
-	echo "  $0 <ref> <oldrev> <newrev>)" >&2
-	exit 1
-fi
-
-if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
-	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
-	exit 1
-fi
-
-# --- Config
-allowunannotated=$(git config --type=bool hooks.allowunannotated)
-allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
-denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
-allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
-allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
-
-# check for no description
-projectdesc=$(sed -e '1q' "$GIT_DIR/description")
-case "$projectdesc" in
-"Unnamed repository"* | "")
-	echo "*** Project description file hasn't been set" >&2
-	exit 1
-	;;
-esac
-
-# --- Check types
-# if $newrev is 0000...0000, it's a commit to delete a ref.
-zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-if [ "$newrev" = "$zero" ]; then
-	newrev_type=delete
-else
-	newrev_type=$(git cat-file -t $newrev)
-fi
-
-case "$refname","$newrev_type" in
-	refs/tags/*,commit)
-		# un-annotated tag
-		short_refname=${refname##refs/tags/}
-		if [ "$allowunannotated" != "true" ]; then
-			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
-			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
-			exit 1
-		fi
-		;;
-	refs/tags/*,delete)
-		# delete tag
-		if [ "$allowdeletetag" != "true" ]; then
-			echo "*** Deleting a tag is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/tags/*,tag)
-		# annotated tag
-		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
-		then
-			echo "*** Tag '$refname' already exists." >&2
-			echo "*** Modifying a tag is not allowed in this repository." >&2
-			exit 1
-		fi
-		;;
-	refs/heads/*,commit)
-		# branch
-		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
-			echo "*** Creating a branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/heads/*,delete)
-		# delete branch
-		if [ "$allowdeletebranch" != "true" ]; then
-			echo "*** Deleting a branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	refs/remotes/*,commit)
-		# tracking branch
-		;;
-	refs/remotes/*,delete)
-		# delete tracking branch
-		if [ "$allowdeletebranch" != "true" ]; then
-			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
-			exit 1
-		fi
-		;;
-	*)
-		# Anything else (is there anything else?)
-		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
-		exit 1
-		;;
-esac
-
-# --- Finished
-exit 0
-</file>
-
-<file path="zed-codeql/.git/info/exclude">
-# git ls-files --others --exclude-from=.git/info/exclude
-# Lines that start with '#' are comments.
-# For a project mostly in C, the following would be a good set of
-# exclude patterns (uncomment them if you want to use them):
-# *.[oa]
-# *~
-</file>
-
-<file path="zed-codeql/.git/logs/refs/heads/main">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/logs/refs/remotes/origin/HEAD">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/logs/HEAD">
-0000000000000000000000000000000000000000 0049551f3ab08881db3ac4fd5ce9b112548b0d8c becker63 <johnsontaylor6320@gmail.com> 1775534701 -0400	clone: from https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="zed-codeql/.git/refs/heads/main">
-0049551f3ab08881db3ac4fd5ce9b112548b0d8c
-</file>
-
-<file path="zed-codeql/.git/refs/remotes/origin/HEAD">
-ref: refs/remotes/origin/main
-</file>
-
-<file path="zed-codeql/.git/config">
-[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-[remote "origin"]
-	url = https://github.com/blacktop/zed-codeql
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[branch "main"]
-	remote = origin
-	merge = refs/heads/main
-</file>
-
-<file path="zed-codeql/.git/description">
-Unnamed repository; edit this file 'description' to name the repository.
-</file>
-
-<file path="zed-codeql/.git/HEAD">
-ref: refs/heads/main
-</file>
-
-<file path="zed-codeql/.git/packed-refs">
-# pack-refs with: peeled fully-peeled sorted 
-0049551f3ab08881db3ac4fd5ce9b112548b0d8c refs/remotes/origin/main
-</file>
-
-<file path="zed-codeql/languages/codeql/brackets.scm">
-; Bracket pairs for CodeQL
-("(" @open ")" @close)
-("[" @open "]" @close)
-("{" @open "}" @close)
-</file>
-
-<file path="zed-codeql/languages/codeql/config.toml">
-name = "CodeQL"
-grammar = "ql"
-path_suffixes = ["ql", "qll", "qlref", "dbscheme"]
-line_comments = ["//"]
-block_comment = ["/**", "*/"]
-brackets = [
-    { start = "{", end = "}", close = true, newline = true },
-    { start = "[", end = "]", close = true, newline = false },
-    { start = "(", end = ")", close = true, newline = false }
-]
-auto_pairs = [
-    { start = "{", end = "}" },
-    { start = "[", end = "]" },
-    { start = "(", end = ")" },
-    { start = "\"", end = "\"" },
-    { start = "'", end = "'" },
-    { start = "`", end = "`" }
-]
-</file>
-
-<file path="zed-codeql/languages/codeql/folds.scm">
-; Folding rules for CodeQL
-
-; Fold predicates
-(memberPredicate) @fold
-
-; Fold classes
-(dataclass) @fold
-
-; Fold modules
-(module) @fold
-
-; Fold select clauses
-(select) @fold
-
-; Fold block comments
-(block_comment) @fold
-
-; Fold QLDoc comments
-(qldoc) @fold
-</file>
-
-<file path="zed-codeql/languages/codeql/highlights.scm">
-[
-  "and"
-  "any"
-  "as"
-  "asc"
-  "avg"
-  "by"
-  "class"
-  "concat"
-  "count"
-  "desc"
-  "else"
-  "exists"
-  "extends"
-  "forall"
-  "forex"
-  "from"
-  "if"
-  "implements"
-  "implies"
-  "import"
-  "in"
-  "instanceof"
-  "max"
-  "min"
-  "module"
-  "newtype"
-  "not"
-  "or"
-  "order"
-  "rank"
-  "select"
-  "strictconcat"
-  "strictcount"
-  "strictsum"
-  "sum"
-  "then"
-  "where"
-
-  (false)
-  (predicate)
-  (result)
-  (specialId)
-  (super)
-  (this)
-  (true)
-] @keyword
-
-[
-  "boolean"
-  "float"
-  "int"
-  "date"
-  "string"
-] @type.builtin
-
-(annotName) @attribute
-
-[
-  "<"
-  "<="
-  "="
-  ">"
-  ">="
-  "-"
-  "!="
-  "/"
-  "*"
-  "%"
-  "+"
-  "::"
-] @operator
-
-[
-  "("
-  ")"
-  "{"
-  "}"
-  "["
-  "]"
-] @punctuation.bracket
-
-[
-  ","
-  "|"
-] @punctuation.delimiter
-
-(className) @type
-
-(varName) @variable
-
-(integer) @number
-(float) @number
-
-(string) @string
-
-(aritylessPredicateExpr (literalId) @function)
-(predicateName) @function
-
-[
-  (line_comment)
-  (block_comment)
-  (qldoc)
-] @comment
-</file>
-
-<file path="zed-codeql/languages/codeql/indents.scm">
-; Indentation rules for CodeQL
-
-; Indent inside blocks
-[
-  (body)
-] @indent
-
-; Indent inside parentheses and brackets
-[
-  "("
-  "["
-  "{"
-] @indent
-
-; Dedent closing brackets
-[
-  ")"
-  "]"
-  "}"
-] @outdent
-
-; Indent after these keywords
-[
-  "from"
-  "where"
-  "select"
-  "order"
-  "if"
-  "then"
-  "else"
-] @indent
-
-; Keep same indent for continuation
-[
-  "and"
-  "or"
-  ","
-  "|"
-] @indent.auto
-</file>
-
-<file path="zed-codeql/languages/codeql/injections.scm">
-; Language injections for CodeQL
-
-; QDoc comments contain Markdown
-((qldoc) @content
- (#set! "language" "markdown"))
-
-; Regex patterns in strings
-((string) @content
- (#match? @content "^[\"']/.*?/[gimsu]*[\"']$")
- (#set! "language" "regex"))
-
-; SQL in string literals (common in security queries)
-((string) @content
- (#match? @content "(?i)(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\\s")
- (#set! "language" "sql"))
-
-; JavaScript/TypeScript in strings (for JS/TS analysis queries)
-((string) @content
- (#match? @content "(function|const|let|var|=>|class|import|export)\\s")
- (#set! "language" "javascript"))
-
-; HTML/XML in strings (for web security queries)
-((string) @content
- (#match? @content "^[\"']<(html|div|script|style|xml|svg)")
- (#set! "language" "html"))
-
-; JSON in strings
-((string) @content
- (#match? @content "^[\"']\\{.*\\}[\"']$")
- (#set! "language" "json"))
-
-; YAML in strings (for config analysis)
-((string) @content
- (#match? @content "^[\"']---")
- (#set! "language" "yaml"))
-</file>
-
-<file path="zed-codeql/languages/codeql/outline.scm">
-; Simplified outline/symbols for CodeQL
-
-; Import statements
-(importDirective
-  (moduleName) @name) @item
-
-; Class definitions
-(dataclass
-  name: (className) @name) @item
-
-; Predicate definitions
-(memberPredicate
-  name: (predicateName) @name) @item
-
-; Module definitions
-(module
-  name: (moduleName) @name) @item
-
-; Select clauses (queries)
-(select) @item
-</file>
-
-<file path="zed-codeql/languages/codeql/tags.scm">
-; Tags for CodeQL - enables jump to definition
-
-; Class definitions
-(dataclass
-  name: (className) @name) @definition.class
-
-; Module definitions
-(module
-  name: (moduleName) @name) @definition.module
-
-; Predicate definitions
-(memberPredicate
-  name: (predicateName) @name) @definition.function
-
-; Import statements
-(importDirective) @reference.import
-
-; Class references
-(className) @reference.class
-
-; Module references
-(moduleName) @reference.module
-
-; Predicate references
-(predicateName) @reference.call
-
-; Variable references
-(varName) @reference.variable
-</file>
-
-<file path="zed-codeql/languages/codeql/textobjects.scm">
-; Text objects for CodeQL
-
-; Predicates
-(memberPredicate) @function.outer
-
-; Classes
-(dataclass) @class.outer
-
-; Modules
-(module) @namespace.outer
-
-; Select statements (queries)
-(select) @statement.outer
-
-; Comments
-(line_comment) @comment.outer
-(block_comment) @comment.outer
-(qldoc) @comment.outer
-
-; Import statements
-(importDirective) @import.outer
-
-; String literals
-(string) @string.outer
-</file>
-
-<file path="zed-codeql/src/lib.rs">
-use zed_extension_api::{
-    self as zed, CodeLabel, CodeLabelSpan, Command, LanguageServerId, Result, Worktree,
-};
-
-struct CodeQLExtension {
-    cached_binary_path: Option<String>,
-}
-
-impl CodeQLExtension {
-    fn find_codeql_cli(&mut self, worktree: &Worktree) -> Option<String> {
-        // Return cached path if available
-        if let Some(path) = &self.cached_binary_path {
-            return Some(path.clone());
-        }
-
-        // Use Zed's which function to find codeql in PATH
-        // This works properly in WASM environment
-        if let Some(path) = worktree.which("codeql") {
-            // Cache the path for future use
-            self.cached_binary_path = Some(path.clone());
-            Some(path)
-        } else {
-            None
-        }
+    touchpad {
+        natural_scroll = true
     }
 }
 
-impl zed::Extension for CodeQLExtension {
-    fn new() -> Self {
-        Self {
-            cached_binary_path: None,
-        }
-    }
+gestures:workspace_swipe = true
 
-    fn language_server_command(
-        &mut self,
-        _language_server_id: &LanguageServerId,
-        worktree: &Worktree,
-    ) -> Result<Command> {
-        let codeql_path = self.find_codeql_cli(worktree).ok_or_else(|| {
-            concat!(
-                "CodeQL CLI not found in PATH.\n",
-                "Please install CodeQL CLI:\n",
-                "  • Homebrew: brew install codeql\n",
-                "  • Download: https://github.com/github/codeql-action/releases\n",
-                "Then restart Zed to detect the installation."
-            ).to_string()
-        })?;
+# Use SUPER as the main modifier for Hyprland bindings
+$mainMod = ALT
 
-        Ok(Command {
-            command: codeql_path,
-            args: vec![
-                "execute".to_string(),
-                "language-server".to_string(),
-                "--check-errors=ON_CHANGE".to_string(),
-            ],
-            env: Default::default(),
-        })
-    }
+# =====================
+# Window / Workspace Keybinds
+# =====================
 
-    fn language_server_workspace_configuration(
-        &mut self,
-        _server_id: &LanguageServerId,
-        worktree: &Worktree,
-    ) -> Result<Option<serde_json::Value>> {
-        // CodeQL language server configuration options
-        // Using conservative defaults that work on most systems
-        let settings = serde_json::json!({
-            "codeql": {
-                "cli": {
-                    "executablePath": self.find_codeql_cli(worktree)
-                },
-                "runningQueries": {
-                    "numberOfThreads": 2,     // Conservative default for compatibility
-                    "saveCache": false,
-                    "cacheSize": 1024,        // 1GB cache size
-                    "timeout": 600,           // 10 minutes for complex queries
-                    "memory": 1024,           // 1GB memory limit
-                    "debug": false,
-                    "customLogDirectory": ""
-                },
-                "runningTests": {
-                    "numberOfThreads": 1,     // Single thread for tests
-                    "saveCache": false,
-                    "cacheSize": 512,         // 512MB cache for tests
-                    "timeout": 300,           // 5 minutes for tests
-                    "memory": 512,            // 512MB memory for tests
-                    "customLogDirectory": ""
-                }
-            }
-        });
+bind = $mainMod, Return, exec, $terminal
+bind = $mainMod, Q, killactive,
+bind = $mainMod, X, exit,
+bind = $mainMod, E, exec, $fileManager
+bind = $mainMod, SPACE, exec, $menu | xargs hyprctl dispatch exec --
+bind = $mainMod, P, pseudo,
+bind = $mainMod, J, togglesplit,
 
-        Ok(Some(settings))
-    }
+bind = $mainMod, left, movefocus, l
+bind = $mainMod, right, movefocus, r
+bind = $mainMod, up, movefocus, u
+bind = $mainMod, down, movefocus, d
 
-    fn label_for_completion(
-        &self,
-        _language_server_id: &LanguageServerId,
-        completion: zed::lsp::Completion,
-    ) -> Option<CodeLabel> {
-        match completion.kind? {
-            zed::lsp::CompletionKind::Class | zed::lsp::CompletionKind::Module => {
-                let label = completion.label.clone();
-                let name_span = CodeLabelSpan::literal(&label, Some("type".to_string()));
-                Some(CodeLabel {
-                    code: label,
-                    spans: vec![name_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            zed::lsp::CompletionKind::Method | zed::lsp::CompletionKind::Function => {
-                let label = format!("{}()", completion.label);
-                let name_span =
-                    CodeLabelSpan::literal(&completion.label, Some("function".to_string()));
-                let paren_span = CodeLabelSpan::literal("()", None);
-                Some(CodeLabel {
-                    code: label.clone(),
-                    spans: vec![name_span, paren_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            zed::lsp::CompletionKind::Keyword => {
-                let name_span =
-                    CodeLabelSpan::literal(&completion.label, Some("keyword".to_string()));
-                Some(CodeLabel {
-                    code: completion.label.clone(),
-                    spans: vec![name_span],
-                    filter_range: (0..completion.label.len()).into(),
-                })
-            }
-            _ => None,
-        }
-    }
+bind = $mainMod SHIFT, left, movewindow, l
+bind = $mainMod SHIFT, right, movewindow, r
+bind = $mainMod SHIFT, up, movewindow, u
+bind = $mainMod SHIFT, down, movewindow, d
 
-    fn label_for_symbol(
-        &self,
-        _language_server_id: &LanguageServerId,
-        symbol: zed::lsp::Symbol,
-    ) -> Option<CodeLabel> {
-        let name = symbol.name.clone();
 
-        let (code, highlight) = match symbol.kind {
-            zed::lsp::SymbolKind::Class | zed::lsp::SymbolKind::Interface => {
-                (format!("class {}", name), Some("type".to_string()))
-            }
-            zed::lsp::SymbolKind::Method | zed::lsp::SymbolKind::Function => {
-                (format!("{}()", name), Some("function".to_string()))
-            }
-            zed::lsp::SymbolKind::Module | zed::lsp::SymbolKind::Namespace => {
-                (format!("module {}", name), Some("module".to_string()))
-            }
-            _ => (name.clone(), None),
-        };
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, 5, workspace, 5
+bind = $mainMod, 6, workspace, 6
+bind = $mainMod, 7, workspace, 7
+bind = $mainMod, 8, workspace, 8
+bind = $mainMod, 9, workspace, 9
+bind = $mainMod, 0, workspace, 10
 
-        let name_span = CodeLabelSpan::literal(&name, highlight);
-        Some(CodeLabel {
-            code: code.clone(),
-            spans: vec![name_span],
-            filter_range: (0..name.len()).into(),
-        })
-    }
-}
+bind = $mainMod SHIFT, 1, movetoworkspacesilent, 1
+bind = $mainMod SHIFT, 2, movetoworkspacesilent, 2
+bind = $mainMod SHIFT, 3, movetoworkspacesilent, 3
+bind = $mainMod SHIFT, 4, movetoworkspacesilent, 4
+bind = $mainMod SHIFT, 5, movetoworkspacesilent, 5
+bind = $mainMod SHIFT, 6, movetoworkspacesilent, 6
+bind = $mainMod SHIFT, 7, movetoworkspacesilent, 7
+bind = $mainMod SHIFT, 8, movetoworkspacesilent, 8
+bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
+bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
 
-zed::register_extension!(CodeQLExtension);
+bind = $mainMod SUPER, left, resizeactive, -80 0
+bind = $mainMod SUPER, right, resizeactive, 80 0
+bind = $mainMod SUPER, up, resizeactive, 0 -80
+bind = $mainMod SUPER, down, resizeactive, 0 80
+
+bind = $mainMod, mouse_down, workspace, e+1
+bind = $mainMod, mouse_up, workspace, e-1
+
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod, mouse:273, resizewindow
+
+# =====================
+# Media / Special Keys
+# =====================
+
+bindel = ,XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+bindel = ,XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindel = ,XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindel = ,XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindel = ,XF86MonBrightnessUp, exec, brightnessctl s 10%+
+bindel = ,XF86MonBrightnessDown, exec, brightnessctl s 10%-
+
+bindl = ,XF86AudioNext, exec, playerctl next
+bindl = ,XF86AudioPause, exec, playerctl play-pause
+bindl = ,XF86AudioPlay, exec, playerctl play-pause
+bindl = ,XF86AudioPrev, exec, playerctl previous
+
+
+env = GDK_SCALE,"1"
+env = GDK_DPI_SCALE,"1.6"
+env = QT_AUTO_SCREEN_SCALE_FACTOR,"0"
+env = QT_SCALE_FACTOR,"1.6"
+env = QT_WAYLAND_DISABLE_WINDOWDECORATION,"1"
+env = NIXOS_OZONE_WL,"1"
+env = ELECTRON_OZONE_PLATFORM_HINT,"wayland"
+env = QT_QPA_PLATFORM,"wayland"
+env = XWAYLAND_DPI,"153"
+
+for_window [app_id="dev.zed.Zed"] opacity 0.85
+
+# Obsidian
+for_window [app_id="obsidian"] opacity 0.85
+
+# Alacritty terminal
+for_window [app_id="Alacritty"] opacity 0.85
 </file>
 
-<file path="zed-codeql/.gitignore">
-# Rust build artifacts
-/target/
-Cargo.lock
-
-# Zed extension build
-*.wasm
-/grammars
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Test files
-*.sarif
-*.bqrs
-
-# CodeQL databases
-*.codeql/
-/databases/
-
-# AI files
-AGENTS.md
-ARCHITECTURE.md
-</file>
-
-<file path="zed-codeql/Cargo.toml">
-[package]
-name = "zed-codeql"
-version = "0.1.0"
-edition = "2021"
-publish = false
-license = "MIT"
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-zed_extension_api = "0.7.0"
-serde_json = "1.0"
-</file>
-
-<file path="zed-codeql/extension.toml">
-id = "codeql"
-name = "CodeQL"
-description = "CodeQL language support with syntax highlighting and language server for Zed"
-version = "0.1.0"
-schema_version = 1
-authors = ["blacktop"]
-repository = "https://github.com/blacktop/zed-codeql"
-
-[language_servers.codeql]
-name = "codeql"
-languages = ["CodeQL"]
-
-[grammars.ql]
-repository = "https://github.com/tree-sitter/tree-sitter-ql"
-commit = "1fd627a4e8bff8c24c11987474bd33112bead857"
-</file>
-
-<file path="zed-codeql/LICENSE">
-MIT License
-
-Copyright (c) 2025 blacktop
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-</file>
-
-<file path="zed-codeql/README.md">
-# zed-codeql
-
-CodeQL language support for [Zed](https://zed.dev).
-
-## Features
-
-- Syntax highlighting for `.ql`, `.qll`, `.qlref`, and `.dbscheme` files
-- Language server integration with CodeQL CLI
-- Code completion
-- Go to definition
-- Hover documentation
-- Error diagnostics
-
-## Requirements
-
-CodeQL CLI must be installed and available in your PATH.
-
-### Installation via Homebrew
-```bash
-brew install codeql
-```
-
-### Manual Installation
-Download from [GitHub CodeQL releases](https://github.com/github/codeql-action/releases).
-
-## Installation
-
-Install from Zed's extension gallery or build from source.
-
-## Language Server
-
-The extension automatically starts the CodeQL language server when you open a CodeQL file.
-
-The extension searches for CodeQL CLI in your system PATH.
-
-## Credit
-
-Inspired by <https://github.com/pwntester/codeql.nvim>
-
-## License
-
-MIT Copyright (c) 2025 blacktop
-</file>
-
-<file path=".github/workflows/language-stats.yml">
-name: Update Language Statistics
+<file path=".github/workflows/readme-template.yml">
+name: README Template
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  update-stats:
+  generate-readme:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate language analytics
-        uses: StefVuck/Github-Language-Stats@v1.2.0
         with:
-          github_token: ${{ secrets.STATS_TOKEN }}
-          visualization_types: "leaderboard"
-          output_path: "stats"
-</file>
-
-<file path="config/alacritty/alacritty.toml">
-[window]
-#opacity = 0.92
-
-[window.padding]
-y = 6
-x = 6
-
-[selection]
-save_to_clipboard = true
-
-[font]
-normal = { family = "JetBrainsMono Nerd Font Propo", style = "Regular" }
-size = 12
-
-[colors.normal]
-black = "#000000"
-red = "#d54e53"
-green = "#b9ca4a"
-yellow = "#e6c547"
-blue = "#7aa6da"
-magenta = "#c397d8"
-cyan = "#70c0ba"
-white = "#eaeaea"
-
-[colors.bright]
-black = "#666666"
-red = "#ff3334"
-green = "#9ec400"
-yellow = "#e7c547"
-blue = "#7aa6da"
-magenta = "#b77ee0"
-cyan = "#54ced6"
-white = "#ffffff"
-
-
-[colors.primary]
-background = "#000000"
-foreground = "#a9b1d6"
-</file>
-
-<file path="config/atuin/config.toml">
-auto_sync = true
-style = "compact"
-prefers_reduced_motion = true
-#enter_accept = true
-command_chaining = true
-show_tabs = false
-workspaces = true
-invert = false
-
-[sync]
-records = true
+          fetch-depth: 0
+      - name: Render README from template
+        env:
+          README_RENDER_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: python3 scripts/render_readme.py --template TEMPLATE.md --output README.md
+      - name: Commit README if it changed
+        run: |
+          if [[ -n "$(git status --porcelain README.md)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "Auto-update README"
+            git push
+          fi
 </file>
 
 <file path="config/hypr/hyprland.conf">
@@ -8474,251 +9680,6 @@ bindl = , XF86AudioNext, exec, playerctl next
 bindl = , XF86AudioPause, exec, playerctl play-pause
 bindl = , XF86AudioPlay, exec, playerctl play-pause
 bindl = , XF86AudioPrev, exec, playerctl previous
-</file>
-
-<file path="config/starship/starship.toml">
-# Get editor completions based on the config schema
-"$schema" = 'https://starship.rs/config-schema.json'
-
-[username]
-show_always = true
-</file>
-
-<file path="config/sway/config">
-# Default config for sway
-#
-# Copy this to ~/.config/sway/config and edit it to your liking.
-#
-# Read `man 5 sway` for a complete reference.
-
-### Variables
-#
-# Logo key. Use Mod1 for Alt.
-set $mod Mod1
-# Home row direction keys, like vim
-set $left h
-set $down j
-set $up k
-set $right l
-# Your preferred terminal emulator
-set $term alacritty
-# Your preferred application launcher
-set $menu tofi-drun
-
-### Output configuration
-#
-# Default wallpaper (more resolutions are available in /run/current-system/sw/share/backgrounds/sway/)
-#output * bg  /home/becker/nixos-from-scratch/walls/wallpaper4.jpg fill
-output eDP-1 scale 1.6
-
-input type:keyboard {
-    xkb_layout us
-    xkb_model apple
-    xkb_options ctrl:swap_lwin_lctl,caps:super
-}
-
-#
-# Example configuration:
-#
-#   output HDMI-A-1 resolution 1920x1080 position 1920,0
-#
-# You can get the names of your outputs by running: swaymsg -t get_outputs
-
-### Idle configuration
-#
-# Example configuration:
-#
-# exec swayidle -w \
-#          timeout 300 'swaylock -f -c 000000' \
-#          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
-#          before-sleep 'swaylock -f -c 000000'
-#
-# This will lock your screen after 300 seconds of inactivity, then turn off
-# your displays after another 300 seconds, and turn your screens back on when
-# resumed. It will also lock your screen before your computer goes to sleep.
-
-### Input configuration
-#
-# Example configuration:
-#
-#   input "2:14:SynPS/2_Synaptics_TouchPad" {
-#       dwt enabled
-#       tap enabled
-#       natural_scroll enabled
-#       middle_emulation enabled
-#   }
-#
-# You can get the names of your inputs by running: swaymsg -t get_inputs
-# Read `man 5 sway-input` for more information about this section.
-
-### Key bindings
-#
-# Basics:
-#
-    # Start a terminal
-    bindsym $mod+Return exec $term
-
-    # Kill focused window
-    bindsym $mod+q kill
-
-    # Start your launcher
-    bindsym $mod+space exec $menu
-
-    # Drag floating windows by holding down $mod and left mouse button.
-    # Resize them with right mouse button + $mod.
-    # Despite the name, also works for non-floating windows.
-    # Change normal to inverse to use left mouse button for resizing and right
-    # mouse button for dragging.
-    floating_modifier $mod normal
-
-    # Reload the configuration file
-    bindsym $mod+Shift+c reload
-
-    # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
-#
-# Moving around:
-#
-    # Move your focus around
-    bindsym $mod+$left focus left
-    bindsym $mod+$down focus down
-    bindsym $mod+$up focus up
-    bindsym $mod+$right focus right
-    # Or use $mod+[up|down|left|right]
-    bindsym $mod+Left focus left
-    bindsym $mod+Down focus down
-    bindsym $mod+Up focus up
-    bindsym $mod+Right focus right
-
-    # Move the focused window with the same, but add Shift
-    bindsym $mod+Shift+$left move left
-    bindsym $mod+Shift+$down move down
-    bindsym $mod+Shift+$up move up
-    bindsym $mod+Shift+$right move right
-    # Ditto, with arrow keys
-    bindsym $mod+Shift+Left move left
-    bindsym $mod+Shift+Down move down
-    bindsym $mod+Shift+Up move up
-    bindsym $mod+Shift+Right move right
-#
-# Workspaces:
-#
-    # Switch to workspace
-    bindsym $mod+1 workspace number 1
-    bindsym $mod+2 workspace number 2
-    bindsym $mod+3 workspace number 3
-    bindsym $mod+4 workspace number 4
-    bindsym $mod+5 workspace number 5
-    bindsym $mod+6 workspace number 6
-    bindsym $mod+7 workspace number 7
-    bindsym $mod+8 workspace number 8
-    bindsym $mod+9 workspace number 9
-    bindsym $mod+0 workspace number 10
-    # Move focused container to workspace
-    bindsym $mod+Shift+1 move container to workspace number 1
-    bindsym $mod+Shift+2 move container to workspace number 2
-    bindsym $mod+Shift+3 move container to workspace number 3
-    bindsym $mod+Shift+4 move container to workspace number 4
-    bindsym $mod+Shift+5 move container to workspace number 5
-    bindsym $mod+Shift+6 move container to workspace number 6
-    bindsym $mod+Shift+7 move container to workspace number 7
-    bindsym $mod+Shift+8 move container to workspace number 8
-    bindsym $mod+Shift+9 move container to workspace number 9
-    bindsym $mod+Shift+0 move container to workspace number 10
-    # Note: workspaces can have any name you want, not just numbers.
-    # We just use 1-10 as the default.
-#
-# Layout stuff:
-#
-    # You can "split" the current object of your focus with
-    # $mod+b or $mod+v, for horizontal and vertical splits
-    # respectively.
-    bindsym $mod+b splith
-    bindsym $mod+v splitv
-
-    # Switch the current container between different layout styles
-    bindsym $mod+s layout stacking
-    bindsym $mod+w layout tabbed
-    bindsym $mod+e layout toggle split
-
-    # Make the current focus fullscreen
-    bindsym $mod+f fullscreen
-
-    # Toggle the current focus between tiling and floating mode
-    bindsym $mod+Shift+space floating toggle
-
-    # Swap focus between the tiling area and the floating area
-    #bindsym $mod+space focus mode_toggle
-
-    # Move focus to the parent container
-    bindsym $mod+a focus parent
-#
-# Scratchpad:
-#
-    # Sway has a "scratchpad", which is a bag of holding for windows.
-    # You can send windows there and get them back later.
-
-    # Move the currently focused window to the scratchpad
-    bindsym $mod+Shift+minus move scratchpad
-
-    # Show the next scratchpad window or hide the focused scratchpad window.
-    # If there are multiple scratchpad windows, this command cycles through them.
-    bindsym $mod+minus scratchpad show
-#
-# Resizing containers:
-#
-set $super Mod4
-bindsym $mod+$super+Right  resize shrink width 80px
-bindsym $mod+$super+Left resize grow   width 80px
-bindsym $mod+$super+Up    resize shrink height 80px
-bindsym $mod+$super+Down  resize grow   height 80px
-focus_follows_mouse yes
-focus_on_window_activation smart
-
-#
-# Utilities:
-#
-    # Special keys to adjust volume via PulseAudio
-    bindsym --locked XF86AudioMute exec pactl set-sink-mute \@DEFAULT_SINK@ toggle
-    bindsym --locked XF86AudioLowerVolume exec pactl set-sink-volume \@DEFAULT_SINK@ -5%
-    bindsym --locked XF86AudioRaiseVolume exec pactl set-sink-volume \@DEFAULT_SINK@ +5%
-    bindsym --locked XF86AudioMicMute exec pactl set-source-mute \@DEFAULT_SOURCE@ toggle
-    # Special keys to adjust brightness via brightnessctl
-    bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
-    bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
-    # Special key to take a screenshot with grim
-    bindsym Print exec grim
-
-# Shadows (soft, dark glow like Hyprland)
-shadows disable
-shadows_on_csd disable
-shadow_blur_radius 60
-shadow_color #000000AA            # ~80% black
-shadow_inactive_color #00000066   # lighter when inactive
-shadow_offset 0 0
-
-# Gaps (Hyprland gaps_in/out)
-gaps inner 0
-gaps outer 0
-smart_gaps off
-
-# Slightly dim inactive windows (Hyprland's “ghosty” focus look)
-#default_dim_inactive 0.05
-#dim_inactive_colors.unfocused #000000FF
-#dim_inactive_colors.urgent #900000FF
-
-
-default_border pixel 0
-titlebar_separator disable
-for_window [all] csd disable
-
-include /etc/sway/config.d/*
-
-for_window [app_id="Alacritty"] opacity 0.85
-for_window [app_id="obsidian"] opacity 0.85
-for_window [app_id="dev.zed.Zed"] opacity 0.9
-
-exec_always --no-startup-id swaybg -i /home/becker/nixos-from-scratch/walls/wallpaper4.jpg -m fill
 </file>
 
 <file path="config/tofi/config">
@@ -8981,588 +9942,6 @@ if npm_global_bin not in $PATH:
 # XONSH WEBCONFIG END
 </file>
 
-<file path="config/zed/themes/maxTransparent.json">
-{
-  "$schema": "https://zed.dev/schema/themes/v0.1.0.json",
-  "name": "One Dark Pro Max Transparent",
-  "author": "Kusuma (modified for transparency)",
-  "themes": [
-    {
-      "name": "One Dark Pro Max Transparent",
-      "appearance": "dark",
-      "style": {
-        "background.appearance": "blurred",
-        "background": "#080909aa",
-        "surface.background": "#080909aa",
-        "elevated_surface.background": "#080909aa",
-        "panel.background": "#080909aa",
-        "title_bar.background": "#080909f0",
-        "toolbar.background": "#080909aa",
-        "tab_bar.background": "#080909aa",
-        "status_bar.background": "#080909f0",
-        "tab.active_background": "#080909aa",
-        "tab.inactive_background": "#080909aa",
-        "editor.background": "#080909aa",
-        "editor.gutter.background": "#080909aa",
-        "editor.active_line.background": "#08090900",
-        "editor.subheader.background": "#080909aa",
-        "terminal.background": "#080909aa",
-        "scrollbar.track.background": "#08090900",
-        "scrollbar.track.border": "#00000000",
-        "scrollbar.thumb.background": "#4e566680",
-        "scrollbar.thumb.hover_background": "#5a6375aa",
-        "scrollbar.thumb.border": "#4e5666aa",
-        "syntax": {
-          "comment": {
-            "color": "#7F838C",
-            "font_style": null,
-            "font_weight": null
-          },
-          "attribute": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "boolean": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "constant": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "constructor": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "embedded": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "emphasis": {
-            "color": "#c678dd",
-            "font_style": null,
-            "font_weight": null
-          },
-          "enum": {
-            "color": "#56b6c2",
-            "font_style": null,
-            "font_weight": null
-          },
-          "function": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "keyword": {
-            "color": "#c678dd",
-            "font_style": null,
-            "font_weight": null
-          },
-          "link_text": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "link_uri": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "number": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "operator": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "predictive": {
-            "color": "#4d5970",
-            "font_style": "italic",
-            "font_weight": null
-          },
-          "property": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "punctuation": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "punctuation.list_marker": {
-            "color": "#d07277ff",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string": {
-            "color": "#98c379",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.escape": {
-            "color": "#56b6c2",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.regex": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.special": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.special.symbol": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "tag": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "text.literal": {
-            "color": "#98c379",
-            "font_style": null,
-            "font_weight": null
-          },
-          "title": {
-            "color": "#d07277ff",
-            "font_style": null,
-            "font_weight": null
-          },
-          "type": {
-            "color": "#e5c07b",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variable": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variable.special": {
-            "color": "#e5c07b",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variant": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          }
-        }
-      }
-    }
-  ]
-}
-</file>
-
-<file path="config/zed/themes/oneBlackMax.json">
-{
-  "$schema": "https://zed.dev/schema/themes/v0.1.0.json",
-  "name": "One Black Max",
-  "author": "Taylor Johnson",
-  "themes": [
-    {
-      "name": "One Black Max",
-      "appearance": "dark",
-      "style": {
-        "border": "#141414ff",
-        "border.variant": "#141414ff",
-        "border.focused": "#293b5bff",
-        "border.selected": "#293b5bff",
-        "border.transparent": "#03030300",
-        "border.disabled": "#414754ff",
-        "elevated_surface.background": "#000000ff",
-        "surface.background": "#000000ff",
-        "background": "#000000ff",
-        "element.background": "#262626ff",
-        "element.hover": "#262626ff",
-        "element.active": "#262626ff",
-        "element.selected": "#262626ff",
-        "element.disabled": "#2e343eff",
-        "drop_target.background": "#57575780",
-        "ghost_element.background": "#03030300",
-        "ghost_element.hover": "#1a1a1aff",
-        "ghost_element.active": "#262626ff",
-        "ghost_element.selected": "#262626ff",
-        "ghost_element.disabled": "#2e343eff",
-        "text": "#737373ff",
-        "text.muted": "#757575ff",
-        "text.placeholder": "#4c4c4c",
-        "text.disabled": "#4c4c4c",
-        "text.accent": "#a7a7a7ff",
-        "icon": "#c8ccd4ff",
-        "icon.muted": "#757575ff",
-        "icon.disabled": "#696B77ff",
-        "icon.placeholder": "#575757ff",
-        "icon.accent": "#74ade8ff",
-        "status_bar.background": "#000000ff",
-        "title_bar.background": "#000000ff",
-        "title_bar.inactive_background": "#2e343eff",
-        "toolbar.background": "#030303ff",
-        "tab_bar.background": "#0c0c0cff",
-        "tab.inactive_background": "#0c0c0cff",
-        "tab.active_background": "#030303ff",
-        "search.match_background": "#303030FF",
-        "panel.background": "#000000ff",
-        "panel.focused_border": null,
-        "pane.focused_border": null,
-        "scrollbar.thumb.background": "#4c4c4c4c",
-        "scrollbar.thumb.hover_background": "#4c4c4c4c",
-        "scrollbar.thumb.border": "#4c4c4c4c",
-        "scrollbar.track.background": "#03030300",
-        "scrollbar.track.border": "#141414ff",
-        "editor.foreground": "#acb2beff",
-        "editor.background": "#030303ff",
-        "editor.gutter.background": "#030303ff",
-        "editor.subheader.background": "#0c0c0cff",
-        "editor.active_line.background": "#6464640F",
-        "editor.highlighted_line.background": "#ffffff1E",
-        "editor.line_number": "#ffffff59",
-        "editor.active_line_number": "#c8ccd4ff",
-        "editor.invisible": "#3b3b3bff",
-        "editor.wrap_guide": "#c8ccd40d",
-        "editor.active_wrap_guide": "#c8ccd41a",
-        "editor.document_highlight.read_background": "#292929ff",
-        "terminal.background": "#030303ff",
-        "terminal.foreground": "#c8ccd4ff",
-        "terminal.bright_foreground": "#c8ccd4ff",
-        "terminal.dim_foreground": "#030303ff",
-        "terminal.ansi.black": "#030303ff",
-        "terminal.ansi.bright_black": "#525561ff",
-        "terminal.ansi.dim_black": "#c8ccd4ff",
-        "terminal.ansi.red": "#d07277ff",
-        "terminal.ansi.bright_red": "#673a3cff",
-        "terminal.ansi.dim_red": "#eab7b9ff",
-        "terminal.ansi.green": "#a1c181ff",
-        "terminal.ansi.bright_green": "#4d6140ff",
-        "terminal.ansi.dim_green": "#d1e0bfff",
-        "terminal.ansi.yellow": "#dec184ff",
-        "terminal.ansi.bright_yellow": "#786441ff",
-        "terminal.ansi.dim_yellow": "#f1dfc1ff",
-        "terminal.ansi.blue": "#74ade8ff",
-        "terminal.ansi.bright_blue": "#385378ff",
-        "terminal.ansi.dim_blue": "#bed5f4ff",
-        "terminal.ansi.magenta": "#be5046ff",
-        "terminal.ansi.bright_magenta": "#5e2b26ff",
-        "terminal.ansi.dim_magenta": "#e6a79eff",
-        "terminal.ansi.cyan": "#6cabc8ff",
-        "terminal.ansi.bright_cyan": "#3a565bff",
-        "terminal.ansi.dim_cyan": "#b9d9dfff",
-        "terminal.ansi.white": "#c8ccd4ff",
-        "terminal.ansi.bright_white": "#c8ccd4ff",
-        "terminal.ansi.dim_white": "#575d65ff",
-        "link_text.hover": "#74ade8ff",
-        "conflict": "#dec184ff",
-        "conflict.background": "#dec1841a",
-        "conflict.border": "#5d4c2fff",
-        "created": "#98c16eff",
-        "created.background": "#a1c1811a",
-        "created.border": "#38482fff",
-        "deleted": "#d0484fff",
-        "deleted.background": "#d072771a",
-        "deleted.border": "#4c2b2cff",
-        "error": "#ff7169ff",
-        "error.background": "#2f0d0dff",
-        "error.border": "#520d0dff",
-        "hidden": "#696B77ff",
-        "hidden.background": "#696B771a",
-        "hidden.border": "#414754ff",
-        "hint": "#4c4c4cff",
-        "hint.background": "#5a6f891a",
-        "hint.border": "#293b5bff",
-        "ignored": "#4c4c4c",
-        "ignored.background": "#696B771a",
-        "ignored.border": "#464b57ff",
-        "info": "#74ade8ff",
-        "info.background": "#74ade81a",
-        "info.border": "#293b5bff",
-        "modified": "#deba6dff",
-        "modified.background": "#dec1841a",
-        "modified.border": "#5d4c2fff",
-        "predictive": "#5a6a87ff",
-        "predictive.background": "#5a6a871a",
-        "predictive.border": "#38482fff",
-        "renamed": "#74ade8ff",
-        "renamed.background": "#74ade81a",
-        "renamed.border": "#293b5bff",
-        "success": "#a1c181ff",
-        "success.background": "#a1c1811a",
-        "success.border": "#38482fff",
-        "unreachable": "#575757ff",
-        "unreachable.background": "#5757571a",
-        "unreachable.border": "#464b57ff",
-        "warning": "#dec184ff",
-        "warning.background": "#dec1841a",
-        "warning.border": "#5d4c2fff",
-        "players": [
-          {
-            "cursor": "#ffffff5A",
-            "background": "#ffffff5A",
-            "selection": "#ffffff14"
-          },
-          {
-            "cursor": "#be5046ff",
-            "background": "#be5046ff",
-            "selection": "#be50463d"
-          },
-          {
-            "cursor": "#bf956aff",
-            "background": "#bf956aff",
-            "selection": "#bf956a3d"
-          },
-          {
-            "cursor": "#b477cfff",
-            "background": "#b477cfff",
-            "selection": "#b477cf3d"
-          },
-          {
-            "cursor": "#6eb4bfff",
-            "background": "#6eb4bfff",
-            "selection": "#6eb4bf3d"
-          },
-          {
-            "cursor": "#d07277ff",
-            "background": "#d07277ff",
-            "selection": "#d072773d"
-          },
-          {
-            "cursor": "#dec184ff",
-            "background": "#dec184ff",
-            "selection": "#dec1843d"
-          },
-          {
-            "cursor": "#a1c181ff",
-            "background": "#a1c181ff",
-            "selection": "#a1c1813d"
-          }
-        ],
-        "syntax": {
-          "comment": {
-            "color": "#7F838C",
-            "font_style": null,
-            "font_weight": null
-          },
-          "attribute": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "boolean": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "constant": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "constructor": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "embedded": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "emphasis": {
-            "color": "#c678dd",
-            "font_style": null,
-            "font_weight": null
-          },
-          "enum": {
-            "color": "#56b6c2",
-            "font_style": null,
-            "font_weight": null
-          },
-          "function": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "keyword": {
-            "color": "#c678dd",
-            "font_style": null,
-            "font_weight": null
-          },
-          "link_text": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "link_uri": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          },
-          "number": {
-            "color": "#d19a66",
-            "font_style": null,
-            "font_weight": null
-          },
-          "operator": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "predictive": {
-            "color": "#4d5970",
-            "font_style": "italic",
-            "font_weight": null
-          },
-          "property": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "punctuation": {
-            "color": "#abb2bf",
-            "font_style": null,
-            "font_weight": null
-          },
-          "punctuation.list_marker": {
-            "color": "#d07277ff",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string": {
-            "color": "#98c379",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.escape": {
-            "color": "#56b6c2",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.regex": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.special": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "string.special.symbol": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "tag": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "text.literal": {
-            "color": "#98c379",
-            "font_style": null,
-            "font_weight": null
-          },
-          "title": {
-            "color": "#d07277ff",
-            "font_style": null,
-            "font_weight": null
-          },
-          "type": {
-            "color": "#e5c07b",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variable": {
-            "color": "#E15687",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variable.special": {
-            "color": "#e5c07b",
-            "font_style": null,
-            "font_weight": null
-          },
-          "variant": {
-            "color": "#61afef",
-            "font_style": null,
-            "font_weight": null
-          }
-        }
-      }
-    }
-  ]
-}
-</file>
-
-<file path="config/zed/keymap.json">
-[
-  {
-    "context": "Editor && edit_prediction",
-    "bindings": {
-      "tab": "editor::AcceptEditPrediction"
-    }
-  },
-  {
-    "context": "Editor && edit_prediction_conflict",
-    "bindings": {
-      "tab": "editor::AcceptEditPrediction"
-    }
-  }
-]
-</file>
-
-<file path="config/zed/tasks.json">
-[
-  {
-    "label": "File Finder",
-    "command": "bash -c 'zed \"$(tv files)\"'",
-    "hide": "always",
-    "allow_concurrent_runs": true,
-    "use_new_terminal": true
-  },
-  {
-    "label": "Find in Files",
-    "command": "bash -c 'zed \"$(tv text)\"'",
-    "hide": "always",
-    "allow_concurrent_runs": true,
-    "use_new_terminal": true
-  }
-]
-</file>
-
-<file path="overlays/hascard.nix">
-final: prev: {
-  haskellPackages = prev.haskellPackages.override {
-    overrides = self: super: {
-      hascard = let
-        base = prev.haskell.lib.overrideCabal
-          (super.hascard or (self.callHackageDirect {
-            pkg = "hascard";
-            ver = "0.6.0.2";
-            sha256 = "sha256-7MepVFNGcEwnXo/tulH/Ko84QoBDY2u7j+Vn7/MmU+U=";
-          } { })) (old: { jailbreak = true; });
-      in base.overrideAttrs
-      (old: { meta = (old.meta or { }) // { broken = false; }; });
-    };
-  };
-}
-</file>
-
 <file path="overlays/my-xonsh.nix">
 final: prev: {
   python-env = prev.python313.withPackages (
@@ -9596,31 +9975,6 @@ final: prev: {
   );
 
   xonsh = final.python-env;
-}
-</file>
-
-<file path="overlays/scripts.nix">
-final: prev: {
-  xonsh = final.python-env;
-  scripts = prev.stdenv.mkDerivation {
-    pname = "scripts";
-    version = "0.1.0";
-    src = ./../scripts;
-
-    nativeBuildInputs = [ prev.makeWrapper ];
-
-    installPhase = ''
-      mkdir -p $out/bin
-      for f in $src/*.py; do
-        name=$(basename "$f" .py)
-        cp "$f" "$out/bin/$name.py"
-        chmod +x "$out/bin/$name.py"
-
-        makeWrapper ${final.python-env}/bin/python $out/bin/$name \
-          --add-flags $out/bin/$name.py
-      done
-    '';
-  };
 }
 </file>
 
@@ -9670,326 +10024,6 @@ final: prev: {
     })
   ];
 }
-</file>
-
-<file path="packages/opencode-cursor-runtime/package.json">
-{
-  "name": "opencode-cursor-runtime",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Pinned runtime dependencies for OpenCode + Cursor integration",
-  "license": "UNLICENSED",
-  "dependencies": {
-    "@ai-sdk/openai-compatible": "2.0.47",
-    "@rama_nigg/open-cursor": "2.4.4"
-  }
-}
-</file>
-
-<file path="scripts/smart_cd.py">
-#!/usr/bin/env python3
-from pathlib import Path
-from plumbum import local, ProcessExecutionError
-import os, sys
-
-def smart_cd(args):
-    target = args[0] if args else None
-    cwd = Path.cwd()
-
-    # Default no-arg behavior: jump to git root or home
-    if not target:
-        try:
-            git_root = Path(local["git"]("rev-parse", "--show-toplevel").strip())
-            if cwd != git_root:
-                return git_root
-        except ProcessExecutionError:
-            pass
-        return Path.home()
-
-    # If it's a direct path
-    tpath = Path(target).expanduser()
-    if tpath.is_dir() or target in {".", ".."}:
-        return tpath.resolve()
-
-    # Otherwise try prefix match with fd
-    try:
-        matches = local["fd"]("--max-depth", "1", "-t", "d", f"^{target}", ".").splitlines()
-        if len(matches) == 1:
-            return Path(matches[0]).resolve()
-    except ProcessExecutionError:
-        pass
-
-    # Fallback to zoxide
-    try:
-        path = Path(local["zoxide"]("query", target).strip())
-        if path.is_dir():
-            return path
-    except ProcessExecutionError:
-        pass
-
-    return cwd
-
-
-if __name__ == "__main__":
-    newdir = smart_cd(sys.argv[1:])
-    if newdir:
-        os.chdir(newdir)
-        print(str(newdir))
-</file>
-
-<file path=".bashrc">
-export BUN_INSTALL="/home/becker/.bun"
-export PATH="$BUN_INSTALL/bin:/nix/store/rr74d79lmba7j6gms3a8lmn6gy3fps2w-fzf-0.67.0/bin:/nix/store/qz4k80cgcrz0qhac0jnb19nsjgy21ind-ripgrep-15.1.0/bin:/run/wrappers/bin:/home/becker/.nix-profile/bin:/nix/profile/bin:/home/becker/.local/state/nix/profile/bin:/etc/profiles/per-user/becker/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/nix/store/fhmb82a3q7nbsz3w9yj28nyscykrj87p-binutils-wrapper-2.44/bin:/nix/store/k2vcgfv92wadz9fh0rbixp5dmxfkyy6s-hyprland-qtutils-0.1.5/bin:/nix/store/gy7mvvsfqzg03wbm02hcdiabajna8zb6-pciutils-3.14.0/bin:/nix/store/s9ncdhslhxmpwkydf2cykdcjlap8m0z9-pkgconf-wrapper-2.4.3/bin:/home/becker/.local/bin:/home/becker/.local/bin"
-</file>
-
-<file path=".codex">
-
-</file>
-
-<file path=".envrc">
-use flake
-</file>
-
-<file path=".gitignore">
-#hardware-configuration.nix
-</file>
-
-<file path=".gitmodules">
-[submodule "zed-codeql"]
-	path = zed-codeql
-	url = https://github.com/blacktop/zed-codeql
-</file>
-
-<file path="bak">
-monitor=eDP-1,preferred,auto,1.6
-
-render {
-    explicit_sync = 0
-}
-env = WLR_DRM_NO_ATOMIC,1
-
-xwayland {
-    force_zero_scaling = true
-}
-
-$terminal = alacritty
-$fileManager = nautilus
-$menu = tofi-drun --drun-launch=false --terminal "alacritty -e"
-
-
-general {
-    gaps_in = 9
-    gaps_out = 18
-
-    border_size = 0
-    layout = dwindle
-}
-
-
-decoration {
-    shadow {
-        enabled = true
-        range = 60
-        render_power = 4
-
-        color = 0xaa000000       # ~80% black
-        #0x11000000
-        color_inactive = 0x66000000
-
-        offset = 0 0
-        scale = 1.1
-    }
-    rounding = 5
-    rounding_power = 4
-    blur:enabled = false
-}
-
-dwindle {
-    pseudotile = true
-    preserve_split = true
-}
-
-exec-once = swaybg -i ~/nixos-from-scratch/walls/wallpaper4.jpg -m fil
-
-animations {
-    #enabled = true
-
-    # curves
-    bezier = ghostCurveIntro, 0.25, 1, 0.25, 1   # soft, lingering
-    bezier = ghostCurve, 0.5, 1, 0.5, 1          # balanced
-
-    # no spawn pop, fade handles it
-    animation = windows, 0, 1, default
-
-    # movement: short + subtle (snappy, not floaty)
-    animation = windowsMove, 1, 3, ghostCurve
-
-    # borders: instant
-    animation = border, 0, 1, default
-
-    # fades: ghosty spawn linger, snappy close
-    animation = fadeIn, 1, 18, ghostCurveIntro   # long + dreamy
-    animation = fadeOut, 1, 8, ghostCurve        # shorter, clean
-
-    # workspaces: medium glide
-    animation = workspaces, 1, 9, ghostCurveIntro, slide
-}
-
-
-windowrulev2 = opacity 0.85, class:^(dev\.zed\.Zed)$
-windowrule = opacity 0.85, class:obsidian
-windowrule = opacity 0.85, class:Alacritty
-
-
-# =====================
-# Input Settings
-# =====================
-
-input {
-    kb_layout = us
-    kb_model = apple         # IMPORTANT for Mac keyboards
-    kb_variant =
-    # this option swaps Left Ctrl and Left Super (Command)
-    kb_options = ctrl:swap_lwin_lctl,caps:super
-
-    follow_mouse = 1
-    accel_profile = flat
-    sensitivity = 0
-    natural_scroll = true
-
-    touchpad {
-        natural_scroll = true
-    }
-}
-
-gestures:workspace_swipe = true
-
-# Use SUPER as the main modifier for Hyprland bindings
-$mainMod = ALT
-
-# =====================
-# Window / Workspace Keybinds
-# =====================
-
-bind = $mainMod, Return, exec, $terminal
-bind = $mainMod, Q, killactive,
-bind = $mainMod, X, exit,
-bind = $mainMod, E, exec, $fileManager
-bind = $mainMod, SPACE, exec, $menu | xargs hyprctl dispatch exec --
-bind = $mainMod, P, pseudo,
-bind = $mainMod, J, togglesplit,
-
-bind = $mainMod, left, movefocus, l
-bind = $mainMod, right, movefocus, r
-bind = $mainMod, up, movefocus, u
-bind = $mainMod, down, movefocus, d
-
-bind = $mainMod SHIFT, left, movewindow, l
-bind = $mainMod SHIFT, right, movewindow, r
-bind = $mainMod SHIFT, up, movewindow, u
-bind = $mainMod SHIFT, down, movewindow, d
-
-
-bind = $mainMod, 1, workspace, 1
-bind = $mainMod, 2, workspace, 2
-bind = $mainMod, 3, workspace, 3
-bind = $mainMod, 4, workspace, 4
-bind = $mainMod, 5, workspace, 5
-bind = $mainMod, 6, workspace, 6
-bind = $mainMod, 7, workspace, 7
-bind = $mainMod, 8, workspace, 8
-bind = $mainMod, 9, workspace, 9
-bind = $mainMod, 0, workspace, 10
-
-bind = $mainMod SHIFT, 1, movetoworkspacesilent, 1
-bind = $mainMod SHIFT, 2, movetoworkspacesilent, 2
-bind = $mainMod SHIFT, 3, movetoworkspacesilent, 3
-bind = $mainMod SHIFT, 4, movetoworkspacesilent, 4
-bind = $mainMod SHIFT, 5, movetoworkspacesilent, 5
-bind = $mainMod SHIFT, 6, movetoworkspacesilent, 6
-bind = $mainMod SHIFT, 7, movetoworkspacesilent, 7
-bind = $mainMod SHIFT, 8, movetoworkspacesilent, 8
-bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
-bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
-
-bind = $mainMod SUPER, left, resizeactive, -80 0
-bind = $mainMod SUPER, right, resizeactive, 80 0
-bind = $mainMod SUPER, up, resizeactive, 0 -80
-bind = $mainMod SUPER, down, resizeactive, 0 80
-
-bind = $mainMod, mouse_down, workspace, e+1
-bind = $mainMod, mouse_up, workspace, e-1
-
-bindm = $mainMod, mouse:272, movewindow
-bindm = $mainMod, mouse:273, resizewindow
-
-# =====================
-# Media / Special Keys
-# =====================
-
-bindel = ,XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
-bindel = ,XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-bindel = ,XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-bindel = ,XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
-bindel = ,XF86MonBrightnessUp, exec, brightnessctl s 10%+
-bindel = ,XF86MonBrightnessDown, exec, brightnessctl s 10%-
-
-bindl = ,XF86AudioNext, exec, playerctl next
-bindl = ,XF86AudioPause, exec, playerctl play-pause
-bindl = ,XF86AudioPlay, exec, playerctl play-pause
-bindl = ,XF86AudioPrev, exec, playerctl previous
-
-
-env = GDK_SCALE,"1"
-env = GDK_DPI_SCALE,"1.6"
-env = QT_AUTO_SCREEN_SCALE_FACTOR,"0"
-env = QT_SCALE_FACTOR,"1.6"
-env = QT_WAYLAND_DISABLE_WINDOWDECORATION,"1"
-env = NIXOS_OZONE_WL,"1"
-env = ELECTRON_OZONE_PLATFORM_HINT,"wayland"
-env = QT_QPA_PLATFORM,"wayland"
-env = XWAYLAND_DPI,"153"
-
-for_window [app_id="dev.zed.Zed"] opacity 0.85
-
-# Obsidian
-for_window [app_id="obsidian"] opacity 0.85
-
-# Alacritty terminal
-for_window [app_id="Alacritty"] opacity 0.85
-</file>
-
-<file path=".github/workflows/readme-template.yml">
-name: README Template
-
-on:
-  schedule:
-    - cron: "0 6 * * *"
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  generate-readme:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Render README from template
-        env:
-          README_RENDER_TOKEN: ${{ secrets.STATS_TOKEN }}
-        run: python3 scripts/render_readme.py --template TEMPLATE.md --output README.md
-      - name: Commit README if it changed
-        run: |
-          if [[ -n "$(git status --porcelain README.md)" ]]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add README.md
-            git commit -m "Auto-update README"
-            git push
-          fi
 </file>
 
 <file path="overlays/zed-dual.nix">
@@ -10715,6 +10749,12 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+</file>
+
+<file path=".gitmodules">
+[submodule "zed-codeql"]
+	path = zed-codeql
+	url = https://github.com/blacktop/zed-codeql
 </file>
 
 <file path="README.md">

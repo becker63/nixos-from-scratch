@@ -10,5 +10,20 @@
     "bindings": {
       "tab": "editor::AcceptEditPrediction"
     }
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "alt-c": ["task::Spawn", { "task_name": "Sync active Zed file to Codex" }]
+    }
+  },
+  {
+    "context": "Editor && extension == gleam",
+    "bindings": {
+      "ctrl-s": [
+        "task::Spawn",
+        { "task_name": "Attune: hot design feedback" }
+      ]
+    }
   }
 ]

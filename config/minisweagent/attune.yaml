@@ -1,0 +1,60 @@
+agent:
+  system_template: |
+    You implement concrete, spec-driven changes at the repository root.
+    `SPEC.md` is authoritative. Read only the relevant section before acting;
+    do not dump the entire file or walk it in fixed-size chunks.
+
+    Every tool action is Xonsh 0.23, not Bash. Write Xonsh/Python directly:
+    use `Path` for filesystem/content work, normal Python control flow,
+    `$ENV["NAME"] = value` for environment changes, and `uv run` for project
+    tools. Do not use `cat`, `ls -R`, `find`, `grep -R`, `rg -R`, Bash
+    boilerplate, or shell pipelines for structured work.
+
+    For Python discovery, ast_grep_py via `uv run python` is mandatory. When
+    present, run the repository helper exactly, for example:
+    `uv run python scripts/attune_astgrep.py --kind function_definition
+    --top-level src/attune/composition.py`. It reads the file text before
+    calling `SgRoot`, so do not pass a file path to `SgRoot` yourself. Without
+    the helper, use `SgRoot(Path(path).read_text(encoding="utf-8"),
+    "python").root().find_all(kind="function_definition")`. Do not use `rg`
+    or `grep` to discover Python implementation surfaces. Reserve `rg` for
+    non-Python files or an exact literal only after ast-grep-py has narrowed
+    the target. Then use `scripts/attune_cst.py` plan → preview → apply for
+    structural Python edits; Griffe for static API/source inspection; and
+    focused Ruff, BasedPyright, and an exact pytest node/module. Reuse
+    `scripts/` helpers. Never run a broad pytest suite as reconnaissance. Do
+    not search the repository for a generic greeting or vague task: ask for a
+    concrete SPEC.md requirement instead.
+
+    Keep observations compact. After a change, inspect `jj diff --stat` and
+    run only the smallest relevant check. Do not make paid calls unless the
+    task explicitly requires them. You may make project changes without
+    confirmation, but stay within the stated specification.
+
+    When the task is complete, issue exactly this command by itself:
+    `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`
+  instance_template: |
+    Implement this concrete task according to the root `SPEC.md`:
+
+    {{task}}
+  step_limit: 0
+  cost_limit: 0.0
+  mode: yolo
+  confirm_exit: false
+
+environment:
+  shell: xonsh
+  timeout: 120
+  env:
+    PAGER: cat
+    MANPAGER: cat
+    LESS: -R
+    PIP_PROGRESS_BAR: "off"
+    TQDM_DISABLE: "1"
+
+model:
+  model_class: openrouter
+  model_name: inception/mercury-2
+  model_kwargs:
+    reasoning:
+      effort: medium

@@ -1,0 +1,942 @@
+diff --git a/alacritty/src/cli.rs b/alacritty/src/cli.rs
+index 60e81a3..80411cf 100644
+--- a/alacritty/src/cli.rs
++++ b/alacritty/src/cli.rs
+@@ -258,6 +258,9 @@ pub enum SocketMessage {
+     /// Create a new window in the same Alacritty process.
+     CreateWindow(WindowOptions),
+ 
++    /// Copy the complete primary screen and scrollback buffer.
++    CopyBuffer(IpcCopyBuffer),
++
+     /// Update the Alacritty configuration.
+     Config(IpcConfig),
+ 
+@@ -265,6 +268,19 @@ pub enum SocketMessage {
+     GetConfig(IpcGetConfig),
+ }
+ 
++/// Parameters to the `copy-buffer` IPC subcommand.
++#[cfg(unix)]
++#[derive(Args, Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
++pub struct IpcCopyBuffer {
++    /// Clear the primary screen and scrollback after copying.
++    #[clap(long)]
++    pub clear: bool,
++
++    /// Window ID for the buffer request.
++    #[clap(short, long, allow_hyphen_values = true, env = "ALACRITTY_WINDOW_ID")]
++    pub window_id: Option<i128>,
++}
++
+ /// Migrate the configuration file.
+ #[derive(Args, Clone, Debug)]
+ pub struct MigrateOptions {
+diff --git a/alacritty/src/clipboard.rs b/alacritty/src/clipboard.rs
+index 4426269..fd3cc57 100644
+--- a/alacritty/src/clipboard.rs
++++ b/alacritty/src/clipboard.rs
+@@ -56,15 +56,24 @@ impl Default for Clipboard {
+ 
+ impl Clipboard {
+     pub fn store(&mut self, ty: ClipboardType, text: impl Into<String>) {
++        self.try_store(ty, text).unwrap_or_else(|err| {
++            warn!("Unable to store text in clipboard: {err}");
++        });
++    }
++
++    /// Store text in a clipboard and report provider errors to the caller.
++    pub fn try_store(
++        &mut self,
++        ty: ClipboardType,
++        text: impl Into<String>,
++    ) -> Result<(), String> {
+         let clipboard = match (ty, &mut self.selection) {
+             (ClipboardType::Selection, Some(provider)) => provider,
+-            (ClipboardType::Selection, None) => return,
++            (ClipboardType::Selection, None) => return Ok(()),
+             _ => &mut self.clipboard,
+         };
+ 
+-        clipboard.set_contents(text.into()).unwrap_or_else(|err| {
+-            warn!("Unable to store text in clipboard: {err}");
+-        });
++        clipboard.set_contents(text.into()).map_err(|err| err.to_string())
+     }
+ 
+     pub fn load(&mut self, ty: ClipboardType) -> String {
+diff --git a/alacritty/src/event.rs b/alacritty/src/event.rs
+index 46ecdad..816ba41 100644
+--- a/alacritty/src/event.rs
++++ b/alacritty/src/event.rs
+@@ -289,6 +289,25 @@ impl ApplicationHandler<Event> for Processor {
+ 
+         // Handle events which don't mandate the WindowId.
+         match (event.payload, event.window_id.as_ref()) {
++            // Copy the complete primary terminal buffer.
++            #[cfg(unix)]
++            (EventType::IpcCopyBuffer(clear, stream), window_id) => {
++                let result = match window_id {
++                    Some(window_id) => match self.windows.get_mut(window_id) {
++                        Some(window_context) => {
++                            window_context.copy_primary_buffer(&mut self.clipboard, clear)
++                        },
++                        None => Err(format!("window {window_id:?} was not found")),
++                    },
++                    None => Err(String::from(
++                        "copy-buffer requires --window-id or ALACRITTY_WINDOW_ID",
++                    )),
++                };
++
++                if let Ok(mut stream) = stream.try_clone() {
++                    ipc::send_reply(&mut stream, SocketReply::CopyBuffer(result));
++                }
++            },
+             // Process IPC config update.
+             #[cfg(unix)]
+             (EventType::IpcConfig(ipc_config), window_id) => {
+@@ -549,6 +568,8 @@ pub enum EventType {
+     #[cfg(unix)]
+     IpcConfig(IpcConfig),
+     #[cfg(unix)]
++    IpcCopyBuffer(bool, Arc<UnixStream>),
++    #[cfg(unix)]
+     IpcGetConfig(Arc<UnixStream>),
+     BlinkCursor,
+     BlinkCursorTimeout,
+@@ -1929,7 +1950,10 @@ impl input::Processor<EventProxy, ActionContext<'_, Notifier, EventProxy>> {
+                     TerminalEvent::Exit | TerminalEvent::ChildExit(_) | TerminalEvent::Wakeup => (),
+                 },
+                 #[cfg(unix)]
+-                EventType::IpcConfig(_) | EventType::IpcGetConfig(..) | EventType::Shutdown => (),
++                EventType::IpcConfig(_)
++                | EventType::IpcCopyBuffer(..)
++                | EventType::IpcGetConfig(..)
++                | EventType::Shutdown => (),
+                 EventType::Message(_)
+                 | EventType::ConfigReload(_)
+                 | EventType::CreateWindow(_)
+diff --git a/alacritty/src/polling/ipc.rs b/alacritty/src/polling/ipc.rs
+index b60c7d2..dfcdbee 100644
+--- a/alacritty/src/polling/ipc.rs
++++ b/alacritty/src/polling/ipc.rs
+@@ -73,6 +73,15 @@ impl IpcListener {
+                 let event = Event::new(EventType::CreateWindow(options), None);
+                 let _ = self.event_proxy.send_event(event);
+             },
++            SocketMessage::CopyBuffer(options) => {
++                let window_id =
++                    options.window_id.and_then(|id| u64::try_from(id).ok()).map(WindowId::from);
++                let event = Event::new(
++                    EventType::IpcCopyBuffer(options.clear, Arc::new(stream)),
++                    window_id,
++                );
++                let _ = self.event_proxy.send_event(event);
++            },
+             SocketMessage::Config(ipc_config) => {
+                 let window_id =
+                     ipc_config.window_id.and_then(|id| u64::try_from(id).ok()).map(WindowId::from);
+@@ -129,6 +138,10 @@ fn handle_reply(stream: &UnixStream, message: &SocketMessage) -> IoResult<()> {
+             println!("{config}");
+             Ok(())
+         },
++        (SocketMessage::CopyBuffer(..), SocketReply::CopyBuffer(Ok(()))) => Ok(()),
++        (SocketMessage::CopyBuffer(..), SocketReply::CopyBuffer(Err(err))) => {
++            Err(IoError::other(err.clone()))
++        },
+         // Ignore requests without reply.
+         _ => Ok(()),
+     }
+@@ -234,5 +247,6 @@ pub fn socket_prefix() -> String {
+ /// IPC socket replies.
+ #[derive(Serialize, Deserialize, Debug)]
+ pub enum SocketReply {
++    CopyBuffer(Result<(), String>),
+     GetConfig(String),
+ }
+diff --git a/alacritty/src/window_context.rs b/alacritty/src/window_context.rs
+index 9de6679..aa1fbeb 100644
+--- a/alacritty/src/window_context.rs
++++ b/alacritty/src/window_context.rs
+@@ -27,7 +27,7 @@ use alacritty_terminal::grid::{Dimensions, Scroll};
+ use alacritty_terminal::index::Direction;
+ use alacritty_terminal::sync::FairMutex;
+ use alacritty_terminal::term::test::TermSize;
+-use alacritty_terminal::term::{Term, TermMode};
++use alacritty_terminal::term::{ClipboardType, Term, TermMode};
+ use alacritty_terminal::tty;
+ 
+ use crate::cli::{ParsedOptions, WindowOptions};
+@@ -338,6 +338,29 @@ impl WindowContext {
+         &self.config
+     }
+ 
++    /// Copy the primary terminal buffer, optionally clearing it after a successful copy.
++    #[cfg(unix)]
++    pub fn copy_primary_buffer(
++        &mut self,
++        clipboard: &mut Clipboard,
++        clear: bool,
++    ) -> Result<(), String> {
++        let mut terminal = self.terminal.lock();
++        let text = terminal.primary_buffer_to_string();
++
++        clipboard.try_store(ClipboardType::Clipboard, text)?;
++
++        if clear {
++            terminal.clear_primary_buffer();
++            self.dirty = true;
++            if self.display.window.has_frame {
++                self.display.window.request_redraw();
++            }
++        }
++
++        Ok(())
++    }
++
+     /// Clear the window config overrides.
+     #[cfg(unix)]
+     pub fn reset_window_config(&mut self, config: Rc<UiConfig>) {
+diff --git a/alacritty_terminal/src/term/mod.rs b/alacritty_terminal/src/term/mod.rs
+index 8eb6797..d66c526 100644
+--- a/alacritty_terminal/src/term/mod.rs
++++ b/alacritty_terminal/src/term/mod.rs
+@@ -554,15 +554,51 @@ impl<T> Term<T> {
+         Some(res)
+     }
+ 
++    /// Convert the complete primary screen and scrollback buffer to a String.
++    pub fn primary_buffer_to_string(&self) -> String {
++        let grid = if self.mode.contains(TermMode::ALT_SCREEN) {
++            &self.inactive_grid
++        } else {
++            &self.grid
++        };
++
++        let start = Point::new(grid.topmost_line(), Column(0));
++        let end = Point::new(grid.bottommost_line(), grid.last_column());
++        self.grid_bounds_to_string(grid, start, end).trim_end_matches('\n').to_owned()
++    }
++
++    /// Clear the complete primary screen and scrollback buffer.
++    pub fn clear_primary_buffer(&mut self) {
++        let alt_screen = self.mode.contains(TermMode::ALT_SCREEN);
++        let grid = if alt_screen { &mut self.inactive_grid } else { &mut self.grid };
++
++        grid.clear_history();
++        grid.reset_region(..);
++        grid.cursor.point = Point::default();
++        grid.cursor.input_needs_wrap = false;
++
++        if !alt_screen {
++            self.selection = None;
++            self.vi_mode_cursor = ViModeCursor::default();
++        }
++
++        self.mark_fully_damaged();
++    }
++
+     /// Convert range between two points to a String.
+     pub fn bounds_to_string(&self, start: Point, end: Point) -> String {
++        self.grid_bounds_to_string(&self.grid, start, end)
++    }
++
++    /// Convert range between two points in the specified grid to a String.
++    fn grid_bounds_to_string(&self, grid: &Grid<Cell>, start: Point, end: Point) -> String {
+         let mut res = String::new();
+ 
+         for line in (start.line.0..=end.line.0).map(Line::from) {
+             let start_col = if line == start.line { start.column } else { Column(0) };
+             let end_col = if line == end.line { end.column } else { self.last_column() };
+ 
+-            res += &self.line_to_string(line, start_col..end_col, line == end.line);
++            res += &self.grid_line_to_string(grid, line, start_col..end_col, line == end.line);
+         }
+ 
+         res.strip_suffix('\n').map(str::to_owned).unwrap_or(res)
+@@ -572,12 +608,23 @@ impl<T> Term<T> {
+     fn line_to_string(
+         &self,
+         line: Line,
++        cols: Range<Column>,
++        include_wrapped_wide: bool,
++    ) -> String {
++        self.grid_line_to_string(&self.grid, line, cols, include_wrapped_wide)
++    }
++
++    /// Convert a single line in the specified grid to a String.
++    fn grid_line_to_string(
++        &self,
++        grid: &Grid<Cell>,
++        line: Line,
+         mut cols: Range<Column>,
+         include_wrapped_wide: bool,
+     ) -> String {
+         let mut text = String::new();
+ 
+-        let grid_line = &self.grid[line];
++        let grid_line = &grid[line];
+         let line_length = cmp::min(grid_line.line_length(), cols.end + 1);
+ 
+         // Include wide char when trailing spacer is selected.
+@@ -626,7 +673,7 @@ impl<T> Term<T> {
+             && grid_line[line_length - 1].flags.contains(Flags::LEADING_WIDE_CHAR_SPACER)
+             && include_wrapped_wide
+         {
+-            text.push(self.grid[line - 1i32][Column(0)].c);
++            text.push(grid[line - 1i32][Column(0)].c);
+         }
+ 
+         text
+@@ -2757,6 +2804,55 @@ mod tests {
+         assert_eq!(term.grid()[cursor].c, '▒');
+     }
+ 
++    #[test]
++    fn primary_buffer_includes_scrollback_and_can_be_cleared() {
++        let size = TermSize::new(8, 3);
++        let mut term = Term::new(Config::default(), &size, VoidListener);
++
++        for (index, text) in ["one", "two", "three", "four"].into_iter().enumerate() {
++            for character in text.chars() {
++                term.input(character);
++            }
++
++            if index != 3 {
++                term.carriage_return();
++                term.newline();
++            }
++        }
++
++        assert_eq!(term.primary_buffer_to_string(), "one\ntwo\nthree\nfour");
++        assert_eq!(term.history_size(), 1);
++
++        term.clear_primary_buffer();
++
++        assert_eq!(term.primary_buffer_to_string(), "");
++        assert_eq!(term.history_size(), 0);
++        assert_eq!(term.grid().cursor.point, Point::default());
++    }
++
++    #[test]
++    fn primary_buffer_ignores_active_alternate_screen() {
++        let size = TermSize::new(8, 3);
++        let mut term = Term::new(Config::default(), &size, VoidListener);
++
++        for character in "primary".chars() {
++            term.input(character);
++        }
++
++        term.swap_alt();
++        term.goto(0, 0);
++        for character in "alt".chars() {
++            term.input(character);
++        }
++
++        assert_eq!(term.primary_buffer_to_string(), "primary");
++
++        term.clear_primary_buffer();
++
++        assert_eq!(term.primary_buffer_to_string(), "");
++        assert_eq!(term.bounds_to_string(Point::default(), Point::new(Line(0), Column(7))), "alt");
++    }
++
+     #[test]
+     fn clearing_viewport_keeps_history_position() {
+         let size = TermSize::new(10, 20);
+diff --git a/extra/completions/_alacritty b/extra/completions/_alacritty
+index 971d93c..6aeeba9 100644
+--- a/extra/completions/_alacritty
++++ b/extra/completions/_alacritty
+@@ -76,6 +76,15 @@ _arguments "${_arguments_options[@]}" : \
+ '--help[Print help]' \
+ && ret=0
+ ;;
++(copy-buffer)
++_arguments "${_arguments_options[@]}" : \
++'-w+[Window ID for the buffer request]:WINDOW_ID:_default' \
++'--window-id=[Window ID for the buffer request]:WINDOW_ID:_default' \
++'--clear[Clear the primary screen and scrollback after copying]' \
++'-h[Print help]' \
++'--help[Print help]' \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ '-w+[Window ID for the new config]:WINDOW_ID:_default' \
+@@ -111,6 +120,10 @@ _arguments "${_arguments_options[@]}" : \
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+ ;;
++(copy-buffer)
++_arguments "${_arguments_options[@]}" : \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+@@ -174,6 +187,10 @@ _arguments "${_arguments_options[@]}" : \
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+ ;;
++(copy-buffer)
++_arguments "${_arguments_options[@]}" : \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+@@ -235,6 +252,7 @@ _alacritty__help__migrate_commands() {
+ _alacritty__help__msg_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
++'copy-buffer:Copy the complete primary screen and scrollback buffer' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+     )
+@@ -245,6 +263,11 @@ _alacritty__help__msg__config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty help msg config commands' commands "$@"
+ }
++(( $+functions[_alacritty__help__msg__copy-buffer_commands] )) ||
++_alacritty__help__msg__copy-buffer_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty help msg copy-buffer commands' commands "$@"
++}
+ (( $+functions[_alacritty__help__msg__create-window_commands] )) ||
+ _alacritty__help__msg__create-window_commands() {
+     local commands; commands=()
+@@ -264,6 +287,7 @@ _alacritty__migrate_commands() {
+ _alacritty__msg_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
++'copy-buffer:Copy the complete primary screen and scrollback buffer' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+ 'help:Print this message or the help of the given subcommand(s)' \
+@@ -275,6 +299,11 @@ _alacritty__msg__config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty msg config commands' commands "$@"
+ }
++(( $+functions[_alacritty__msg__copy-buffer_commands] )) ||
++_alacritty__msg__copy-buffer_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty msg copy-buffer commands' commands "$@"
++}
+ (( $+functions[_alacritty__msg__create-window_commands] )) ||
+ _alacritty__msg__create-window_commands() {
+     local commands; commands=()
+@@ -289,6 +318,7 @@ _alacritty__msg__get-config_commands() {
+ _alacritty__msg__help_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
++'copy-buffer:Copy the complete primary screen and scrollback buffer' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+ 'help:Print this message or the help of the given subcommand(s)' \
+@@ -300,6 +330,11 @@ _alacritty__msg__help__config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty msg help config commands' commands "$@"
+ }
++(( $+functions[_alacritty__msg__help__copy-buffer_commands] )) ||
++_alacritty__msg__help__copy-buffer_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty msg help copy-buffer commands' commands "$@"
++}
+ (( $+functions[_alacritty__msg__help__create-window_commands] )) ||
+ _alacritty__msg__help__create-window_commands() {
+     local commands; commands=()
+diff --git a/extra/completions/alacritty.bash b/extra/completions/alacritty.bash
+index a52f507..e95c257 100644
+--- a/extra/completions/alacritty.bash
++++ b/extra/completions/alacritty.bash
+@@ -37,6 +37,9 @@ _alacritty() {
+             alacritty__help__msg,config)
+                 cmd="alacritty__help__msg__config"
+                 ;;
++            alacritty__help__msg,copy-buffer)
++                cmd="alacritty__help__msg__copy__buffer"
++                ;;
+             alacritty__help__msg,create-window)
+                 cmd="alacritty__help__msg__create__window"
+                 ;;
+@@ -46,6 +49,9 @@ _alacritty() {
+             alacritty__msg,config)
+                 cmd="alacritty__msg__config"
+                 ;;
++            alacritty__msg,copy-buffer)
++                cmd="alacritty__msg__copy__buffer"
++                ;;
+             alacritty__msg,create-window)
+                 cmd="alacritty__msg__create__window"
+                 ;;
+@@ -58,6 +64,9 @@ _alacritty() {
+             alacritty__msg__help,config)
+                 cmd="alacritty__msg__help__config"
+                 ;;
++            alacritty__msg__help,copy-buffer)
++                cmd="alacritty__msg__help__copy__buffer"
++                ;;
+             alacritty__msg__help,create-window)
+                 cmd="alacritty__msg__help__create__window"
+                 ;;
+@@ -207,7 +216,7 @@ _alacritty() {
+             return 0
+             ;;
+         alacritty__help__msg)
+-            opts="create-window config get-config"
++            opts="create-window copy-buffer config get-config"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -234,6 +243,20 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__help__msg__copy__buffer)
++            opts=""
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__help__msg__create__window)
+             opts=""
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+@@ -307,7 +330,7 @@ _alacritty() {
+             return 0
+             ;;
+         alacritty__msg)
+-            opts="-s -h --socket --help create-window config get-config help"
++            opts="-s -h --socket --help create-window copy-buffer config get-config help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -372,6 +395,28 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__msg__copy__buffer)
++            opts="-w -h --clear --window-id --help"
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                --window-id)
++                    COMPREPLY=($(compgen -f "${cur}"))
++                    return 0
++                    ;;
++                -w)
++                    COMPREPLY=($(compgen -f "${cur}"))
++                    return 0
++                    ;;
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__msg__create__window)
+             opts="-e -T -o -h --working-directory --hold --command --title --class --option --help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+@@ -452,7 +497,7 @@ _alacritty() {
+             return 0
+             ;;
+         alacritty__msg__help)
+-            opts="create-window config get-config help"
++            opts="create-window copy-buffer config get-config help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -479,6 +524,20 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__msg__help__copy__buffer)
++            opts=""
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__msg__help__create__window)
+             opts=""
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+diff --git a/extra/completions/alacritty.fish b/extra/completions/alacritty.fish
+index 5f58ce4..0aa96ce 100644
+--- a/extra/completions/alacritty.fish
++++ b/extra/completions/alacritty.fish
+@@ -43,12 +43,13 @@ complete -c alacritty -n "__fish_alacritty_needs_command" -s V -l version -d 'Pr
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "msg" -d 'Send a message to the Alacritty socket'
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "migrate" -d 'Migrate the configuration file'
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -s s -l socket -d 'IPC socket connection path override' -r -F
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -s h -l help -d 'Print help'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -f -a "config" -d 'Update the Alacritty configuration'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window config get-config help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -s s -l socket -d 'IPC socket connection path override' -r -F
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -s h -l help -d 'Print help'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "config" -d 'Update the Alacritty configuration'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -l working-directory -d 'Start the shell in the specified working directory' -r -F
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s e -l command -d 'Command and args to execute (must be last argument)' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s T -l title -d 'Defines the window title [default: Alacritty]' -r
+@@ -56,12 +57,16 @@ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s o -l option -d 'Override configuration file options [example: \'cursor.style="Beam"\']' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -l hold -d 'Remain open after child process exit'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s h -l help -d 'Print help'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -s w -l window-id -d 'Window ID for the buffer request' -r
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -l clear -d 'Clear the primary screen and scrollback after copying'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -s h -l help -d 'Print help'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s w -l window-id -d 'Window ID for the new config' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s r -l reset -d 'Clear all runtime configuration changes'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s h -l help -d 'Print help (see more with \'--help\')'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from get-config" -s w -l window-id -d 'Window ID for the config request' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from get-config" -s h -l help -d 'Print help (see more with \'--help\')'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "config" -d 'Update the Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+@@ -75,5 +80,6 @@ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and not __fish
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and not __fish_seen_subcommand_from msg migrate help" -f -a "migrate" -d 'Migrate the configuration file'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and not __fish_seen_subcommand_from msg migrate help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
++complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "config" -d 'Update the Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+diff --git a/extra/man/alacritty-msg.1.scd b/extra/man/alacritty-msg.1.scd
+index 3a77f8c..8199995 100644
+--- a/extra/man/alacritty-msg.1.scd
++++ b/extra/man/alacritty-msg.1.scd
+@@ -53,6 +53,22 @@ making it possible to control Alacritty without directly accessing it.
+ 
+ 			Command and args to execute (must be last argument).
+ 
++*copy-buffer*
++
++	Copy the complete primary screen and scrollback to the clipboard.
++
++	*FLAGS*
++		*--clear*
++
++			Clear the primary screen and scrollback after a successful copy.
++
++	*OPTIONS*
++		*-w, --window-id* _<WINDOW_ID>_
++
++			Window ID for the buffer request.
++
++			Default: _$ALACRITTY_WINDOW_ID_
++
+ *config*
+ 
+	Update the Alacritty configuration.
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+index a651d4e..d9cd04d 100644
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -79,6 +79,45 @@ const SHORTENER: char = '…';
+ /// Color which is used to highlight damaged rects when debugging.
+ const DAMAGE_RECT_COLOR: Rgb = Rgb::new(255, 0, 255);
+ 
++/// Zed-style terminal line-number gutter width in character cells.
++const SHELL_GUTTER_COLUMNS: usize = 6;
++// Give the gutter a visible cool tint from an empty buffer onward. Heat is
++// reserved for actual capacity pressure, while the cursor is a small flash
++// of lemon so it remains easy to pick out when the terminal is busy.
++const SHELL_GUTTER_LINE_NUMBER: Rgb = Rgb::new(125, 211, 252);
++const SHELL_GUTTER_ACTIVE_LINE_NUMBER: Rgb = Rgb::new(254, 243, 199);
++const SHELL_GUTTER_TEPID: Rgb = Rgb::new(196, 181, 253);
++const SHELL_GUTTER_WARM: Rgb = Rgb::new(251, 191, 36);
++const SHELL_GUTTER_HOT: Rgb = Rgb::new(251, 113, 133);
++
++fn shell_gutter_blend(start: Rgb, end: Rgb, amount: f32) -> Rgb {
++    let amount = amount.clamp(0., 1.);
++    let blend = |start: u8, end: u8| {
++        (f32::from(start) + (f32::from(end) - f32::from(start)) * amount).round() as u8
++    };
++    Rgb::new(blend(start.r, end.r), blend(start.g, end.g), blend(start.b, end.b))
++}
++
++fn shell_gutter_temperature(history_usage: f32, active: bool) -> Rgb {
++    let cool = if active { SHELL_GUTTER_ACTIVE_LINE_NUMBER } else { SHELL_GUTTER_LINE_NUMBER };
++    match history_usage {
++        usage if usage <= 0.20 => cool,
++        usage if usage <= 0.55 => shell_gutter_blend(cool, SHELL_GUTTER_TEPID, (usage - 0.20) / 0.35),
++        usage if usage <= 0.85 => shell_gutter_blend(SHELL_GUTTER_TEPID, SHELL_GUTTER_WARM, (usage - 0.55) / 0.30),
++        usage => shell_gutter_blend(SHELL_GUTTER_WARM, SHELL_GUTTER_HOT, (usage - 0.85) / 0.15),
++    }
++}
++
++fn shell_gutter_shimmer(color: Rgb, line_number: usize) -> Rgb {
++    static START: OnceLock<Instant> = OnceLock::new();
++    let elapsed = START.get_or_init(Instant::now).elapsed().as_secs_f32();
++    // A slow diagonal glint turns static line numbers into a quiet, readable
++    // motion cue without changing the terminal grid or its color palette.
++    let phase = elapsed * 2.4 + line_number as f32 * 0.37;
++    let strength = ((phase.sin() + 1.) * 0.5) * 0.16;
++    shell_gutter_blend(color, SHELL_GUTTER_ACTIVE_LINE_NUMBER, strength)
++}
++
+ #[derive(Debug)]
+ pub enum Error {
+     /// Error dealing with window management.
+@@ -242,6 +247,10 @@ impl SizeInfo<f32> {
+             padding_y = Self::dynamic_padding(padding_y.floor(), height, cell_height);
+         }
+ 
++        if padding_x != 0. {
++            padding_x += SHELL_GUTTER_COLUMNS as f32 * cell_width;
++        }
++
+         let lines = (height - 2. * padding_y) / cell_height;
+         let screen_lines = cmp::max(lines as usize, MIN_SCREEN_LINES);
+ 
+@@ -1010,5 +1039,48 @@ impl Display {
+ 
+         self.draw_render_timer(config);
+ 
++        // Draw a read-only editor gutter after the terminal's grid and
++        // rectangle passes. The color continuously warms from Zed gray to
++        // yellow and red as scrollback approaches its configured limit.
++        let gutter_width = SHELL_GUTTER_COLUMNS as f32 * size_info.cell_width();
++        let gutter_padding = size_info.padding_x() - gutter_width;
++        let gutter_size = SizeInfo {
++            width: gutter_width + 2. * gutter_padding,
++            padding_x: gutter_padding,
++            columns: SHELL_GUTTER_COLUMNS,
++            ..size_info
++        };
++        self.renderer.resize(&gutter_size);
++        let first_line = total_lines.saturating_sub(display_offset + size_info.screen_lines());
++        let history_limit = config.scrolling.history().max(1) as f32;
++        let history_usage = total_lines.saturating_sub(size_info.screen_lines()) as f32 / history_limit;
++        let view_limit = total_lines.max(1) as f32;
++        let cursor_viewport_line = term::point_to_viewport(display_offset, cursor_point)
++            .map(|point| point.line);
++
++        for viewport_line in 0..size_info.screen_lines() {
++            let line_number = first_line + viewport_line + 1;
++            let view_usage = line_number as f32 / view_limit;
++            let temperature = 0.65 * history_usage + 0.35 * view_usage;
++            let color = shell_gutter_shimmer(
++                shell_gutter_temperature(temperature, cursor_viewport_line == Some(viewport_line)),
++                line_number,
++            );
++            let label = if cursor_viewport_line == Some(viewport_line) {
++                format!("{line_number:>4} ◆")
++            } else {
++                format!("{line_number:>4} │")
++            };
++            self.renderer.draw_string(
++                Point::new(viewport_line, Column(0)),
++                color,
++                background_color,
++                label.chars(),
++                &gutter_size,
++                &mut self.glyph_cache,
++            );
++        }
++        self.renderer.resize(&size_info);
++
+         // Draw hyperlink uri preview.
+         if has_highlighted_hint {
+diff --git a/alacritty_terminal/src/term/mod.rs b/alacritty_terminal/src/term/mod.rs
+index 4d35e03..aa8bce1 100644
+--- a/alacritty_terminal/src/term/mod.rs
++++ b/alacritty_terminal/src/term/mod.rs
+@@ -642,3 +642,9 @@ impl<T> Term<T> {
+     }
+ 
++    /// Whether the shell has requested a long-context view without gutter heat.
++    #[inline]
++    pub fn shell_gutter_heat_disabled(&self) -> bool {
++        self.shell_gutter_heat_disabled
++    }
++
+     /// Access to the raw grid data structure.
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+index a651d4e..e42c63d 100644
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -4,6 +4,8 @@
+ use std::cmp;
++use std::fs;
+ use std::fmt::{self, Formatter};
+ use std::mem::{self, ManuallyDrop};
+ use std::num::NonZeroU32;
+ use std::ops::Deref;
++use std::sync::{Mutex, OnceLock};
+ use std::time::{Duration, Instant};
+@@ -79,2 +81,63 @@ const DAMAGE_RECT_COLOR: Rgb = Rgb::new(255, 0, 255);
+ 
++/// Lowest-cost automatic detection for interactive coding-agent harnesses.
++const SHELL_GUTTER_HARNESS_POLL: Duration = Duration::from_millis(250);
++const SHELL_GUTTER_HARNESS_NAMES: &[&str] = &[
++    "aider", "amp", "claude", "claude-code", "codex", "codex-code-mode-host",
++    "codex-ext", ".codex-wrapped", "copilot", "copilot-cli", "cursor-agent", "gemini",
++    "goose", "kilocode", "opencode", "pi", "qwen", "qwen-code", "roo", "roo-code",
++];
++
++#[derive(Default)]
++struct ShellGutterHarnessCache {
++    last_checked: Option<Instant>,
++    active: bool,
++}
++
++fn shell_gutter_agent_harness_active() -> bool {
++    #[cfg(target_os = "linux")]
++    {
++        static CACHE: OnceLock<Mutex<ShellGutterHarnessCache>> = OnceLock::new();
++        let mut cache = CACHE.get_or_init(Default::default).lock().expect("harness cache poisoned");
++        if let Some(last_checked) = cache.last_checked {
++            if last_checked.elapsed() < SHELL_GUTTER_HARNESS_POLL {
++                return cache.active;
++            }
++        }
++
++        let mut processes = vec![std::process::id()];
++        let mut inspected = 0;
++        cache.active = false;
++        while let Some(pid) = processes.pop() {
++            inspected += 1;
++            if inspected > 256 {
++                break;
++            }
++
++            let children = format!("/proc/{pid}/task/{pid}/children");
++            let Ok(children) = fs::read_to_string(children) else { continue };
++            for child in children.split_whitespace().filter_map(|pid| pid.parse::<u32>().ok()) {
++                let comm = format!("/proc/{child}/comm");
++                if let Ok(name) = fs::read_to_string(comm) {
++                    if SHELL_GUTTER_HARNESS_NAMES
++                        .iter()
++                        .any(|harness| name.trim().eq_ignore_ascii_case(harness))
++                    {
++                        cache.active = true;
++                        break;
++                    }
++                }
++                processes.push(child);
++            }
++            if cache.active {
++                break;
++            }
++        }
++        cache.last_checked = Some(Instant::now());
++        cache.active
++    }
++
++    #[cfg(not(target_os = "linux"))]
++    false
++}
++
+ #[derive(Debug)]
+diff --git a/alacritty_terminal/src/term/mod.rs b/alacritty_terminal/src/term/mod.rs
+index 4d35e03..f1b89ea 100644
+--- a/alacritty_terminal/src/term/mod.rs
++++ b/alacritty_terminal/src/term/mod.rs
+@@ -310,6 +310,9 @@ pub struct Term<T> {
+     /// Current title of the window.
+     title: Option<String>,
+ 
++    /// Whether the shell has requested a long-context view without gutter heat.
++    shell_gutter_heat_disabled: bool,
++
+     /// Stack of saved window titles. When a title is popped from this stack, the `title` for the
+     /// term is set.
+     title_stack: Vec<Option<String>>,
+@@ -439,6 +443,7 @@ impl<T> Term<T> {
+             is_focused: Default::default(),
+             selection: Default::default(),
+             title: Default::default(),
++            shell_gutter_heat_disabled: Default::default(),
+             mode: Default::default(),
+         }
+     }
+@@ -2220,4 +2225,13 @@ impl<T: EventListener> Handler for Term<T> {
+     fn set_title(&mut self, title: Option<String>) {
+         trace!("Setting title to '{title:?}'");
+ 
++        match title.as_deref() {
++            Some("\u{2063}codex") => self.shell_gutter_heat_disabled = true,
++            // The Xonsh Codex wrapper sends an empty title after the child
++            // exits. Ordinary title updates from Codex deliberately retain
++            // the setting, since they replace its initial marker.
++            Some("") | None => self.shell_gutter_heat_disabled = false,
++            _ => {},
++        }
++
+         self.title.clone_from(&title);
+diff --git a/alacritty/src/scheduler.rs b/alacritty/src/scheduler.rs
+--- a/alacritty/src/scheduler.rs
++++ b/alacritty/src/scheduler.rs
+@@ -27,6 +27,7 @@ pub enum Topic {
+     SelectionScrolling,
+     DelayedSearch,
+     BlinkCursor,
+     BlinkTimeout,
++    ShellGutterPulse,
+     Frame,
+ }
+diff --git a/alacritty/src/event.rs b/alacritty/src/event.rs
+--- a/alacritty/src/event.rs
++++ b/alacritty/src/event.rs
+@@ -551,6 +551,7 @@ pub enum EventType {
+     IpcGetConfig(Arc<UnixStream>),
+     BlinkCursor,
+     BlinkCursorTimeout,
++    ShellGutterPulse,
+     SearchNext,
+     #[cfg(unix)]
+     Shutdown,
+@@ -1859,6 +1860,9 @@ impl<'a, T: EventListener> Processor<'a, T> {
+                     self.ctx.display.cursor_hidden = false;
+                     *self.ctx.dirty = true;
+                 },
++                EventType::ShellGutterPulse => {
++                    *self.ctx.dirty = true;
++                },
+                 // Add message only if it's not already queued.
+                 EventType::Message(message) if !self.ctx.message_buffer.is_queued(&message) => {
+                     self.ctx.message_buffer.push(message);
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -1046,1 +1046,13 @@ impl Display {
++        // A gentle five-FPS redraw keeps the gutter's diagonal glint moving
++        // without turning an otherwise idle terminal into a busy render loop.
++        let timer_id = TimerId::new(Topic::ShellGutterPulse, self.window.id());
++        if !scheduler.scheduled(timer_id) {
++            scheduler.schedule(
++                Event::new(EventType::ShellGutterPulse, self.window.id()),
++                Duration::from_millis(200),
++                true,
++                timer_id,
++            );
++        }
++
+         self.damage_tracker.swap_damage();
+     }

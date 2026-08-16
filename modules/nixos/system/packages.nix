@@ -155,17 +155,53 @@ let
       sleep "$interval"
     done
   '';
+
+  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (builtins.readFile ../../../config/minisweagent/attune.yaml);
+
+  miniAttune = pkgs.writeShellApplication {
+    name = "mini-attune";
+    runtimeInputs = [
+      pkgs.mini-swe-agent
+      pkgs.xonsh
+    ];
+    text = ''
+      # mini's setup wizard is global-state based, even with an explicit
+      # config. This launcher is fully configured below, so bypass it.
+      export MSWEA_CONFIGURED=true
+      export MSWEA_SILENT_STARTUP=1
+      export MSWEA_ATTUNE_CONVENTIONS=1
+
+      if [ ! -f SPEC.md ]; then
+        echo "mini-attune: SPEC.md is required at the project root" >&2
+        exit 2
+      fi
+
+      if [ -f .env ]; then
+        set -a
+        # shellcheck source=/dev/null
+        . ./.env
+        set +a
+      fi
+
+      if [ -z "''${OPENROUTER_API_KEY:-}" ]; then
+        echo "mini-attune: add OPENROUTER_API_KEY=... to this project's .env" >&2
+        exit 2
+      fi
+
+      exec mini --yolo --exit-immediately --config '${miniAttuneConfig}' "$@"
+    '';
+  };
 in
 {
   environment.systemPackages = with pkgs; [
     nerd-fonts.jetbrains-mono
     nerd-fonts.zed-mono
     codex
-    lorri
+    mini-swe-agent
+    miniAttune
     fastfetch
     chargeStatus
     chargeMonitor
-    antigravity-fhs
     wget
     git
     iproute2
@@ -178,9 +214,11 @@ in
     distrobox-tui
     boxbuddy
     xonsh
+    yek
     tree
     starship
     unzip
+    direnv
     nix-direnv
     pavucontrol
     gnome-keyring

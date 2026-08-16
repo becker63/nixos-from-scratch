@@ -2,7 +2,6 @@
 
 {
   home.packages = with pkgs; [
-    vscode-fhs
     # Bundle Widevine CDM so DRM-protected streaming works on aarch64.
     (chromium.override { enableWideVine = true; })
     firefox
@@ -30,6 +29,7 @@
     bottom
     tofi
     alacritty
+    attune-demo-director
     patchelf
     gnumake
     hyprpicker
@@ -77,5 +77,6 @@
 
     mosh
     code-cursor-fhs
+    jj
   ];
 }

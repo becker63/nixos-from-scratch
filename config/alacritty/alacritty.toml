@@ -4,10 +4,17 @@
 
 [window.padding]
 y = 6
+# The renderer adds a six-cell gutter dynamically, including at larger font
+# sizes. This remains the ordinary edge inset and does not change the palette.
 x = 6
 
 [selection]
 save_to_clipboard = true
+
+[scrolling]
+# Keep enough scrollback for long sessions. The gutter reaches red only as
+# this 100,000-line buffer fills.
+history = 100000
 
 [font]
 normal = { family = "JetBrainsMono Nerd Font Propo", style = "Regular" }

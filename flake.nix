@@ -7,6 +7,14 @@
     nixverse = {
       url = "github:hgl/nixverse/129f0649abeba9df041dc75a6e7b8f70d78b5bd0";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixos-anywhere.follows = "nixos-anywhere";
+    };
+
+    # Keep Nixverse's deployment app compatible with the current Nixpkgs
+    # system matrix instead of inheriting its older transitive lock.
+    nixos-anywhere = {
+      url = "github:nix-community/nixos-anywhere";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
     home-manager-unstable = {
@@ -42,12 +50,12 @@
       url = "github:anki-code/xontrib-prompt-starship";
       flake = false;
     };
-    codex-ext-src = {
-      url = "path:/home/becker/projects/codex-ext";
-      flake = false;
-    };
     copier-templates-extensions-src = {
       url = "github:copier-org/copier-templates-extensions";
+      flake = false;
+    };
+    mini-swe-agent-src = {
+      url = "git+https://github.com/SWE-agent/mini-swe-agent.git?rev=a83fcae82d2a08f0ee0c688f9d137b3566c097f8";
       flake = false;
     };
   };
@@ -55,9 +63,9 @@
   outputs =
     inputs@{ nixverse, ... }:
     let
-      # Nixverse probes optional directories with pathExists. Passing the
-      # already-realized flake store path without its source-copy context
-      # avoids a cold `nix flake check` trying to inspect a deferred copy.
+      # Nixverse requires `flakePath`, but a normal path retains source-copy
+      # context and evaluates to an invalid deferred store path. Keep this
+      # context-free string until Nixverse accepts a regular flake path.
       flakePath = builtins.unsafeDiscardStringContext (toString ./.);
     in
     nixverse.lib.load {

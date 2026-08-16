@@ -10,7 +10,7 @@ final: prev: {
 
       xontrib-jedi = ps-final.buildPythonPackage rec {
         pname = "xontrib-jedi";
-        version = "git";
+        version = "0.2.0";
         pyproject = true;
         src = xontrib-jedi-src;
 
@@ -20,7 +20,7 @@ final: prev: {
 
       xontrib-prompt-starship = ps-final.buildPythonPackage {
         pname = "xontrib-prompt-starship";
-        version = "git";
+        version = "0.3.8";
         src = xontrib-prompt-starship-src;
         doCheck = false;
         pyproject = true;
@@ -30,8 +30,12 @@ final: prev: {
       };
 
       copier-templates-extensions = ps-final.buildPythonPackage rec {
-        pname = "copier-templates-extensions";
-        version = "git";
+        # The Python distribution is singular; the plural attribute name is
+        # retained below for compatibility with the existing Xonsh overlay.
+        pname = "copier-template-extensions";
+        # PDM derives the wheel version from the source; keep this valid PEP
+        # 440 metadata so current nixpkgs' Python checks can compare it.
+        version = "0.3.3";
         src = copier-templates-extensions-src;
 
         pyproject = true;

@@ -1,6 +1,10 @@
 { outputs', ... }:
 
 {
+  attune-demo-director = {
+    type = "app";
+    program = "${outputs'.packages.attune-demo-director}/bin/attune-demo-director";
+  };
   zed-deps-report = {
     type = "app";
     program = "${outputs'.packages.zed-deps-report}/bin/zed-deps-report";

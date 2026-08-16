@@ -468,13 +468,10 @@ EOF
     ];
 
     postPatch = (old.postPatch or "") + ''
-      runtime_file="packages/opencode/src/cli/cmd/tui/plugin/runtime.ts"
-      if [ ! -f "$runtime_file" ]; then
-        runtime_file="src/cli/cmd/tui/plugin/runtime.ts"
-      fi
-      session_file="packages/opencode/src/cli/cmd/tui/routes/session/index.tsx"
-      session_v2_file="packages/opencode/src/cli/cmd/tui/feature-plugins/system/session-v2.tsx"
-      thinking_file="packages/opencode/src/cli/cmd/tui/context/thinking.ts"
+      # OpenCode 1.18 moved its interactive UI into the standalone tui package.
+      runtime_file="packages/opencode/src/plugin/tui/runtime.ts"
+      session_file="packages/tui/src/routes/session/index.tsx"
+      thinking_file="packages/tui/src/context/thinking.ts"
       run_entry_body_file="packages/opencode/src/cli/cmd/run/entry.body.ts"
       run_session_data_file="packages/opencode/src/cli/cmd/run/session-data.ts"
 
@@ -484,10 +481,8 @@ EOF
       grep -q '"@opentui/solid/jsx-runtime": solidJsxRuntime' "$runtime_file"
       grep -q 'nodeModulesBareSpecifiers: true' "$runtime_file"
 
-      for reasoning_file in "$session_file" "$session_v2_file"; do
-        perl -0pi -e 's#\.replace\("\[REDACTED\]", ""\)\.trim\(\)#.replace("[REDACTED]", "").replace(/<!--\\s*-->/g, "").trim()#g' "$reasoning_file"
-        grep -Fq 'replace(/<!--\s*-->/g, "")' "$reasoning_file"
-      done
+      perl -0pi -e 's#\.replace\("\[REDACTED\]", ""\)\.trim\(\)#.replace("[REDACTED]", "").replace(/<!--\\s*-->/g, "").trim()#g' "$session_file"
+      grep -Fq 'replace(/<!--\s*-->/g, "")' "$session_file"
       perl -0pi -e 's#const content = text\.trim\(\)#const content = text.replace(/<!--\\s*-->/g, "").trim()#' "$thinking_file"
       grep -Fq 'text.replace(/<!--\s*-->/g, "")' "$thinking_file"
       perl -0pi -e 's#const clean = raw\.replace\(/\\\[REDACTED\\\]/g, ""\)#const clean = raw.replace(/\\[REDACTED\\]/g, "").replace(/<!--\\s*-->/g, "")#' "$run_entry_body_file"

@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  sourceRoot,
   systemBuild,
 }:
 
@@ -15,7 +16,7 @@ let
   graphicsPackageNames = map packageName config.hardware.graphics.extraPackages;
 
   m1n1 = config.system.build.m1n1;
-  peripheralFirmwareDirectory = toString config.hardware.asahi.peripheralFirmwareDirectory;
+  peripheralFirmwareSource = "${sourceRoot}/firmware";
 
   expectedGroups = [
     "docker"
@@ -71,16 +72,8 @@ let
 
   portalNames = map packageName config.xdg.portal.extraPortals;
 
-  allUnitNames =
-    builtins.attrNames config.systemd.services
-    ++ builtins.attrNames config.systemd.timers
-    ++ builtins.attrNames config.systemd.user.services
-    ++ builtins.attrNames config.systemd.user.timers;
-
   removedPackageNames = [
     "powerstat"
-    "tmux"
-    "tmuxp"
     "wgetpaste"
   ];
 
@@ -120,10 +113,9 @@ let
     (expect config.hardware.asahi.extractPeripheralFirmware "Asahi peripheral firmware extraction must remain enabled")
     (expect (
       config.hardware.asahi.peripheralFirmwareDirectory != null
-      && lib.hasSuffix "/firmware" (toString config.hardware.asahi.peripheralFirmwareDirectory)
-    ) "the Asahi peripheral firmware source must remain the repository firmware directory")
-    (expect (builtins.pathExists "${peripheralFirmwareDirectory}/all_firmware.tar.gz") "the extracted Apple firmware archive is missing")
-    (expect (builtins.pathExists "${peripheralFirmwareDirectory}/kernelcache.release.mac14g") "the mac14g kernelcache used for Apple firmware extraction is missing")
+    ) "the Asahi peripheral firmware extraction source must remain configured")
+    (expect (builtins.pathExists "${peripheralFirmwareSource}/all_firmware.tar.gz") "the Apple firmware archive is missing")
+    (expect (builtins.pathExists "${peripheralFirmwareSource}/kernelcache.release.mac14g") "the mac14g kernelcache used for Apple firmware extraction is missing")
     (expect config.hardware.asahi.setupAsahiSound "Asahi speaker/audio setup must remain enabled")
     (expect config.hardware.graphics.enable "hardware graphics acceleration must remain enabled")
     (map (name: expect (builtins.elem name graphicsPackageNames) "hardware graphics is missing ${name}")
@@ -269,9 +261,6 @@ let
         !builtins.elem name systemPackageNames
       ) "removed package ${name} returned to environment.systemPackages"
     ) removedPackageNames)
-    (expect (
-      !lib.any (name: lib.hasInfix "tmux" name) allUnitNames
-    ) "a tmux or tmux-prune system/user service or timer returned")
   ];
 
   invariantsHold = builtins.deepSeq evaluationFailures (evaluationFailures == [ ]);
@@ -388,16 +377,10 @@ let
           | grep -F '${config.home-manager.users.becker.home.activationPackage}' >/dev/null \
           || fail "the generated Home Manager unit no longer activates the evaluated generation"
 
-        for executable in powerstat tmux tmuxp wgetpaste; do
+        for executable in powerstat wgetpaste; do
           [ ! -e "$system_build/sw/bin/$executable" ] \
             || fail "removed executable returned to the target system: $executable"
         done
-
-        tmux_unit="$(find -L \
-          "$system_build/etc/systemd/system" \
-          "$system_build/etc/systemd/user" \
-          -iname '*tmux*' -print -quit)"
-        [ -z "$tmux_unit" ] || fail "removed tmux unit returned to the target system: $tmux_unit"
 
         echo "ok: nixos-btw evaluation and generated-system invariants are preserved"
       '';

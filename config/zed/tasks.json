@@ -12,5 +12,30 @@
     "hide": "always",
     "allow_concurrent_runs": true,
     "use_new_terminal": true
+  },
+  {
+    "label": "Sync active Zed file to Codex",
+    "command": "sh",
+    "args": [
+      "-c",
+      "printf '%s\\n%s\\n' \"$1\" \"$2\" > /tmp/zed-codex-active-file",
+      "sh",
+      "$ZED_WORKTREE_ROOT",
+      "$ZED_FILE"
+    ],
+    "save": "current",
+    "allow_concurrent_runs": true,
+    "use_new_terminal": false,
+    "reveal": "never",
+    "hide": "always"
+  },
+  {
+    "label": "Attune: hot design feedback",
+    "command": "true",
+    "save": "current",
+    "allow_concurrent_runs": false,
+    "use_new_terminal": false,
+    "reveal": "never",
+    "hide": "always"
   }
 ]

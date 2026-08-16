@@ -1,0 +1,129 @@
+diff --git a/src/minisweagent/environments/local.py b/src/minisweagent/environments/local.py
+--- a/src/minisweagent/environments/local.py
++++ b/src/minisweagent/environments/local.py
+@@ -13,6 +13,7 @@
+ class LocalEnvironmentConfig(BaseModel):
+     cwd: str = ""
+     env: dict[str, str] = {}
++    shell: str = "sh"
+     timeout: int = 30
+ 
+ 
+@@ -26,7 +27,7 @@
+         command = action.get("command", "")
+         cwd = cwd or self.config.cwd or os.getcwd()
+         try:
+-            result = _run(command, cwd, os.environ | self.config.env, timeout or self.config.timeout)
++            result = _run(command, cwd, os.environ | self.config.env, timeout or self.config.timeout, self.config.shell)
+             output = {"output": result.stdout, "returncode": result.returncode, "exception_info": ""}
+         except Exception as e:
+             raw_output = getattr(e, "output", None)
+@@ -69,11 +70,25 @@
+         }
+ 
+ 
+-def _run(command: str, cwd: str, env: dict[str, str], timeout: int) -> subprocess.CompletedProcess[str]:
++def _run(command: str, cwd: str, env: dict[str, str], timeout: int, shell: str) -> subprocess.CompletedProcess[str]:
++    if env.get("MSWEA_ATTUNE_CONVENTIONS") == "1":
++        for line in command.splitlines():
++            stripped = line.strip()
++            if "<<" in stripped or stripped.startswith(("cat ", "ls", "find ", "grep ", "rg ", "python -")):
++                return subprocess.CompletedProcess(
++                    command,
++                    2,
++                    stdout=(
++                        "Attune convention violation: this action is blocked. "
++                        "Use Xonsh/Path for structured filesystem work; for Python source, use "
++                        "`uv run python scripts/attune_astgrep.py --kind KIND PATH`; "
++                        "use `uv run python -c` only for a focused static API query."
++                    ),
++                )
+     """Like subprocess.run, but kills the whole process group on timeout so no children are orphaned."""
+     process = subprocess.Popen(
+-        command,
+-        shell=True,
++        [shell, "-c", command],
++        shell=False,
+         text=True,
+         cwd=cwd,
+         env=env,
+diff --git a/src/minisweagent/run/mini.py b/src/minisweagent/run/mini.py
+--- a/src/minisweagent/run/mini.py
++++ b/src/minisweagent/run/mini.py
+@@ -99,3 +99,7 @@ def main(
++    if os.getenv("MSWEA_ATTUNE_CONVENTIONS") == "1" and run_task.strip().casefold() in {"hello", "hi", "hey"}:
++        console.print("[bold yellow]mini-attune needs a concrete SPEC.md requirement; no agent was started.[/bold yellow]")
++        return None
++
+     model = get_model(config=config.get("model", {}))
+     env = get_environment(config.get("environment", {}), default_type="local")
+     agent = get_agent(model, env, config.get("agent", {}), default_type="interactive")
+diff --git a/src/minisweagent/models/utils/actions_toolcall.py b/src/minisweagent/models/utils/actions_toolcall.py
+--- a/src/minisweagent/models/utils/actions_toolcall.py
++++ b/src/minisweagent/models/utils/actions_toolcall.py
+@@ -11,14 +11,14 @@ from minisweagent.models.utils.openai_multimodal import expand_multimodal_conte
+ BASH_TOOL = {
+     "type": "function",
+     "function": {
+-        "name": "bash",
+-        "description": "Execute a bash command",
++        "name": "xonsh",
++        "description": "Execute literal Xonsh 0.23 source with `xonsh -c`, never Bash. For Python discovery, MUST use `uv run python scripts/attune_astgrep.py --kind function_definition --top-level PATH` when that helper exists; it correctly reads file text for ast_grep_py. Otherwise use `SgRoot(Path(path).read_text(), 'python').root().find_all(kind=...)`, never rg/grep. For structural Python edits use the project LibCST helper; use Griffe for static API inspection. Use uv run Ruff/BasedPyright and exact pytest targets only. Never use cat, ls -R, find, grep -R, rg -R, or broad pytest reconnaissance.",
+         "parameters": {
+             "type": "object",
+             "properties": {
+                 "command": {
+                     "type": "string",
+-                    "description": "The bash command to execute",
++                    "description": "Valid Xonsh 0.23 source. Use Python/Xonsh syntax directly; this is not a Bash command string.",
+                 }
+             },
+             "required": ["command"],
+@@ -41,7 +41,7 @@ def parse_toolcall_actions(
+         raise FormatError(
+             {
+                 "role": "user",
+-                "content": Template(format_error_template, undefined=StrictUndefined).render(
+-                    error="No tool calls found in the response. Every response MUST include at least one tool call.",
++                "content": Template(format_error_template, undefined=StrictUndefined).render(
++                    error="No tool calls found. If the task is complete, execute exactly `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`; otherwise make the next required Xonsh tool call.",
+                     actions=[],
+                     has_tool_calls=False,
+                     **template_kwargs,
+diff --git a/src/minisweagent/models/utils/actions_toolcall_response.py b/src/minisweagent/models/utils/actions_toolcall_response.py
+--- a/src/minisweagent/models/utils/actions_toolcall_response.py
++++ b/src/minisweagent/models/utils/actions_toolcall_response.py
+@@ -10,14 +10,14 @@ from minisweagent.exceptions import FormatError
+ # OpenRouter/OpenAI Responses API uses a flat structure (no nested "function" key)
+ BASH_TOOL_RESPONSE_API = {
+     "type": "function",
+-    "name": "bash",
+-    "description": "Execute a bash command",
++    "name": "xonsh",
++    "description": "Execute literal Xonsh 0.23 source with `xonsh -c`, never Bash. For Python discovery, MUST use `uv run python scripts/attune_astgrep.py --kind function_definition --top-level PATH` when that helper exists; it correctly reads file text for ast_grep_py. Otherwise use `SgRoot(Path(path).read_text(), 'python').root().find_all(kind=...)`, never rg/grep. For structural Python edits use the project LibCST helper; use Griffe for static API inspection. Use uv run Ruff/BasedPyright and exact pytest targets only. Never use cat, ls -R, find, grep -R, rg -R, or broad pytest reconnaissance.",
+     "parameters": {
+         "type": "object",
+         "properties": {
+             "command": {
+                 "type": "string",
+-                "description": "The bash command to execute",
++                "description": "Valid Xonsh 0.23 source. Use Python/Xonsh syntax directly; this is not a Bash command string.",
+             }
+         },
+         "required": ["command"],
+@@ -63,5 +63,5 @@ def parse_toolcall_actions_response(
+     Filters for function_call items and parses them.
+     Response API format has name/arguments at top level with call_id:
+-    {"type": "function_call", "call_id": "...", "name": "bash", "arguments": "..."}
++    {"type": "function_call", "call_id": "...", "name": "xonsh", "arguments": "..."}
+     ``template_kwargs`` are extra variables exposed to ``format_error_template`` (e.g.
+     ``{"finish_reason": ...}``), matching ``parse_toolcall_actions``.
+@@ -77,7 +77,7 @@ def parse_toolcall_actions_response(
+     if not tool_calls:
+         error_text = Template(format_error_template, undefined=StrictUndefined).render(
+-            error="No tool calls found in the response. Every response MUST include at least one tool call.",
++            error="No tool calls found. If the task is complete, execute exactly `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`; otherwise make the next required Xonsh tool call.",
+             actions=[],
+             has_tool_calls=False,
+             **template_kwargs,
+         )

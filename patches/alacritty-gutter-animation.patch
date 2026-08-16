@@ -1,0 +1,1578 @@
+diff --git a/alacritty/src/cli.rs b/alacritty/src/cli.rs
+index 80411cf5d116e5d658481db11255090941171ede..be84a7a0a030a61c7f23035840496ab9feb5a122 100644
+--- a/alacritty/src/cli.rs
++++ b/alacritty/src/cli.rs
+@@ -16,6 +16,7 @@ use crate::config::UiConfig;
+ use crate::config::ui_config::Program;
+ use crate::config::window::{Class, Identity};
+ use crate::logging::LOG_TARGET_IPC_CONFIG;
++use crate::shell_gutter::ShellGutterEvent;
+ 
+ /// CLI options for the main Alacritty executable.
+ #[derive(Parser, Default, Debug)]
+@@ -261,6 +262,9 @@ pub enum SocketMessage {
+     /// Copy the complete primary screen and scrollback buffer.
+     CopyBuffer(IpcCopyBuffer),
+ 
++    /// Send a semantic event to the terminal gutter.
++    GutterEvent(IpcGutterEvent),
++
+     /// Update the Alacritty configuration.
+     Config(IpcConfig),
+ 
+@@ -281,6 +285,19 @@ pub struct IpcCopyBuffer {
+     pub window_id: Option<i128>,
+ }
+ 
++/// Parameters to the `gutter-event` IPC subcommand.
++#[cfg(unix)]
++#[derive(Args, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
++pub struct IpcGutterEvent {
++    /// Bounded semantic event rendered by the gutter animation engine.
++    #[clap(value_enum)]
++    pub event: ShellGutterEvent,
++
++    /// Window ID for the gutter event.
++    #[clap(short, long, allow_hyphen_values = true, env = "ALACRITTY_WINDOW_ID")]
++    pub window_id: Option<i128>,
++}
++
+ /// Migrate the configuration file.
+ #[derive(Args, Clone, Debug)]
+ pub struct MigrateOptions {
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+index c1321b4d3ca5032389b925f27a01eb8828d761dc..4a0871e94e6ec21cbc034b3bc7e6db7d09f38797 100644
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -2,12 +2,11 @@
+ //! GPU drawing.
+ 
+ use std::cmp;
+-use std::fs;
+ use std::fmt::{self, Formatter};
+ use std::mem::{self, ManuallyDrop};
+ use std::num::NonZeroU32;
+ use std::ops::Deref;
+-use std::sync::{Mutex, OnceLock};
++use std::sync::OnceLock;
+ use std::time::{Duration, Instant};
+ 
+ use glutin::config::GetGlConfig;
+@@ -57,6 +56,7 @@ use crate::message_bar::{MessageBuffer, MessageType};
+ use crate::renderer::rects::{RenderLine, RenderLines, RenderRect};
+ use crate::renderer::{self, GlyphCache, Renderer, platform};
+ use crate::scheduler::{Scheduler, TimerId, Topic};
++use crate::shell_gutter::{self, ShellGutterAnimation, ShellGutterEvent};
+ use crate::string::{ShortenDirection, StrShortener};
+ 
+ pub mod color;
+@@ -82,7 +82,7 @@ const SHORTENER: char = '…';
+ const DAMAGE_RECT_COLOR: Rgb = Rgb::new(255, 0, 255);
+ 
+ /// Zed-style terminal line-number gutter width in character cells.
+-const SHELL_GUTTER_COLUMNS: usize = 6;
++const SHELL_GUTTER_COLUMNS: usize = shell_gutter::COLUMNS;
+ // Give the gutter a visible cool tint from an empty buffer onward. Heat is
+ // reserved for actual capacity pressure, while the cursor is a small flash
+ // of lemon so it remains easy to pick out when the terminal is busy.
+@@ -104,8 +104,12 @@ fn shell_gutter_temperature(history_usage: f32, active: bool) -> Rgb {
+     let cool = if active { SHELL_GUTTER_ACTIVE_LINE_NUMBER } else { SHELL_GUTTER_LINE_NUMBER };
+     match history_usage {
+         usage if usage <= 0.20 => cool,
+-        usage if usage <= 0.55 => shell_gutter_blend(cool, SHELL_GUTTER_TEPID, (usage - 0.20) / 0.35),
+-        usage if usage <= 0.85 => shell_gutter_blend(SHELL_GUTTER_TEPID, SHELL_GUTTER_WARM, (usage - 0.55) / 0.30),
++        usage if usage <= 0.55 => {
++            shell_gutter_blend(cool, SHELL_GUTTER_TEPID, (usage - 0.20) / 0.35)
++        },
++        usage if usage <= 0.85 => {
++            shell_gutter_blend(SHELL_GUTTER_TEPID, SHELL_GUTTER_WARM, (usage - 0.55) / 0.30)
++        },
+         usage => shell_gutter_blend(SHELL_GUTTER_WARM, SHELL_GUTTER_HOT, (usage - 0.85) / 0.15),
+     }
+ }
+@@ -120,67 +124,6 @@ fn shell_gutter_shimmer(color: Rgb, line_number: usize) -> Rgb {
+     shell_gutter_blend(color, SHELL_GUTTER_ACTIVE_LINE_NUMBER, strength)
+ }
+ 
+-/// Lowest-cost automatic detection for interactive coding-agent harnesses.
+-const SHELL_GUTTER_HARNESS_POLL: Duration = Duration::from_millis(250);
+-const SHELL_GUTTER_HARNESS_NAMES: &[&str] = &[
+-    "aider", "amp", "claude", "claude-code", "codex", "codex-code-mode-host",
+-    "codex-ext", ".codex-wrapped", "copilot", "copilot-cli", "cursor-agent", "gemini",
+-    "goose", "kilocode", "opencode", "pi", "qwen", "qwen-code", "roo", "roo-code",
+-];
+-
+-#[derive(Default)]
+-struct ShellGutterHarnessCache {
+-    last_checked: Option<Instant>,
+-    active: bool,
+-}
+-
+-fn shell_gutter_agent_harness_active() -> bool {
+-    #[cfg(target_os = "linux")]
+-    {
+-        static CACHE: OnceLock<Mutex<ShellGutterHarnessCache>> = OnceLock::new();
+-        let mut cache = CACHE.get_or_init(Default::default).lock().expect("harness cache poisoned");
+-        if let Some(last_checked) = cache.last_checked {
+-            if last_checked.elapsed() < SHELL_GUTTER_HARNESS_POLL {
+-                return cache.active;
+-            }
+-        }
+-
+-        let mut processes = vec![std::process::id()];
+-        let mut inspected = 0;
+-        cache.active = false;
+-        while let Some(pid) = processes.pop() {
+-            inspected += 1;
+-            if inspected > 256 {
+-                break;
+-            }
+-
+-            let children = format!("/proc/{pid}/task/{pid}/children");
+-            let Ok(children) = fs::read_to_string(children) else { continue };
+-            for child in children.split_whitespace().filter_map(|pid| pid.parse::<u32>().ok()) {
+-                let comm = format!("/proc/{child}/comm");
+-                if let Ok(name) = fs::read_to_string(comm) {
+-                    if SHELL_GUTTER_HARNESS_NAMES
+-                        .iter()
+-                        .any(|harness| name.trim().eq_ignore_ascii_case(harness))
+-                    {
+-                        cache.active = true;
+-                        break;
+-                    }
+-                }
+-                processes.push(child);
+-            }
+-            if cache.active {
+-                break;
+-            }
+-        }
+-        cache.last_checked = Some(Instant::now());
+-        cache.active
+-    }
+-
+-    #[cfg(not(target_os = "linux"))]
+-    false
+-}
+-
+ #[derive(Debug)]
+ pub enum Error {
+     /// Error with window management.
+@@ -331,6 +274,50 @@ impl<T: Clone + Copy> SizeInfo<T> {
+ impl SizeInfo<f32> {
+     #[allow(clippy::too_many_arguments)]
+     pub fn new(
++        width: f32,
++        height: f32,
++        cell_width: f32,
++        cell_height: f32,
++        padding_x: f32,
++        padding_y: f32,
++        dynamic_padding: bool,
++    ) -> SizeInfo {
++        Self::new_with_reservation(
++            width,
++            height,
++            cell_width,
++            cell_height,
++            padding_x,
++            padding_y,
++            dynamic_padding,
++            false,
++        )
++    }
++
++    #[allow(clippy::too_many_arguments)]
++    fn new_with_gutter(
++        width: f32,
++        height: f32,
++        cell_width: f32,
++        cell_height: f32,
++        padding_x: f32,
++        padding_y: f32,
++        dynamic_padding: bool,
++    ) -> SizeInfo {
++        Self::new_with_reservation(
++            width,
++            height,
++            cell_width,
++            cell_height,
++            padding_x,
++            padding_y,
++            dynamic_padding,
++            true,
++        )
++    }
++
++    #[allow(clippy::too_many_arguments)]
++    fn new_with_reservation(
+         width: f32,
+         height: f32,
+         cell_width: f32,
+@@ -338,21 +325,25 @@ impl SizeInfo<f32> {
+         mut padding_x: f32,
+         mut padding_y: f32,
+         dynamic_padding: bool,
++        reserve_gutter: bool,
+     ) -> SizeInfo {
+         if dynamic_padding {
+             padding_x = Self::dynamic_padding(padding_x.floor(), width, cell_width);
+             padding_y = Self::dynamic_padding(padding_y.floor(), height, cell_height);
+         }
+ 
+-        if padding_x != 0. {
+-            padding_x += SHELL_GUTTER_COLUMNS as f32 * cell_width;
+-        }
+-
+         let lines = (height - 2. * padding_y) / cell_height;
+         let screen_lines = cmp::max(lines as usize, MIN_SCREEN_LINES);
+ 
+-        let columns = (width - 2. * padding_x) / cell_width;
++        // Reserve the gutter once on the left while retaining ordinary
++        // configured padding on both edges. `padding_x` is the grid origin,
++        // so calculating columns before shifting it avoids losing the same
++        // six cells from the right edge too.
++        let gutter_width =
++            if reserve_gutter { SHELL_GUTTER_COLUMNS as f32 * cell_width } else { 0. };
++        let columns = (width - 2. * padding_x - gutter_width) / cell_width;
+         let columns = cmp::max(columns as usize, MIN_COLUMNS);
++        padding_x += gutter_width;
+ 
+         SizeInfo {
+             width,
+@@ -503,6 +494,7 @@ pub struct Display {
+ 
+     glyph_cache: GlyphCache,
+     meter: Meter,
++    shell_gutter: ShellGutterAnimation,
+ }
+ 
+ impl Display {
+@@ -554,7 +546,7 @@ impl Display {
+         let viewport_size = window.inner_size();
+ 
+         // Create new size with at least one column and row.
+-        let size_info = SizeInfo::new(
++        let size_info = SizeInfo::new_with_gutter(
+             viewport_size.width as f32,
+             viewport_size.height as f32,
+             cell_width,
+@@ -645,6 +637,7 @@ impl Display {
+             cursor_hidden: Default::default(),
+             meter: Default::default(),
+             ime: Default::default(),
++            shell_gutter: Default::default(),
+         })
+     }
+ 
+@@ -710,6 +703,11 @@ impl Display {
+         debug!("Recovered window {:?} from gpu reset", self.window.id());
+     }
+ 
++    /// Apply one typed, visual-only event to this window's gutter.
++    pub fn handle_shell_gutter_event(&mut self, event: ShellGutterEvent) {
++        self.shell_gutter.push_event(event, Instant::now());
++    }
++
+     fn swap_buffers(&self) {
+         #[allow(clippy::single_match)]
+         let res = match (self.surface.deref(), &self.context.deref()) {
+@@ -795,7 +793,7 @@ impl Display {
+ 
+         let padding = config.window.padding(self.window.scale_factor as f32);
+ 
+-        let mut new_size = SizeInfo::new(
++        let mut new_size = SizeInfo::new_with_gutter(
+             width,
+             height,
+             cell_width,
+@@ -902,15 +900,26 @@ impl Display {
+         let total_lines = terminal.grid().total_lines();
+         let metrics = self.glyph_cache.font_metrics();
+         let size_info = self.size_info;
++        let first_line = total_lines.saturating_sub(display_offset + size_info.screen_lines());
++        let cursor_viewport_line =
++            term::point_to_viewport(display_offset, cursor_point).map(|point| point.line);
++        let active_line = cursor_viewport_line.map(|line| first_line + line + 1);
++        let legacy_session_hint = terminal.shell_gutter_heat_disabled();
++        let alternate_screen = terminal.mode().contains(TermMode::ALT_SCREEN);
+ 
+         let vi_mode = terminal.mode().contains(TermMode::VI);
+         let vi_cursor_point = if vi_mode { Some(terminal.vi_mode_cursor.point) } else { None };
+ 
+         // Add damage from the terminal.
++        let mut output_activity = false;
+         match terminal.damage() {
+-            TermDamage::Full => self.damage_tracker.frame().mark_fully_damaged(),
++            TermDamage::Full => {
++                output_activity = true;
++                self.damage_tracker.frame().mark_fully_damaged();
++            },
+             TermDamage::Partial(damaged_lines) => {
+                 for damage in damaged_lines {
++                    output_activity = true;
+                     self.damage_tracker.frame().damage_line(damage);
+                 }
+             },
+@@ -920,6 +929,16 @@ impl Display {
+         // Drop terminal as early as possible to free lock.
+         drop(terminal);
+ 
++        let gutter_now = Instant::now();
++        self.shell_gutter.update(
++            gutter_now,
++            active_line,
++            output_activity,
++            alternate_screen,
++            legacy_session_hint,
++        );
++        let gutter_animating = self.shell_gutter.animating(gutter_now);
++
+         // Invalidate highlighted hints if grid has changed.
+         self.validate_hint_highlights(display_offset);
+ 
+@@ -1116,9 +1135,9 @@ impl Display {
+ 
+         self.draw_render_timer(config);
+ 
+-        // Draw a read-only editor gutter after the terminal's grid and
+-        // rectangle passes. The color continuously warms from Zed gray to
+-        // yellow and red as scrollback approaches its configured limit.
++        // Keep the line numbers calm and let the rail carry semantic motion.
++        // The thin rectangle strip is drawn after glyph backgrounds so it can
++        // glow independently without requiring a shader or transparent text.
+         let gutter_width = SHELL_GUTTER_COLUMNS as f32 * size_info.cell_width();
+         let gutter_padding = size_info.padding_x() - gutter_width;
+         let gutter_size = SizeInfo {
+@@ -1128,37 +1147,70 @@ impl Display {
+             ..size_info
+         };
+         self.renderer.resize(&gutter_size);
+-        let first_line = total_lines.saturating_sub(display_offset + size_info.screen_lines());
+         let history_limit = config.scrolling.history().max(1) as f32;
+-        let history_usage = total_lines.saturating_sub(size_info.screen_lines()) as f32 / history_limit;
++        let history_usage =
++            total_lines.saturating_sub(size_info.screen_lines()) as f32 / history_limit;
+         let view_limit = total_lines.max(1) as f32;
+-        let cursor_viewport_line = term::point_to_viewport(display_offset, cursor_point)
+-            .map(|point| point.line);
++        let semantic_active = self.shell_gutter.semantic_active();
++        let mut gutter_rects = Vec::with_capacity(size_info.screen_lines());
+ 
+         for viewport_line in 0..size_info.screen_lines() {
+             let line_number = first_line + viewport_line + 1;
+             let view_usage = line_number as f32 / view_limit;
+             let temperature = 0.65 * history_usage + 0.35 * view_usage;
+-            let color = shell_gutter_shimmer(
+-                shell_gutter_temperature(temperature, cursor_viewport_line == Some(viewport_line)),
++            let active = cursor_viewport_line == Some(viewport_line);
++            let visual = self.shell_gutter.visual(
++                gutter_now,
+                 line_number,
++                viewport_line,
++                size_info.screen_lines(),
++                active,
+             );
+-            let label = if cursor_viewport_line == Some(viewport_line) {
+-                format!("{line_number:>4} ◆")
++            let number_color = if semantic_active {
++                visual.number_color
+             } else {
+-                format!("{line_number:>4} │")
++                shell_gutter_shimmer(shell_gutter_temperature(temperature, active), line_number)
+             };
++
+             self.renderer.draw_string(
+                 Point::new(viewport_line, Column(0)),
+-                color,
++                number_color,
+                 background_color,
+-                label.chars(),
++                format!("{line_number:>4}").chars(),
+                 &gutter_size,
+                 &mut self.glyph_cache,
+             );
++            self.renderer.draw_string(
++                Point::new(viewport_line, Column(5)),
++                visual.rail_color,
++                background_color,
++                [visual.rail].into_iter(),
++                &gutter_size,
++                &mut self.glyph_cache,
++            );
++            gutter_rects.push(RenderRect::new(
++                0.,
++                size_info.cell_height().mul_add(viewport_line as f32, size_info.padding_y()),
++                visual.strip_width,
++                size_info.cell_height(),
++                visual.rail_color,
++                visual.strip_alpha,
++            ));
+         }
++        self.renderer.draw_rects(&gutter_size, &metrics, gutter_rects);
+         self.renderer.resize(&size_info);
+ 
++        // The gutter can change whenever output scrolls, even outside an
++        // animated session. Unconditional damage also presents the last frame
++        // which clears an expired pulse on Wayland.
++        self.damage_tracker.frame().add_viewport_rect(
++            &size_info,
++            0,
++            0,
++            size_info.padding_x() as i32,
++            size_info.height() as i32,
++        );
++
+         // Draw hyperlink uri preview.
+         if has_highlighted_hint {
+             let cursor_point = vi_cursor_point.or(Some(cursor_point));
+@@ -1192,16 +1244,18 @@ impl Display {
+             self.request_frame(scheduler);
+         }
+ 
+-        // A gentle five-FPS redraw keeps the gutter's diagonal glint moving
+-        // without turning an otherwise idle terminal into a busy render loop.
++        // One-shot ticks reschedule only while a wake, pulse, or semantic mode
++        // remains alive. An ordinary idle terminal has no animation timer.
+         let timer_id = TimerId::new(Topic::ShellGutterPulse, self.window.id());
+-        if !scheduler.scheduled(timer_id) {
++        if gutter_animating && !scheduler.scheduled(timer_id) {
+             scheduler.schedule(
+                 Event::new(EventType::ShellGutterPulse, self.window.id()),
+-                Duration::from_millis(200),
+-                true,
++                shell_gutter::FRAME_INTERVAL,
++                false,
+                 timer_id,
+             );
++        } else if !gutter_animating {
++            scheduler.unschedule(timer_id);
+         }
+ 
+         self.damage_tracker.swap_damage();
+@@ -1788,8 +1842,44 @@ fn window_size(
+     let grid_width = cell_width * dimensions.columns.max(MIN_COLUMNS) as f32;
+     let grid_height = cell_height * dimensions.lines.max(MIN_SCREEN_LINES) as f32;
+ 
+-    let width = (padding.0).mul_add(2., grid_width).floor();
++    let gutter_width = SHELL_GUTTER_COLUMNS as f32 * cell_width;
++    let width = (padding.0).mul_add(2., grid_width + gutter_width).floor();
+     let height = (padding.1).mul_add(2., grid_height).floor();
+ 
+     PhysicalSize::new(width as u32, height as u32)
+ }
++
++#[cfg(test)]
++mod gutter_geometry_tests {
++    use super::*;
++
++    #[test]
++    fn zero_padding_reserves_the_gutter_once() {
++        let plain = SizeInfo::new(160., 100., 10., 10., 0., 0., false);
++        let gutter = SizeInfo::new_with_gutter(160., 100., 10., 10., 0., 0., false);
++
++        assert_eq!(plain.columns(), 16);
++        assert_eq!(gutter.columns(), 10);
++        assert_eq!(gutter.padding_x(), 60.);
++    }
++
++    #[test]
++    fn configured_dimensions_round_trip_through_window_pixels() {
++        let config = UiConfig::default();
++        let dimensions = Dimensions { columns: 40, lines: 10 };
++        let pixels = window_size(&config, dimensions, 10., 20., 1.);
++        let padding = config.window.padding(1.);
++        let size = SizeInfo::new_with_gutter(
++            pixels.width as f32,
++            pixels.height as f32,
++            10.,
++            20.,
++            padding.0,
++            padding.1,
++            config.window.dynamic_padding,
++        );
++
++        assert_eq!(size.columns(), dimensions.columns);
++        assert_eq!(size.screen_lines(), dimensions.lines);
++    }
++}
+diff --git a/alacritty/src/event.rs b/alacritty/src/event.rs
+index 667516f14cc07c31bd61e7f9b72e20177974fb94..8e06fa33d0c6ab93e5429fc23a877690438d1b82 100644
+--- a/alacritty/src/event.rs
++++ b/alacritty/src/event.rs
+@@ -63,6 +63,7 @@ use crate::message_bar::{Message, MessageBuffer};
+ #[cfg(unix)]
+ use crate::polling::ipc::{self, SocketReply};
+ use crate::scheduler::{Scheduler, TimerId, Topic};
++use crate::shell_gutter::ShellGutterEvent;
+ use crate::window_context::WindowContext;
+ 
+ /// Duration after the last user input until an unlimited search is performed.
+@@ -299,13 +300,37 @@ impl ApplicationHandler<Event> for Processor {
+                         },
+                         None => Err(format!("window {window_id:?} was not found")),
+                     },
++                    None => {
++                        Err(String::from("copy-buffer requires --window-id or ALACRITTY_WINDOW_ID"))
++                    },
++                };
++
++                if let Ok(mut stream) = stream.try_clone() {
++                    ipc::send_reply(&mut stream, SocketReply::CopyBuffer(result));
++                }
++            },
++            // Apply semantic gutter state only to the exact requested window.
++            #[cfg(unix)]
++            (EventType::IpcShellGutter(event, stream), window_id) => {
++                let result = match window_id {
++                    Some(window_id) => match self.windows.get_mut(window_id) {
++                        Some(window_context) => {
++                            window_context.display.handle_shell_gutter_event(event);
++                            window_context.dirty = true;
++                            if window_context.display.window.has_frame {
++                                window_context.display.window.request_redraw();
++                            }
++                            Ok(())
++                        },
++                        None => Err(format!("window {window_id:?} was not found")),
++                    },
+                     None => Err(String::from(
+-                        "copy-buffer requires --window-id or ALACRITTY_WINDOW_ID",
++                        "gutter-event requires --window-id or ALACRITTY_WINDOW_ID",
+                     )),
+                 };
+ 
+                 if let Ok(mut stream) = stream.try_clone() {
+-                    ipc::send_reply(&mut stream, SocketReply::CopyBuffer(result));
++                    ipc::send_reply(&mut stream, SocketReply::GutterEvent(result));
+                 }
+             },
+             // Process IPC config update.
+@@ -571,6 +596,8 @@ pub enum EventType {
+     IpcCopyBuffer(bool, Arc<UnixStream>),
+     #[cfg(unix)]
+     IpcGetConfig(Arc<UnixStream>),
++    #[cfg(unix)]
++    IpcShellGutter(ShellGutterEvent, Arc<UnixStream>),
+     BlinkCursor,
+     BlinkCursorTimeout,
+     ShellGutterPulse,
+@@ -1957,6 +1984,7 @@ impl input::Processor<EventProxy, ActionContext<'_, Notifier, EventProxy>> {
+                 EventType::IpcConfig(_)
+                 | EventType::IpcCopyBuffer(..)
+                 | EventType::IpcGetConfig(..)
++                | EventType::IpcShellGutter(..)
+                 | EventType::Shutdown => (),
+                 EventType::Message(_)
+                 | EventType::ConfigReload(_)
+diff --git a/alacritty/src/main.rs b/alacritty/src/main.rs
+index a21ee8623e9a2113188b5bff5e4c109533529769..74f8a425177ab9c5585db249b17e8b76b8f563e5 100644
+--- a/alacritty/src/main.rs
++++ b/alacritty/src/main.rs
+@@ -45,6 +45,7 @@ mod panic;
+ mod polling;
+ mod renderer;
+ mod scheduler;
++mod shell_gutter;
+ mod string;
+ mod window_context;
+ 
+diff --git a/alacritty/src/polling/ipc.rs b/alacritty/src/polling/ipc.rs
+index dfcdbeec2d7f33fdc0bd1e4008d405e90a5b0b12..50cd178bddff454040d60bc2636c5fe8c7dce7c2 100644
+--- a/alacritty/src/polling/ipc.rs
++++ b/alacritty/src/polling/ipc.rs
+@@ -82,6 +82,15 @@ impl IpcListener {
+                 );
+                 let _ = self.event_proxy.send_event(event);
+             },
++            SocketMessage::GutterEvent(options) => {
++                let window_id =
++                    options.window_id.and_then(|id| u64::try_from(id).ok()).map(WindowId::from);
++                let event = Event::new(
++                    EventType::IpcShellGutter(options.event, Arc::new(stream)),
++                    window_id,
++                );
++                let _ = self.event_proxy.send_event(event);
++            },
+             SocketMessage::Config(ipc_config) => {
+                 let window_id =
+                     ipc_config.window_id.and_then(|id| u64::try_from(id).ok()).map(WindowId::from);
+@@ -142,6 +151,10 @@ fn handle_reply(stream: &UnixStream, message: &SocketMessage) -> IoResult<()> {
+         (SocketMessage::CopyBuffer(..), SocketReply::CopyBuffer(Err(err))) => {
+             Err(IoError::other(err.clone()))
+         },
++        (SocketMessage::GutterEvent(..), SocketReply::GutterEvent(Ok(()))) => Ok(()),
++        (SocketMessage::GutterEvent(..), SocketReply::GutterEvent(Err(err))) => {
++            Err(IoError::other(err.clone()))
++        },
+         // Ignore requests without reply.
+         _ => Ok(()),
+     }
+@@ -248,5 +261,6 @@ pub fn socket_prefix() -> String {
+ #[derive(Serialize, Deserialize, Debug)]
+ pub enum SocketReply {
+     CopyBuffer(Result<(), String>),
++    GutterEvent(Result<(), String>),
+     GetConfig(String),
+ }
+diff --git a/alacritty/src/shell_gutter.rs b/alacritty/src/shell_gutter.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..b55382c464ddbaa1aeb25248161df2df2dc5a915
+--- /dev/null
++++ b/alacritty/src/shell_gutter.rs
+@@ -0,0 +1,592 @@
++//! Per-window semantic gutter animation and its bounded IPC vocabulary.
++
++use std::collections::VecDeque;
++use std::time::{Duration, Instant};
++
++use clap::ValueEnum;
++use serde::{Deserialize, Serialize};
++
++use crate::display::color::Rgb;
++
++pub const COLUMNS: usize = 6;
++pub const FRAME_INTERVAL: Duration = Duration::from_millis(100);
++
++const ACTIVITY_LIFETIME: Duration = Duration::from_millis(1_800);
++const PULSE_LIFETIME: Duration = Duration::from_millis(2_400);
++const MODE_LIFETIME: Duration = Duration::from_secs(3);
++const SCOPE_LIFETIME: Duration = PULSE_LIFETIME;
++const MAX_PENDING_EVENTS: usize = 32;
++
++const NUMBER: Rgb = Rgb::new(100, 116, 139);
++const ACTIVE_NUMBER: Rgb = Rgb::new(203, 213, 225);
++const RAIL: Rgb = Rgb::new(71, 85, 105);
++const CYAN: Rgb = Rgb::new(103, 232, 249);
++const BLUE: Rgb = Rgb::new(147, 197, 253);
++const VIOLET: Rgb = Rgb::new(196, 181, 253);
++const CREAM: Rgb = Rgb::new(254, 243, 199);
++const GREEN: Rgb = Rgb::new(167, 243, 208);
++const CORAL: Rgb = Rgb::new(251, 113, 133);
++
++/// Semantic events accepted by `alacritty msg gutter-event`.
++///
++/// This intentionally contains no arbitrary strings. The experiment can
++/// select a visual state, but it cannot inject content into the terminal UI.
++#[derive(ValueEnum, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
++#[serde(rename_all = "kebab-case")]
++pub enum ShellGutterEvent {
++    Reset,
++    CodexStart,
++    CodexStop,
++    Reasoning,
++    Search,
++    Read,
++    Edit,
++    Tool,
++    Test,
++    Verify,
++    Complete,
++    Failed,
++    CommandStart,
++    CommandPass,
++    CommandFail,
++    CampaignLaunch,
++    CandidateStart,
++    CandidateReject,
++    CandidatePass,
++    QualificationStart,
++    Qualified,
++    CompositionStart,
++    CompositionPass,
++    WrenchStart,
++    WrenchReject,
++}
++
++#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
++enum SemanticMode {
++    #[default]
++    Idle,
++    Reasoning,
++    Search,
++    Read,
++    Edit,
++    Tool,
++    Verify,
++    Campaign,
++    Settled,
++    Failed,
++}
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++enum PulseKind {
++    Launch,
++    Packet,
++    Passed,
++    Rejected,
++    Qualified,
++    WrenchRejected,
++}
++
++#[derive(Debug, Clone, Copy)]
++struct Pulse {
++    kind: PulseKind,
++    line: usize,
++    started_at: Instant,
++}
++
++#[derive(Debug, Clone, Copy)]
++struct CommandScope {
++    start: usize,
++    end: Option<usize>,
++    passed: Option<bool>,
++    finished_at: Option<Instant>,
++}
++
++/// Fully sampled appearance for one visible gutter row.
++#[derive(Debug, Clone, Copy)]
++pub struct ShellGutterVisual {
++    pub number_color: Rgb,
++    pub rail_color: Rgb,
++    pub rail: char,
++    pub strip_width: f32,
++    pub strip_alpha: f32,
++}
++
++/// Small, display-owned animation state; all timing remains outside the grid.
++pub struct ShellGutterAnimation {
++    pending: VecDeque<(ShellGutterEvent, Instant)>,
++    session_active: bool,
++    session_hint: bool,
++    mode: SemanticMode,
++    mode_started_at: Instant,
++    last_active_line: Option<usize>,
++    last_activity_at: Option<Instant>,
++    output_velocity: f32,
++    pulse: Option<Pulse>,
++    scope: Option<CommandScope>,
++    alternate_screen: bool,
++}
++
++impl Default for ShellGutterAnimation {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++impl ShellGutterAnimation {
++    pub fn new() -> Self {
++        Self::new_at(Instant::now())
++    }
++
++    fn new_at(now: Instant) -> Self {
++        Self {
++            pending: VecDeque::new(),
++            session_active: false,
++            session_hint: false,
++            mode: SemanticMode::Idle,
++            mode_started_at: now,
++            last_active_line: None,
++            last_activity_at: None,
++            output_velocity: 0.,
++            pulse: None,
++            scope: None,
++            alternate_screen: false,
++        }
++    }
++
++    /// Queue an event for attachment to the cursor line at the next draw.
++    pub fn push_event(&mut self, event: ShellGutterEvent, now: Instant) {
++        if event == ShellGutterEvent::Reset {
++            *self = Self::new_at(now);
++            return;
++        }
++
++        if self.pending.len() == MAX_PENDING_EVENTS {
++            self.pending.pop_front();
++        }
++        self.pending.push_back((event, now));
++    }
++
++    /// Observe the current line and apply queued semantic events to it.
++    pub fn update(
++        &mut self,
++        now: Instant,
++        active_line: Option<usize>,
++        output_activity: bool,
++        alternate_screen: bool,
++        session_hint: bool,
++    ) {
++        self.session_hint = session_hint;
++
++        // Line anchors cannot survive swapping grids. Reset transient spatial
++        // state instead of attaching it to unrelated alternate-screen rows.
++        if self.alternate_screen != alternate_screen {
++            self.last_active_line = active_line;
++            self.last_activity_at = None;
++            self.output_velocity = 0.;
++            self.pulse = None;
++            self.scope = None;
++            self.alternate_screen = alternate_screen;
++        }
++
++        if let Some(line) = active_line {
++            if let Some(previous) = self.last_active_line {
++                let forward_delta = line.saturating_sub(previous);
++                if forward_delta > 0 || output_activity {
++                    let delta = forward_delta.max(1) as f32;
++                    let elapsed = self
++                        .last_activity_at
++                        .map_or(0.2, |last| now.saturating_duration_since(last).as_secs_f32())
++                        .max(0.016);
++                    let instantaneous = (delta / elapsed).min(80.);
++                    self.output_velocity = self.output_velocity.mul_add(0.72, instantaneous * 0.28);
++                    self.last_activity_at = Some(now);
++                } else if line < previous {
++                    // Cursor-up movement, reflow, and history truncation are
++                    // discontinuities, not high-velocity output.
++                    self.output_velocity = 0.;
++                    self.last_activity_at = None;
++                }
++            } else if output_activity {
++                self.last_activity_at = Some(now);
++            }
++            self.last_active_line = Some(line);
++        }
++
++        let event_line = active_line.or(self.last_active_line).unwrap_or(1);
++        while let Some((event, event_at)) = self.pending.pop_front() {
++            self.apply_event(event, event_at, event_line);
++        }
++
++        if self
++            .pulse
++            .is_some_and(|pulse| now.saturating_duration_since(pulse.started_at) >= PULSE_LIFETIME)
++        {
++            self.pulse = None;
++        }
++        if self.scope.is_some_and(|scope| {
++            scope
++                .finished_at
++                .is_some_and(|finished| now.saturating_duration_since(finished) >= SCOPE_LIFETIME)
++        }) {
++            self.scope = None;
++        }
++        if !self.session_active
++            && !self.session_hint
++            && self.mode != SemanticMode::Idle
++            && now.saturating_duration_since(self.mode_started_at) >= MODE_LIFETIME
++        {
++            self.mode = SemanticMode::Idle;
++        }
++    }
++
++    pub fn animating(&self, now: Instant) -> bool {
++        let mode_animating = matches!(
++            self.mode,
++            SemanticMode::Reasoning
++                | SemanticMode::Search
++                | SemanticMode::Tool
++                | SemanticMode::Verify
++                | SemanticMode::Campaign
++        ) && (self.session_active
++            || self.session_hint
++            || now.saturating_duration_since(self.mode_started_at) < MODE_LIFETIME);
++
++        mode_animating
++            || !self.pending.is_empty()
++            || self
++                .last_activity_at
++                .is_some_and(|last| now.saturating_duration_since(last) < ACTIVITY_LIFETIME)
++            || self.pulse.is_some_and(|pulse| {
++                now.saturating_duration_since(pulse.started_at) < PULSE_LIFETIME
++            })
++    }
++
++    pub fn semantic_active(&self) -> bool {
++        self.session_active
++            || self.session_hint
++            || self.mode != SemanticMode::Idle
++            || self.scope.is_some()
++    }
++
++    pub fn visual(
++        &self,
++        now: Instant,
++        line: usize,
++        viewport_line: usize,
++        screen_lines: usize,
++        active: bool,
++    ) -> ShellGutterVisual {
++        let active_line = self.last_active_line.unwrap_or(line);
++        let distance = line.abs_diff(active_line) as f32;
++        let mode_elapsed = now.saturating_duration_since(self.mode_started_at).as_secs_f32();
++        let activity_age = self
++            .last_activity_at
++            .map_or(f32::INFINITY, |last| now.saturating_duration_since(last).as_secs_f32());
++
++        let speed = (self.output_velocity / 18.).clamp(0., 1.);
++        let trail_length = 4. + speed * 5.;
++        let wake = if line <= active_line && distance <= trail_length {
++            (1. - distance / trail_length) * (1. - activity_age / 1.8).clamp(0., 1.)
++        } else {
++            0.
++        };
++
++        let semantic = match self.mode {
++            SemanticMode::Search => {
++                let scan = (mode_elapsed * 7.) % screen_lines.max(1) as f32;
++                let scan_distance = (viewport_line as f32 - scan).abs();
++                (-scan_distance.powi(2) / 2.8).exp() * 0.75
++            },
++            SemanticMode::Verify => {
++                let standing = ((distance * 1.7 - mode_elapsed * 4.2).cos() + 1.) * 0.5;
++                standing * (-distance / 4.).exp() * 0.55
++            },
++            SemanticMode::Reasoning => {
++                let breath = ((mode_elapsed * 1.35).sin() + 1.) * 0.5;
++                breath * (-distance / 2.4).exp() * 0.38
++            },
++            SemanticMode::Read => (-distance / 1.5).exp() * 0.4,
++            SemanticMode::Edit | SemanticMode::Tool => (-distance / 2.8).exp() * 0.45,
++            SemanticMode::Campaign => {
++                ((mode_elapsed * 0.9).sin() + 1.) * 0.16 * (-distance / 5.).exp()
++            },
++            SemanticMode::Failed => (-distance / 3.).exp() * 0.5,
++            SemanticMode::Idle | SemanticMode::Settled => 0.,
++        };
++
++        let (pulse_intensity, pulse_symbol, pulse_color) =
++            self.pulse.map_or((0., None, None), |pulse| {
++                let elapsed = now.saturating_duration_since(pulse.started_at).as_secs_f32();
++                let radius = elapsed * 8.;
++                let wave_distance = (line.abs_diff(pulse.line) as f32 - radius) / 1.35;
++                let decay = (1. - elapsed / PULSE_LIFETIME.as_secs_f32()).clamp(0., 1.);
++                let intensity = (-wave_distance.powi(2)).exp() * decay;
++                let symbol = (line == pulse.line && elapsed < 1.35).then_some(match pulse.kind {
++                    PulseKind::Launch => '◈',
++                    PulseKind::Packet => '◇',
++                    PulseKind::Passed | PulseKind::Qualified => '✓',
++                    PulseKind::Rejected | PulseKind::WrenchRejected => '×',
++                });
++                let color = match pulse.kind {
++                    PulseKind::Launch => VIOLET,
++                    PulseKind::Packet => CYAN,
++                    PulseKind::Passed | PulseKind::Qualified => GREEN,
++                    PulseKind::Rejected | PulseKind::WrenchRejected => CORAL,
++                };
++                (intensity, symbol, Some(color))
++            });
++
++        let (scope_intensity, scope_symbol, scope_color) =
++            self.scope.map_or((0., None, None), |scope| {
++                let end = scope.end.unwrap_or(active_line.max(scope.start));
++                if line < scope.start || line > end {
++                    return (0., None, None);
++                }
++                let symbol = if scope.start == end && line == end {
++                    scope.passed.map(|passed| if passed { '✓' } else { '×' }).or(Some('╭'))
++                } else if line == scope.start {
++                    Some('╭')
++                } else if line == end && scope.end.is_some() {
++                    scope.passed.map(|passed| if passed { '✓' } else { '×' }).or(Some('╰'))
++                } else {
++                    Some('│')
++                };
++                let color = match scope.passed {
++                    Some(true) => GREEN,
++                    Some(false) => CORAL,
++                    None => BLUE,
++                };
++                (0.34, symbol, Some(color))
++            });
++
++        let intensity = wake.max(semantic).max(pulse_intensity).max(scope_intensity).clamp(0., 1.);
++        let mode_color = match self.mode {
++            SemanticMode::Search | SemanticMode::Tool => CYAN,
++            SemanticMode::Read => BLUE,
++            SemanticMode::Reasoning | SemanticMode::Edit | SemanticMode::Campaign => VIOLET,
++            SemanticMode::Verify => CREAM,
++            SemanticMode::Settled => GREEN,
++            SemanticMode::Failed => CORAL,
++            SemanticMode::Idle => RAIL,
++        };
++        let semantic_color = pulse_color.or(scope_color).unwrap_or(mode_color);
++        let rail_color = blend(RAIL, semantic_color, 0.2 + intensity * 0.8);
++        let number_color = if active { blend(NUMBER, ACTIVE_NUMBER, 0.7) } else { NUMBER };
++
++        let rail = pulse_symbol.or(scope_symbol).unwrap_or_else(|| {
++            if active && self.semantic_active() {
++                '◆'
++            } else if intensity >= 0.72 {
++                '┃'
++            } else if intensity >= 0.4 {
++                '╎'
++            } else if intensity >= 0.16 {
++                '┊'
++            } else if intensity >= 0.05 {
++                '·'
++            } else {
++                '│'
++            }
++        });
++
++        ShellGutterVisual {
++            number_color,
++            rail_color,
++            rail,
++            strip_width: 1. + intensity * 3.,
++            strip_alpha: if intensity > 0.02 { 0.12 + intensity * 0.5 } else { 0.05 },
++        }
++    }
++
++    fn apply_event(&mut self, event: ShellGutterEvent, now: Instant, line: usize) {
++        let mut pulse = None;
++        self.mode_started_at = now;
++        match event {
++            ShellGutterEvent::Reset => return,
++            ShellGutterEvent::CodexStart => {
++                self.session_active = true;
++                self.mode = SemanticMode::Reasoning;
++            },
++            ShellGutterEvent::CodexStop | ShellGutterEvent::Complete => {
++                self.session_active = false;
++                self.mode = SemanticMode::Settled;
++                pulse = Some(PulseKind::Passed);
++            },
++            ShellGutterEvent::Reasoning => self.mode = SemanticMode::Reasoning,
++            ShellGutterEvent::Search => self.mode = SemanticMode::Search,
++            ShellGutterEvent::Read => self.mode = SemanticMode::Read,
++            ShellGutterEvent::Edit => self.mode = SemanticMode::Edit,
++            ShellGutterEvent::Tool => self.mode = SemanticMode::Tool,
++            ShellGutterEvent::Test | ShellGutterEvent::Verify => self.mode = SemanticMode::Verify,
++            ShellGutterEvent::Failed => {
++                self.session_active = false;
++                self.mode = SemanticMode::Failed;
++                pulse = Some(PulseKind::Rejected);
++            },
++            ShellGutterEvent::CommandStart => {
++                self.mode = SemanticMode::Tool;
++                self.scope =
++                    Some(CommandScope { start: line, end: None, passed: None, finished_at: None });
++            },
++            ShellGutterEvent::CommandPass | ShellGutterEvent::CommandFail => {
++                let passed = event == ShellGutterEvent::CommandPass;
++                let scope = self.scope.get_or_insert(CommandScope {
++                    start: line,
++                    end: None,
++                    passed: None,
++                    finished_at: None,
++                });
++                scope.end = Some(line.max(scope.start));
++                scope.passed = Some(passed);
++                scope.finished_at = Some(now);
++                self.mode = if passed { SemanticMode::Settled } else { SemanticMode::Failed };
++                pulse = Some(if passed { PulseKind::Passed } else { PulseKind::Rejected });
++            },
++            ShellGutterEvent::CampaignLaunch => {
++                self.session_active = true;
++                self.mode = SemanticMode::Campaign;
++                pulse = Some(PulseKind::Launch);
++            },
++            ShellGutterEvent::CandidateStart => {
++                self.mode = SemanticMode::Tool;
++                pulse = Some(PulseKind::Packet);
++            },
++            ShellGutterEvent::CandidateReject => {
++                self.mode = SemanticMode::Reasoning;
++                pulse = Some(PulseKind::Rejected);
++            },
++            ShellGutterEvent::CandidatePass => {
++                self.mode = SemanticMode::Verify;
++                pulse = Some(PulseKind::Passed);
++            },
++            ShellGutterEvent::QualificationStart | ShellGutterEvent::WrenchStart => {
++                self.mode = SemanticMode::Verify;
++            },
++            ShellGutterEvent::Qualified => {
++                self.mode = SemanticMode::Settled;
++                pulse = Some(PulseKind::Qualified);
++            },
++            ShellGutterEvent::CompositionStart => {
++                self.mode = SemanticMode::Edit;
++                pulse = Some(PulseKind::Packet);
++            },
++            ShellGutterEvent::CompositionPass => {
++                self.mode = SemanticMode::Settled;
++                pulse = Some(PulseKind::Passed);
++            },
++            ShellGutterEvent::WrenchReject => {
++                self.mode = SemanticMode::Settled;
++                pulse = Some(PulseKind::WrenchRejected);
++            },
++        }
++        if let Some(kind) = pulse {
++            self.pulse = Some(Pulse { kind, line, started_at: now });
++        }
++    }
++}
++
++fn blend(start: Rgb, end: Rgb, amount: f32) -> Rgb {
++    let amount = amount.clamp(0., 1.);
++    let channel = |start: u8, end: u8| {
++        (f32::from(start) + (f32::from(end) - f32::from(start)) * amount).round() as u8
++    };
++    Rgb::new(channel(start.r, end.r), channel(start.g, end.g), channel(start.b, end.b))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn command_scope_closes_with_a_stable_result() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.update(start, Some(10), false, false, false);
++        gutter.push_event(ShellGutterEvent::CommandStart, start);
++        gutter.update(start, Some(10), false, false, false);
++        assert_eq!(gutter.visual(start, 10, 0, 20, true).rail, '╭');
++
++        let finished = start + Duration::from_millis(200);
++        gutter.update(finished, Some(13), true, false, false);
++        gutter.push_event(ShellGutterEvent::CommandPass, finished);
++        gutter.update(finished, Some(13), false, false, false);
++        assert_eq!(gutter.visual(finished, 11, 1, 20, false).rail, '│');
++        assert_eq!(gutter.visual(finished, 13, 3, 20, true).rail, '✓');
++    }
++
++    #[test]
++    fn output_wake_fades_after_activity_stops() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::CodexStart, start);
++        gutter.update(start, Some(20), true, false, false);
++        let moved = start + Duration::from_millis(80);
++        gutter.update(moved, Some(21), true, false, false);
++
++        let wake = gutter.visual(moved, 20, 4, 20, false).strip_alpha;
++        let faded = gutter.visual(moved + Duration::from_secs(2), 20, 4, 20, false).strip_alpha;
++        assert!(wake > faded);
++    }
++
++    #[test]
++    fn same_line_output_refreshes_a_capped_scrollback_wake() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::CodexStart, start);
++        gutter.update(start, Some(20), true, false, false);
++
++        let refreshed = start + Duration::from_secs(2);
++        gutter.update(refreshed, Some(20), true, false, false);
++        assert!(gutter.visual(refreshed, 20, 4, 20, true).strip_alpha > 0.2);
++    }
++
++    #[test]
++    fn standalone_semantic_mode_has_a_bounded_animation_lease() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::Search, start);
++        gutter.update(start, Some(7), false, false, false);
++        assert!(gutter.animating(start + Duration::from_secs(2)));
++
++        let expired = start + MODE_LIFETIME;
++        gutter.update(expired, Some(7), false, false, false);
++        assert!(!gutter.animating(expired));
++        assert!(!gutter.semantic_active());
++    }
++
++    #[test]
++    fn alternate_screen_transition_clears_spatial_scope() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::CommandStart, start);
++        gutter.update(start, Some(4), false, false, false);
++        assert!(gutter.scope.is_some());
++
++        gutter.update(start, Some(1), false, true, false);
++        assert!(gutter.scope.is_none());
++    }
++
++    #[test]
++    fn reset_stops_a_semantic_session() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::CampaignLaunch, start);
++        gutter.update(start, Some(7), false, false, false);
++        assert!(gutter.semantic_active());
++
++        gutter.push_event(ShellGutterEvent::Reset, start);
++        assert!(!gutter.semantic_active());
++        assert!(!gutter.animating(start + Duration::from_secs(3)));
++    }
++
++    #[test]
++    fn failure_ends_a_campaign_session() {
++        let start = Instant::now();
++        let mut gutter = ShellGutterAnimation::new_at(start);
++        gutter.push_event(ShellGutterEvent::CampaignLaunch, start);
++        gutter.update(start, Some(7), false, false, false);
++        gutter.push_event(ShellGutterEvent::Failed, start);
++        gutter.update(start, Some(7), false, false, false);
++        assert!(!gutter.session_active);
++    }
++}
+diff --git a/alacritty_terminal/src/term/mod.rs b/alacritty_terminal/src/term/mod.rs
+index f58cd509bd9c5974352415e4bd77a5cb5549c2ad..cf69aa7eef9dbd53859957cccbea2542097ae132 100644
+--- a/alacritty_terminal/src/term/mod.rs
++++ b/alacritty_terminal/src/term/mod.rs
+@@ -1901,6 +1901,7 @@ impl<T: EventListener> Handler for Term<T> {
+         self.tabs = TabStops::new(self.columns());
+         self.title_stack = Vec::new();
+         self.title = None;
++        self.shell_gutter_heat_disabled = false;
+         self.selection = None;
+         self.vi_mode_cursor = Default::default();
+         self.keyboard_mode_stack = Default::default();
+@@ -2279,7 +2280,12 @@ impl<T: EventListener> Handler for Term<T> {
+         trace!("Setting title to '{title:?}'");
+ 
+         match title.as_deref() {
+-            Some("\u{2063}codex") => self.shell_gutter_heat_disabled = true,
++            // Compatibility for older wrappers. Keep the private marker out
++            // of both terminal title state and the compositor-visible title.
++            Some("\u{2063}codex") => {
++                self.shell_gutter_heat_disabled = true;
++                return;
++            },
+             // The Xonsh Codex wrapper sends an empty title after the child
+             // exits. Ordinary title updates from Codex deliberately retain
+             // the setting, since they replace its initial marker.
+@@ -3366,6 +3372,13 @@ mod tests {
+         // Title None by default.
+         assert_eq!(term.title, None);
+ 
++        // Legacy private gutter markers never leak into title state.
++        term.set_title(Some("\u{2063}codex".into()));
++        assert!(term.shell_gutter_heat_disabled);
++        assert_eq!(term.title, None);
++        term.set_title(None);
++        assert!(!term.shell_gutter_heat_disabled);
++
+         // Title can be set.
+         term.set_title(Some("Test".into()));
+         assert_eq!(term.title, Some("Test".into()));
+@@ -3388,10 +3401,12 @@ mod tests {
+         assert_eq!(term.title_stack.len(), 4096);
+ 
+         // Title and title stack reset when terminal state is reset.
++        term.set_title(Some("\u{2063}codex".into()));
+         term.push_title();
+         term.reset_state();
+         assert_eq!(term.title, None);
+         assert!(term.title_stack.is_empty());
++        assert!(!term.shell_gutter_heat_disabled);
+ 
+         // Title stack pops back to default.
+         term.title = None;
+diff --git a/extra/completions/_alacritty b/extra/completions/_alacritty
+index 6aeeba91662010e26458d21876d879cb29f72f75..4e507df9aaacfbcee980aee543306615c65af34e 100644
+--- a/extra/completions/_alacritty
++++ b/extra/completions/_alacritty
+@@ -85,6 +85,15 @@ _arguments "${_arguments_options[@]}" : \
+ '--help[Print help]' \
+ && ret=0
+ ;;
++(gutter-event)
++_arguments "${_arguments_options[@]}" : \
++'-w+[Window ID for the gutter event]:WINDOW_ID:_default' \
++'--window-id=[Window ID for the gutter event]:WINDOW_ID:_default' \
++'-h[Print help]' \
++'--help[Print help]' \
++':event -- Bounded semantic event rendered by the gutter animation engine:(reset codex-start codex-stop reasoning search read edit tool test verify complete failed command-start command-pass command-fail campaign-launch candidate-start candidate-reject candidate-pass qualification-start qualified composition-start composition-pass wrench-start wrench-reject)' \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ '-w+[Window ID for the new config]:WINDOW_ID:_default' \
+@@ -124,6 +133,10 @@ _arguments "${_arguments_options[@]}" : \
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+ ;;
++(gutter-event)
++_arguments "${_arguments_options[@]}" : \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+@@ -191,6 +204,10 @@ _arguments "${_arguments_options[@]}" : \
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+ ;;
++(gutter-event)
++_arguments "${_arguments_options[@]}" : \
++&& ret=0
++;;
+ (config)
+ _arguments "${_arguments_options[@]}" : \
+ && ret=0
+@@ -253,6 +270,7 @@ _alacritty__help__msg_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
+ 'copy-buffer:Copy the complete primary screen and scrollback buffer' \
++'gutter-event:Send a semantic event to the terminal gutter' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+     )
+@@ -278,6 +296,11 @@ _alacritty__help__msg__get-config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty help msg get-config commands' commands "$@"
+ }
++(( $+functions[_alacritty__help__msg__gutter-event_commands] )) ||
++_alacritty__help__msg__gutter-event_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty help msg gutter-event commands' commands "$@"
++}
+ (( $+functions[_alacritty__migrate_commands] )) ||
+ _alacritty__migrate_commands() {
+     local commands; commands=()
+@@ -288,6 +311,7 @@ _alacritty__msg_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
+ 'copy-buffer:Copy the complete primary screen and scrollback buffer' \
++'gutter-event:Send a semantic event to the terminal gutter' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+ 'help:Print this message or the help of the given subcommand(s)' \
+@@ -314,11 +338,17 @@ _alacritty__msg__get-config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty msg get-config commands' commands "$@"
+ }
++(( $+functions[_alacritty__msg__gutter-event_commands] )) ||
++_alacritty__msg__gutter-event_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty msg gutter-event commands' commands "$@"
++}
+ (( $+functions[_alacritty__msg__help_commands] )) ||
+ _alacritty__msg__help_commands() {
+     local commands; commands=(
+ 'create-window:Create a new window in the same Alacritty process' \
+ 'copy-buffer:Copy the complete primary screen and scrollback buffer' \
++'gutter-event:Send a semantic event to the terminal gutter' \
+ 'config:Update the Alacritty configuration' \
+ 'get-config:Read runtime Alacritty configuration' \
+ 'help:Print this message or the help of the given subcommand(s)' \
+@@ -345,6 +375,11 @@ _alacritty__msg__help__get-config_commands() {
+     local commands; commands=()
+     _describe -t commands 'alacritty msg help get-config commands' commands "$@"
+ }
++(( $+functions[_alacritty__msg__help__gutter-event_commands] )) ||
++_alacritty__msg__help__gutter-event_commands() {
++    local commands; commands=()
++    _describe -t commands 'alacritty msg help gutter-event commands' commands "$@"
++}
+ (( $+functions[_alacritty__msg__help__help_commands] )) ||
+ _alacritty__msg__help__help_commands() {
+     local commands; commands=()
+diff --git a/extra/completions/alacritty.bash b/extra/completions/alacritty.bash
+index e95c257b724e226823d1942126b7ddf7fe1d8d4f..1525c163761487875d1b604ec9d6bb07f7d5cc8f 100644
+--- a/extra/completions/alacritty.bash
++++ b/extra/completions/alacritty.bash
+@@ -46,6 +46,9 @@ _alacritty() {
+             alacritty__help__msg,get-config)
+                 cmd="alacritty__help__msg__get__config"
+                 ;;
++            alacritty__help__msg,gutter-event)
++                cmd="alacritty__help__msg__gutter__event"
++                ;;
+             alacritty__msg,config)
+                 cmd="alacritty__msg__config"
+                 ;;
+@@ -58,6 +61,9 @@ _alacritty() {
+             alacritty__msg,get-config)
+                 cmd="alacritty__msg__get__config"
+                 ;;
++            alacritty__msg,gutter-event)
++                cmd="alacritty__msg__gutter__event"
++                ;;
+             alacritty__msg,help)
+                 cmd="alacritty__msg__help"
+                 ;;
+@@ -73,6 +79,9 @@ _alacritty() {
+             alacritty__msg__help,get-config)
+                 cmd="alacritty__msg__help__get__config"
+                 ;;
++            alacritty__msg__help,gutter-event)
++                cmd="alacritty__msg__help__gutter__event"
++                ;;
+             alacritty__msg__help,help)
+                 cmd="alacritty__msg__help__help"
+                 ;;
+@@ -216,7 +225,7 @@ _alacritty() {
+             return 0
+             ;;
+         alacritty__help__msg)
+-            opts="create-window copy-buffer config get-config"
++            opts="create-window copy-buffer gutter-event config get-config"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -285,6 +294,20 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__help__msg__gutter__event)
++            opts=""
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__migrate)
+             opts="-c -d -i -s -h --config-file --dry-run --skip-imports --skip-renames --silent --help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+@@ -330,7 +353,7 @@ _alacritty() {
+             return 0
+             ;;
+         alacritty__msg)
+-            opts="-s -h --socket --help create-window copy-buffer config get-config help"
++            opts="-s -h --socket --help create-window copy-buffer gutter-event config get-config help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -496,8 +519,30 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__msg__gutter__event)
++            opts="-w -h --window-id --help reset codex-start codex-stop reasoning search read edit tool test verify complete failed command-start command-pass command-fail campaign-launch candidate-start candidate-reject candidate-pass qualification-start qualified composition-start composition-pass wrench-start wrench-reject"
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                --window-id)
++                    COMPREPLY=($(compgen -f "${cur}"))
++                    return 0
++                    ;;
++                -w)
++                    COMPREPLY=($(compgen -f "${cur}"))
++                    return 0
++                    ;;
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__msg__help)
+-            opts="create-window copy-buffer config get-config help"
++            opts="create-window copy-buffer gutter-event config get-config help"
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                 return 0
+@@ -566,6 +611,20 @@ _alacritty() {
+             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+             return 0
+             ;;
++        alacritty__msg__help__gutter__event)
++            opts=""
++            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
++                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++                return 0
++            fi
++            case "${prev}" in
++                *)
++                    COMPREPLY=()
++                    ;;
++            esac
++            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
++            return 0
++            ;;
+         alacritty__msg__help__help)
+             opts=""
+             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+diff --git a/extra/completions/alacritty.fish b/extra/completions/alacritty.fish
+index 0aa96cefc65a9d5bea01951f957165e39a5549b4..4cf3c0befeca77bd6df521eaaecf6aaf93504d10 100644
+--- a/extra/completions/alacritty.fish
++++ b/extra/completions/alacritty.fish
+@@ -43,13 +43,14 @@ complete -c alacritty -n "__fish_alacritty_needs_command" -s V -l version -d 'Pr
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "msg" -d 'Send a message to the Alacritty socket'
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "migrate" -d 'Migrate the configuration file'
+ complete -c alacritty -n "__fish_alacritty_needs_command" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -s s -l socket -d 'IPC socket connection path override' -r -F
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -s h -l help -d 'Print help'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "config" -d 'Update the Alacritty configuration'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+-complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer config get-config help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -s s -l socket -d 'IPC socket connection path override' -r -F
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -s h -l help -d 'Print help'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "gutter-event" -d 'Send a semantic event to the terminal gutter'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "config" -d 'Update the Alacritty configuration'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and not __fish_seen_subcommand_from create-window copy-buffer gutter-event config get-config help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -l working-directory -d 'Start the shell in the specified working directory' -r -F
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s e -l command -d 'Command and args to execute (must be last argument)' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from create-window" -s T -l title -d 'Defines the window title [default: Alacritty]' -r
+@@ -60,6 +61,8 @@ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -s w -l window-id -d 'Window ID for the buffer request' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -l clear -d 'Clear the primary screen and scrollback after copying'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from copy-buffer" -s h -l help -d 'Print help'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from gutter-event" -s w -l window-id -d 'Window ID for the gutter event' -r
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from gutter-event" -s h -l help -d 'Print help'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s w -l window-id -d 'Window ID for the new config' -r
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s r -l reset -d 'Clear all runtime configuration changes'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from config" -s h -l help -d 'Print help (see more with \'--help\')'
+@@ -67,6 +70,7 @@ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from get-config" -s h -l help -d 'Print help (see more with \'--help\')'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
++complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "gutter-event" -d 'Send a semantic event to the terminal gutter'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "config" -d 'Update the Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand msg; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+@@ -81,5 +85,6 @@ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and not __fish
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and not __fish_seen_subcommand_from msg migrate help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "create-window" -d 'Create a new window in the same Alacritty process'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "copy-buffer" -d 'Copy the complete primary screen and scrollback buffer'
++complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "gutter-event" -d 'Send a semantic event to the terminal gutter'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "config" -d 'Update the Alacritty configuration'
+ complete -c alacritty -n "__fish_alacritty_using_subcommand help; and __fish_seen_subcommand_from msg" -f -a "get-config" -d 'Read runtime Alacritty configuration'
+diff --git a/extra/man/alacritty-msg.1.scd b/extra/man/alacritty-msg.1.scd
+index 8199995783d64444afc133421571bd0888a4b453..cda219f5f5dab1940c99a0b34f82584e5b74dcb8 100644
+--- a/extra/man/alacritty-msg.1.scd
++++ b/extra/man/alacritty-msg.1.scd
+@@ -69,6 +69,29 @@ making it possible to control Alacritty without directly accessing it.
+ 
+ 			Default: _$ALACRITTY_WINDOW_ID_
+ 
++*gutter-event* _<EVENT>_
++
++	Send a bounded semantic event to the terminal gutter. Events change only
++	the per-window visual overlay and never write to the terminal grid.
++
++	*ARGS*
++		*<EVENT>*
++
++			One of: _reset_, _codex-start_, _codex-stop_, _reasoning_,
++			_search_, _read_, _edit_, _tool_, _test_, _verify_, _complete_,
++			_failed_, _command-start_, _command-pass_, _command-fail_,
++			_campaign-launch_, _candidate-start_, _candidate-reject_,
++			_candidate-pass_, _qualification-start_, _qualified_,
++			_composition-start_, _composition-pass_, _wrench-start_, or
++			_wrench-reject_.
++
++	*OPTIONS*
++		*-w, --window-id* _<WINDOW_ID>_
++
++			Window ID for the gutter event.
++
++			Default: _$ALACRITTY_WINDOW_ID_
++
+ *config*
+ 
+ 	Update the Alacritty configuration.

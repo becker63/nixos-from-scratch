@@ -57,8 +57,6 @@ let
     "neovim"
     "nvim"
     "pi"
-    "tmux"
-    "tmuxp"
     "waybar"
     "wofi"
   ];
@@ -75,10 +73,6 @@ let
       "pi"
       "pi-agent"
       "pi-coding-agent"
-    ];
-    tmux = [
-      "tmux"
-      "tmuxp"
     ];
     waybar = [ "waybar" ];
     wofi = [ "wofi" ];

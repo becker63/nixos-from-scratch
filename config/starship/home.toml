@@ -1,0 +1,9 @@
+# The home directory is a broad Git working tree. Keep its prompt responsive
+# by omitting only the expensive dirty-status scan there.
+"$schema" = 'https://starship.rs/config-schema.json'
+
+[username]
+show_always = true
+
+[git_status]
+disabled = true
