@@ -41,6 +41,22 @@
     "hidp"
   ];
 
+  # Keep interactive work responsive when concurrent builds briefly exceed RAM.
+  # zram provides a compressed in-memory spill tier without disk write wear.
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 50;
+    priority = 100;
+  };
+
+  boot.kernel.sysctl = {
+    # Prefer compressed swap over discarding useful filesystem cache.
+    "vm.swappiness" = 100;
+    # Swap readahead only adds decompression work for RAM-backed zram.
+    "vm.page-cluster" = 0;
+  };
+
   networking = {
     hostName = "nixos-btw";
     useNetworkd = false;
