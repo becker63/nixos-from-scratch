@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-08-26
+- Last refreshed: 2026-08-27
 
 ## What I Build
 
@@ -60,7 +60,7 @@ Custom Next.js + MDX writing system for technical essays, diagrams, search, and 
 
 - Why it matters: It is both a publishing surface and a technical artifact for communicating systems work with diagrams, search, and controlled rendering.
 - Stack: TypeScript
-- Last push: 2026-07-24
+- Last push: 2026-08-27
 - GitHub: `becker63/blog`
 
 ### [nixos-from-scratch](https://github.com/becker63/nixos-from-scratch)
@@ -69,7 +69,7 @@ Flake-based NixOS and packaging experiments, including an Asahi Linux workstatio
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-08-25
+- Last push: 2026-08-26
 - GitHub: `becker63/nixos-from-scratch`
 
 
@@ -92,7 +92,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 - [becker63/designing-for-two](https://github.com/becker63/designing-for-two) — Typed control-plane experiments around KCL, Crossplane, Buck2, and Nix to make infrastructure coordination more legible.  
   Python · 1 stars · updated 2026-02-15
 - [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
-  TypeScript · 0 stars · updated 2026-07-24
+  TypeScript · 0 stars · updated 2026-08-27
 - [becker63/home_lab](https://github.com/becker63/home_lab) — Home infrastructure experiments around reproducible systems, services, and local platform ownership.  
   Nix · 0 stars · updated 2026-02-15
 - [becker63/home_network](https://github.com/becker63/home_network) — Typed network and infrastructure modeling work with an emphasis on legibility.  
@@ -102,12 +102,12 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
+- [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
+  TypeScript · updated 2026-08-27
 - [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
-  Nix · updated 2026-08-25
+  Nix · updated 2026-08-26
 - [becker63/attune](https://github.com/becker63/attune) — No public description yet.  
   TypeScript · updated 2026-08-01
-- [becker63/blog](https://github.com/becker63/blog) — Custom Next.js + MDX writing system for technical essays, diagrams, search, and static rendering.  
-  TypeScript · updated 2026-07-24
 - [becker63/attuned](https://github.com/becker63/attuned) — No public description yet.  
   Mixed · updated 2026-06-15
 - [becker63/attunedocs](https://github.com/becker63/attunedocs) — No public description yet.  
