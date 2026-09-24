@@ -48,19 +48,14 @@ in
     ];
   };
 
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    pulse.enable = true;
-    wireplumber.enable = true;
-  };
-
+  # PipeWire is owned by modules/nixos/system/services.nix (which carries the
+  # superset: 32-bit ALSA support, JACK off); QT_QPA_PLATFORM is owned by
+  # modules/nixos/system/desktop.nix, where qt is configured.
   environment.sessionVariables = {
     LV2_PATH = "${pkgs.asahi-audio}/lib/lv2";
     LIBVA_DRIVER_NAME = "asahi";
     MESA_LOADER_DRIVER_OVERRIDE = "asahi";
     VDPAU_DRIVER = "va_gl";
-    QT_QPA_PLATFORM = "wayland";
   };
 
   home-manager.backupFileExtension = "backup";

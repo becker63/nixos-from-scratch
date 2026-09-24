@@ -1,12 +1,10 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
 
 let
-  keepRunningWithLidClosed = false;
   nixStoreGcScript = pkgs.writeShellScript "nix-store-gc" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -26,7 +24,6 @@ in
     LidSwitchIgnoreInhibited = "yes";
   };
 
-  services.tzupdate.enable = false;
   services.devmon.enable = true;
   services.gvfs.enable = true;
   services.udisks2.enable = true;
@@ -45,23 +42,6 @@ in
       Persistent = true;
       RandomizedDelaySec = "30m";
     };
-  };
-
-  systemd.services.disable-wlan0-power-save = lib.mkIf keepRunningWithLidClosed {
-    description = "Disable Wi-Fi power save for closed-lid operation";
-    after = [ "iwd.service" ];
-    wants = [ "iwd.service" ];
-    wantedBy = [ "multi-user.target" ];
-    path = [ pkgs.iw ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      if iw dev wlan0 info >/dev/null 2>&1; then
-        iw dev wlan0 set power_save off
-      fi
-    '';
   };
 
   systemd.services.systemd-logind.restartTriggers = [
@@ -85,14 +65,7 @@ in
   };
 
   services.blueman.enable = true;
-  services.tailscale = {
-    enable = true;
-    # openFirewall = true;
-    # extraUpFlags = [
-    #   "--accept-routes=true"
-    #   "--accept-dns=false"
-    # ];
-  };
+  services.tailscale.enable = true;
 
   systemd.user.services.pavucontrol = {
     description = "PulseAudio Volume Control";

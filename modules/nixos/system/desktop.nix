@@ -64,22 +64,18 @@
   };
 
   fonts.packages = [ pkgs.nerd-fonts.jetbrains-mono ];
+  # defaultFonts may only name fonts that are actually installed or
+  # requested by name somewhere; the never-installed SF Pro Display /
+  # SF Pro Text / SF Mono aliases fell through to the next entry anyway.
   fonts.fontconfig = {
     enable = true;
     defaultFonts = {
       sansSerif = [
         "Inter"
-        "SF Pro Display"
         "Cantarell"
       ];
-      serif = [
-        "SF Pro Text"
-        "Noto Serif"
-      ];
-      monospace = [
-        "JetBrains Mono"
-        "SF Mono"
-      ];
+      serif = [ "Noto Serif" ];
+      monospace = [ "JetBrains Mono" ];
     };
     hinting = {
       enable = true;

@@ -208,7 +208,6 @@ let
     ) "becker's login shell must remain Xonsh")
     (expect config.virtualisation.docker.enable "Docker must remain enabled")
     (expect (!config.virtualisation.podman.enable) "Podman must remain disabled")
-    (expect config.virtualisation.podman.dockerCompat "the Podman Docker-compatibility setting must remain enabled")
     (expect (
       !config.security.sudo.wheelNeedsPassword
     ) "passwordless sudo for wheel must remain enabled")
@@ -246,12 +245,6 @@ let
     (expect config.nix.settings.keep-outputs "Nix must continue to keep derivation outputs")
     (expect config.nix.settings.keep-derivations "Nix must continue to keep derivations")
 
-    (expect (
-      config.programs.ssh.knownHosts.nixos-builder.hostNames == [ "192.168.0.102" ]
-      &&
-        config.programs.ssh.knownHosts.nixos-builder.publicKey
-        == "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLhQQV3uPgklRz5KZohKyGl1h6VMLbxPOqHF6cCtWzF"
-    ) "the trusted nixos-builder SSH host identity changed")
     (expect config.services.gnome.gnome-keyring.enable "GNOME Keyring must remain enabled")
     (expect config.security.pam.services.login.enableGnomeKeyring "GNOME Keyring must remain enabled for login PAM")
     (expect config.security.pam.services.gdm.enableGnomeKeyring "GNOME Keyring must remain enabled for GDM PAM")

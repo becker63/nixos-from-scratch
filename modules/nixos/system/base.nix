@@ -114,16 +114,8 @@
 
   users.users.root.initialPassword = "***REMOVED***";
 
-  programs.ssh.knownHosts.nixos-builder = {
-    hostNames = [ "192.168.0.102" ];
-    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLhQQV3uPgklRz5KZohKyGl1h6VMLbxPOqHF6cCtWzF";
-  };
-
   nix = {
-    distributedBuilds = false;
-    buildMachines = [ ];
     settings = {
-      # max-jobs = 0;
       builders-use-substitutes = true;
       extra-platforms = [ "aarch64-linux" ];
       require-sigs = false;
@@ -155,10 +147,8 @@
     container_additional_volumes="/nix/store:/nix/store:ro /etc/profiles/per-user:/etc/profiles/per-user:ro /etc/static/profiles/per-user:/etc/static/profiles/per-user:ro"
   '';
 
-  virtualisation.podman = {
-    enable = false;
-    dockerCompat = true;
-  };
+  # Podman stays explicitly off; Docker is the container runtime on this host.
+  virtualisation.podman.enable = false;
   virtualisation.docker.enable = true;
 
   system.stateVersion = "25.05";
