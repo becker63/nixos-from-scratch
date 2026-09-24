@@ -42,9 +42,12 @@
     # Keep llm-agents on its tested nixpkgs revision for binary-cache reuse.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
-    # Official Zed Preview tarball for aarch64 Linux.
+    # Zed Preview tarball for aarch64 Linux, pinned to the immutable GitHub
+    # release asset. zed.dev's `preview/latest` endpoint re-packs the tarball
+    # on every release, so the locked narHash drifts out from under the lock
+    # and every evaluation forcing the source dies on a hash mismatch.
     zed-preview-bin = {
-      url = "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz";
+      url = "https://github.com/zed-industries/zed/releases/download/v1.22.0-pre/zed-linux-aarch64.tar.gz";
       flake = false;
     };
 

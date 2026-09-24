@@ -565,14 +565,14 @@
     "zed-preview-bin": {
       "flake": false,
       "locked": {
-        "lastModified": 1786547157,
-        "narHash": "sha256-khBI2p1McX5KmWsf9aSRmSqvjcTdbNLreRnJreQzEEE=",
+        "lastModified": 1790175795,
+        "narHash": "sha256-p9JT9le6ijlASXEYXVtvGHF63p/UtzzuGAE9633k0xo=",
         "type": "tarball",
-        "url": "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz"
+        "url": "https://github.com/zed-industries/zed/releases/download/v1.22.0-pre/zed-linux-aarch64.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://zed.dev/api/releases/preview/latest/zed-linux-aarch64.tar.gz"
+        "url": "https://github.com/zed-industries/zed/releases/download/v1.22.0-pre/zed-linux-aarch64.tar.gz"
       }
     }
   },

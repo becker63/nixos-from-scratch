@@ -82,10 +82,16 @@ let
 
       mkdir -p "$out/opt/zed.app" "$out/bin" "$out/libexec"
 
-      # The current upstream tarball extracts as bin/, lib/, libexec/, share/
-      # at the top level (i.e. it IS the zed.app contents). A future tarball
-      # could wrap that in a single zed.app/ directory; handle both.
-      if [ -d zed.app ]; then
+      # Upstream tarballs come in three shapes: GitHub release assets can wrap
+      # everything in a single zed-preview.app/ directory, older assets used
+      # zed.app/, and some (including v1.22.0-pre aarch64) extract the app
+      # contents (bin/, lib/, libexec/, share/) at the top level. Every shape
+      # flattens into the same $out/opt/zed.app so the CLI/exec paths, the
+      # $ORIGIN-based RPATH, and zed-deps-report's stable diagnostic path all
+      # keep working regardless of which layout the next release ships.
+      if [ -d zed-preview.app ]; then
+        cp -R zed-preview.app/. "$out/opt/zed.app/"
+      elif [ -d zed.app ]; then
         cp -R zed.app/. "$out/opt/zed.app/"
       else
         cp -R . "$out/opt/zed.app/"
