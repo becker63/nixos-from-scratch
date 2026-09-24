@@ -44,9 +44,9 @@ classified by realization cost:
 
 - **EVAL-ASSERT** — fires on evaluation: `system-invariants`, `asahi-gaming`,
   `factory-invariants`, `home-invariants`' table, `portable-packages-eval`.
-- **LIGHT-BUILD** — realizes a small kernel-free derivation: `xonsh-config`,
-  `desktop-osd-contract`, `alacritty-copybuffer`, `hyprland-gpu-preflight`,
-  `opencode-context-stack-e2e`.
+- **LIGHT-BUILD** — realizes a small kernel-free derivation: `asahi-gaming`'s binary
+  smoke test, `xonsh-config`, `desktop-osd-contract`, `alacritty-copybuffer`,
+  `hyprland-gpu-preflight`, `opencode-context-stack-e2e`.
 - **REBUILD-TIME** — interpolates `config.system.build.toplevel` by design:
   `gdm-greeter-preflight`, `switch-safety`, system-invariants' preflight script. These
   are the pre-switch safety net for real rebuilds; automation never builds them.

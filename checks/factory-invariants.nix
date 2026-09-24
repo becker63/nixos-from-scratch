@@ -11,9 +11,10 @@
 {
   config,
   pkgs,
-  # The aarch64 checks wiring forwards the flake's package set so the
-  # exposure asserts can fire. Importers that never force this check
-  # (packages.nix's check-suite wrapper packages) may leave it unset.
+  # Both importers (outputs/perSystem/checks.nix and packages.nix's
+  # check-suite wrappers) forward the flake's package set so the exposure
+  # asserts can fire; switch-safety interpolates this check's marker, so
+  # omitting the argument fails loudly rather than silently skipping them.
   portablePackages ? null,
 }:
 
