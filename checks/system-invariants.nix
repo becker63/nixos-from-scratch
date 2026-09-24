@@ -109,6 +109,35 @@ let
       "fmask=0022"
     ]) "the /boot permission masks changed")
 
+    # Swap tiering: RAM -> zram (priority 100) -> disk swapfile (priority 10).
+    # These asserts read the zramSwap leaf options individually: upstream
+    # removed zramSwap.numDevices with a throwing shim, so any whole-attrset
+    # read of config.zramSwap would abort evaluation on the pinned nixpkgs.
+    (expect config.zramSwap.enable "zram swap must remain enabled")
+    (expect (config.zramSwap.algorithm == "zstd") "zram must keep the zstd compression algorithm")
+    (expect (config.zramSwap.memoryPercent == 50) "zram must remain sized at 50 percent of RAM")
+    (expect (config.zramSwap.priority == 100) "zram swap must keep priority 100")
+    (expect (
+      map (sw: {
+        inherit (sw) device priority size;
+      }) config.swapDevices == [
+        {
+          device = "/var/lib/swapfile";
+          priority = 10;
+          size = 8192;
+        }
+      ]
+    ) "the disk swap fallback must be exactly the 8 GiB /var/lib/swapfile at priority 10")
+    (expect (lib.all (
+      sw: config.zramSwap.priority > sw.priority
+    ) config.swapDevices) "zram swap must outrank every disk swap device")
+    (expect (
+      config.boot.kernel.sysctl."vm.swappiness" == 100
+    ) "vm.swappiness must remain 100 to prefer the compressed zram tier")
+    (expect (
+      config.boot.kernel.sysctl."vm.page-cluster" == 0
+    ) "vm.page-cluster must remain 0 for RAM-backed zram readahead")
+
     (expect config.hardware.asahi.enable "nixos-apple-silicon support must remain enabled")
     (expect config.hardware.asahi.extractPeripheralFirmware "Asahi peripheral firmware extraction must remain enabled")
     (expect (

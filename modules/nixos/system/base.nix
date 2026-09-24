@@ -42,13 +42,28 @@
   ];
 
   # Keep interactive work responsive when concurrent builds briefly exceed RAM.
-  # zram provides a compressed in-memory spill tier without disk write wear.
+  # Swap tiering: RAM -> zram (priority 100, fast, compressed) -> 8 GiB disk
+  # fallback (priority 10), so the kernel fills zram first and only spills to
+  # the disk swapfile when the compressed tier is exhausted.
+  # zramSwap.numDevices was removed upstream with a throwing shim; it stays
+  # unset. Whole-attrset reads of config.zramSwap still evaluate that shim and
+  # throw on the pinned nixpkgs; the individual options evaluate fine.
   zramSwap = {
     enable = true;
     algorithm = "zstd";
     memoryPercent = 50;
     priority = 100;
   };
+
+  # Disk fallback tier. `size` (MiB) makes the swap module create and mkswap
+  # /var/lib/swapfile automatically at boot; the file need not pre-exist.
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 8192;
+      priority = 10;
+    }
+  ];
 
   boot.kernel.sysctl = {
     # Prefer compressed swap over discarding useful filesystem cache.
