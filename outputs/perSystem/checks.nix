@@ -14,6 +14,7 @@ let
 in
 {
   alacritty-copybuffer = checkSuite.alacrittyCopybuffer;
+  asahi-gaming = checkSuite.asahiGaming;
   desktop-osd-contract = checkSuite.desktopOsd.check;
   gdm-greeter-preflight = checkSuite.greeter.check;
   home-invariants = checkSuite.homeInvariants.check;

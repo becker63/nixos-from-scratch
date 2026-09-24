@@ -8,20 +8,24 @@
 let
   inputs = inputs';
   peripheralFirmwareSource = ../../firmware;
-  peripheralFirmware = pkgs.runCommand "asahi-peripheral-firmware-source" {
-    nativeBuildInputs = [ pkgs.asahi-fwextract ];
-  } ''
-    mkdir -p "$out"
-    cp ${peripheralFirmwareSource}/all_firmware.tar.gz \
-      ${peripheralFirmwareSource}/kernelcache.release.mac14g "$out/"
-    asahi-fwextract ${peripheralFirmwareSource} "$out"
-  '';
+  peripheralFirmware =
+    pkgs.runCommand "asahi-peripheral-firmware-source"
+      {
+        nativeBuildInputs = [ pkgs.asahi-fwextract ];
+      }
+      ''
+        mkdir -p "$out"
+        cp ${peripheralFirmwareSource}/all_firmware.tar.gz \
+          ${peripheralFirmwareSource}/kernelcache.release.mac14g "$out/"
+        asahi-fwextract ${peripheralFirmwareSource} "$out"
+      '';
 in
 {
   imports = [
     modules'.overlays
     modules'.system
     inputs.apple-silicon.modules.apple-silicon-support
+    inputs.steam-asahi.modules.default
   ];
 
   _module.args.nixosBtwFlakeBuild = true;

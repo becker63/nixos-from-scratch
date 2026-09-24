@@ -227,8 +227,8 @@ for_window [all] csd disable
 
 include /etc/sway/config.d/*
 
-for_window [app_id="Alacritty"] opacity 0.85
+for_window [app_id="Alacritty"] opacity 0.89
 for_window [app_id="obsidian"] opacity 0.85
 for_window [app_id="dev.zed.Zed"] opacity 0.9
 
-exec_always --no-startup-id swaybg -i /home/becker/nixos-from-scratch/walls/wallpaper4.jpg -m fill
+exec_always --no-startup-id swaybg -i /home/becker/nixos-from-scratch/walls/arnold-bocklin-isle-of-the-dead.jpg -m fill

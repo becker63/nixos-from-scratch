@@ -1,1 +1,9 @@
-#hardware-configuration.nix
+# Generated python bytecode
+__pycache__/
+*.pyc
+
+# Nix build result symlinks
+result
+result-*
+
+# hardware-configuration.nix is tracked on purpose (nodes/nixos-btw/)

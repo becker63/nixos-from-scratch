@@ -2,6 +2,7 @@
   alacritty,
   chromium,
   codex,
+  deno,
   ffmpeg,
   git,
   hyprland,
@@ -37,6 +38,7 @@ rustPlatform.buildRustPackage {
           alacritty
           chromium
           codex
+          deno
           ffmpeg
           git
           hyprland

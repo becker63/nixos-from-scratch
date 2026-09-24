@@ -11,6 +11,9 @@ let
   alacrittyCopybuffer = import ./alacritty-copybuffer.nix {
     inherit pkgs;
   };
+  asahiGaming = import ./asahi-gaming.nix {
+    inherit config pkgs;
+  };
   greeter = import ./gdm-greeter-preflight.nix {
     inherit pkgs systemBuild;
   };
@@ -24,7 +27,12 @@ let
     inherit pkgs sourceRoot;
   };
   systemInvariants = import ./system-invariants.nix {
-    inherit config pkgs sourceRoot systemBuild;
+    inherit
+      config
+      pkgs
+      sourceRoot
+      systemBuild
+      ;
   };
   homeInvariants = import ./home-invariants.nix {
     inherit pkgs;
@@ -40,6 +48,7 @@ let
     inherit pkgs;
     checks = {
       alacritty-copybuffer = alacrittyCopybuffer;
+      asahi-gaming = asahiGaming;
       desktop-osd-contract = desktopOsd.check;
       gdm-greeter-preflight = greeter.check;
       home-invariants = homeInvariants.check;
@@ -53,6 +62,7 @@ in
 {
   inherit
     alacrittyCopybuffer
+    asahiGaming
     desktopOsd
     greeter
     homeInvariants

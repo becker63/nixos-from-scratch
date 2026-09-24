@@ -1,11 +1,21 @@
 {
+  inputs',
   nodes,
   ...
 }:
 
 let
   inherit (nodes.nixos-btw) pkgs;
-  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (builtins.readFile ../../config/minisweagent/attune.yaml);
+  inherit (pkgs) lib;
+  systemConfig = nodes.nixos-btw.config;
+  packageName = package: package.pname or (lib.getName package);
+  asahi-gaming-doctor =
+    lib.findFirst (package: packageName package == "asahi-gaming-doctor")
+      (throw "asahi-gaming-doctor is missing from environment.systemPackages")
+      systemConfig.environment.systemPackages;
+  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (
+    builtins.readFile ../../config/minisweagent/attune.yaml
+  );
   mini-attune = pkgs.writeShellApplication {
     name = "mini-attune";
     runtimeInputs = [
@@ -39,6 +49,11 @@ let
       exec mini --yolo --exit-immediately --config '${miniAttuneConfig}' "$@"
     '';
   };
+  jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
+  factory-droid = pkgs.callPackage ../../packages/factory-droid {
+    droid = inputs'.llm-agents.packages.droid;
+  };
+  factory-config = pkgs.callPackage ../../packages/factory-config { };
   checkSuite = import ../../checks {
     inherit pkgs;
     config = nodes.nixos-btw.config;
@@ -59,6 +74,9 @@ in
     zed_raw
     ;
   inherit mini-attune;
+  inherit factory-config factory-droid jev-mcp;
+  asahi-gaming-check = checkSuite.asahiGaming;
+  inherit asahi-gaming-doctor;
   desktop-osd-contract = checkSuite.desktopOsd.package;
   greeter-preflight = checkSuite.greeter.package;
   home-invariants = checkSuite.homeInvariants.package;
@@ -66,4 +84,5 @@ in
   opencode-context-stack-e2e = checkSuite.opencodeContext.package;
   switch-safety = checkSuite.switchSafety.package;
   system-invariants = checkSuite.systemInvariants.package;
+  steam-asahi = systemConfig.programs.steam-asahi.package;
 }

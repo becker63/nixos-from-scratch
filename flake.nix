@@ -27,10 +27,20 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    # Nixpkgs provides muvm/FEX/libkrun, but not yet the NixOS-specific
+    # Steam/PressureVessel launcher needed on 16 KiB-page Apple Silicon.
+    steam-asahi = {
+      url = "github:sm-idk/steam-asahi/5e538015e267bfd57ccf49e5ed0660ac7fd9f8ea";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     nur-unstable = {
       url = "github:nix-community/NUR";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+
+    # Keep llm-agents on its tested nixpkgs revision for binary-cache reuse.
+    llm-agents.url = "github:numtide/llm-agents.nix";
 
     # Official Zed Preview tarball for aarch64 Linux.
     zed-preview-bin = {
@@ -39,8 +49,7 @@
     };
 
     # Hyprland stays on the known-good package set for this Asahi system.
-    hyprland-pinned-nixpkgs.url =
-      "github:NixOS/nixpkgs/b12141ef619e0a9c1c84dc8c684040326f27cdcc";
+    hyprland-pinned-nixpkgs.url = "github:NixOS/nixpkgs/b12141ef619e0a9c1c84dc8c684040326f27cdcc";
 
     xontrib-jedi-src = {
       url = "github:xonsh/xontrib-jedi";

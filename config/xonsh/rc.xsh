@@ -17,6 +17,7 @@ aliases['htop'] = 'btm'
 aliases['btop'] = 'btm'
 aliases['top'] = 'btm'
 aliases['cpu'] = 'btm --default_widget_type cpu --default_widget_count 1 --expanded'
+aliases['mem'] = 'btm --default_widget_type mem --default_widget_count 1 --expanded'
 aliases['dev'] = 'nix develop -c $SHELL || true'
 aliases['zed'] = 'zed -n'
 aliases['zed_raw'] = 'zed_raw -n'
@@ -25,6 +26,231 @@ aliases['bluetooth'] = 'bluetuith'
 # directly in Xonsh whenever the current uv workspace provides them.
 aliases['cst'] = 'uv run python -m libcst.tool'
 aliases['griffe'] = 'uv run python -m griffe'
+
+
+def _parse_meminfo():
+    memory = {}
+    with open("/proc/meminfo", encoding="utf-8") as meminfo:
+        for line in meminfo:
+            key, value, *_unit = line.split()
+            try:
+                memory[key[:-1]] = int(value)
+            except ValueError:
+                continue
+    return memory
+
+
+def _read_pressure_stat(path):
+    pressures = {}
+    try:
+        with open(path, encoding="utf-8") as pressure_file:
+            for line in pressure_file:
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                kind = parts[0]
+                values = {}
+                for token in parts[1:]:
+                    key, value = token.split("=")
+                    values[key] = value
+                pressures[kind] = values
+    except OSError:
+        return {}
+    return pressures
+
+
+def _read_nvme_stat(device):
+    base = f"/sys/block/{device}"
+    if not os.path.isdir(base):
+        return None
+
+    sector_size = 512
+    hw_sector = Path(base) / "queue" / "hw_sector_size"
+    if hw_sector.is_file():
+        try:
+            sector_size = int(hw_sector.read_text().strip())
+        except ValueError:
+            pass
+
+    stats = Path(base) / "stat"
+    if not stats.is_file():
+        return None
+
+    values = list(map(int, stats.read_text().split()))
+    if len(values) < 11:
+        return None
+
+    return {
+        "device": device,
+        "read_ios": values[0],
+        "read_merges": values[1],
+        "read_sectors": values[2],
+        "read_ms": values[3],
+        "write_ios": values[4],
+        "write_merges": values[5],
+        "write_sectors": values[6],
+        "write_ms": values[7],
+        "ios_inflight": values[8],
+        "io_ms": values[9],
+        "weighted_io_ms": values[10],
+        "sector_size": sector_size,
+        "inflight_path": Path(base) / "inflight",
+        "queue_depth_path": Path(base) / "queue" / "nr_requests",
+    }
+
+
+def _read_zswap_status():
+    enabled_file = Path("/sys/module/zswap/parameters/enabled")
+    if not enabled_file.is_file():
+        return "zswap module not loaded"
+
+    enabled = enabled_file.read_text().strip()
+    if enabled.lower() == "n":
+        return "zswap disabled"
+
+    debug_root = Path("/sys/kernel/debug/zswap")
+    if not debug_root.is_dir():
+        return "zswap enabled (debugfs stats unavailable)"
+
+    fields = [
+        "stored_pages",
+        "pool_used_pages",
+        "compressed_size",
+        "same_filled_pages",
+        "decompressed_pages",
+    ]
+    values = []
+    for field in fields:
+        path = debug_root / field
+        if path.is_file():
+            try:
+                values.append(f"{field}={path.read_text().strip()}")
+            except OSError:
+                values.append(f"{field}=!")
+    if not values:
+        return "zswap enabled (no counters readable)"
+    return ", ".join(values)
+
+
+def _human(v):
+    for unit in ("KiB", "MiB", "GiB", "TiB"):
+        if abs(v) < 1024:
+            return f"{v:.1f} {unit}"
+        v = v / 1024
+    return f"{v:.1f} PiB"
+
+
+def memwatch(args, stdin=None):
+    interval = 2.0
+    device = "nvme0n1"
+    if args:
+        try:
+            interval = float(args[0])
+            if len(args) > 1:
+                device = args[1]
+        except ValueError:
+            device = args[0]
+            if len(args) > 1:
+                interval = float(args[1])
+
+    if interval <= 0:
+        interval = 1.0
+
+    previous_nvme = None
+    previous_ts = None
+    while True:
+        now = time.time()
+
+        mem = _parse_meminfo()
+        mem_used = mem.get("MemTotal", 0) - mem.get("MemAvailable", 0)
+        swap_used = mem.get("SwapTotal", 0) - mem.get("SwapFree", 0)
+        mem_pressure = _read_pressure_stat("/proc/pressure/memory")
+        io_pressure = _read_pressure_stat("/proc/pressure/io")
+        nvme = _read_nvme_stat(device)
+
+        mem_line = "Mem {used} / {total} ({pct:.1f}%)".format(
+            used=_human(mem_used / 1024),
+            total=_human(mem.get("MemTotal", 0) / 1024),
+            pct=(mem_used / mem.get("MemTotal", 1)) * 100,
+        )
+        swap_line = "Swap {used} / {total} ({pct:.1f}%)".format(
+            used=_human(swap_used / 1024),
+            total=_human(mem.get("SwapTotal", 0) / 1024),
+            pct=(swap_used / mem.get("SwapTotal", 1)) * 100 if mem.get("SwapTotal", 0) else 0.0,
+        )
+        print("\033[2J\033[H", end="")
+        print(f"[memwatch] interval={interval:.2f}s device={device}")
+        print(f"Memory: {mem_line}")
+        print(f"{swap_line}")
+        print(f"zswap: {_read_zswap_status()}")
+        if mem_pressure.get("some"):
+            print(
+                "PSI memory: some avg10={some[avg10]} avg60={some[avg60]} avg300={some[avg300]} "
+                "full avg10={full[avg10]} avg60={full[avg60]} avg300={full[avg300]}".format(
+                    some=mem_pressure.get("some", {}),
+                    full=mem_pressure.get("full", {}),
+                ),
+            )
+        if io_pressure.get("some"):
+            print(
+                "PSI io    : some avg10={some[avg10]} avg60={some[avg60]} avg300={some[avg300]} "
+                "full avg10={full[avg10]} avg60={full[avg60]} avg300={full[avg300]}".format(
+                    some=io_pressure.get("some", {}),
+                    full=io_pressure.get("full", {}),
+                ),
+            )
+
+        if nvme is None:
+            print(f"NVMe      : /sys/block/{device} not available")
+        else:
+            queue_depth = "?"
+            if nvme["queue_depth_path"].is_file():
+                try:
+                    queue_depth = nvme["queue_depth_path"].read_text().strip()
+                except OSError:
+                    pass
+
+            inflight = "?"
+            if nvme["inflight_path"].is_file():
+                try:
+                    inr, inw = nvme["inflight_path"].read_text().split()
+                    inflight = f"{inr}/{inw}"
+                except Exception:
+                    pass
+
+            print(f"NVMe {device}: queue_depth={queue_depth} inflight={inflight}")
+
+            if previous_nvme and previous_ts:
+                dt = now - previous_ts
+                if dt > 0:
+                    read_ios = nvme["read_ios"] - previous_nvme["read_ios"]
+                    write_ios = nvme["write_ios"] - previous_nvme["write_ios"]
+                    read_bytes = (nvme["read_sectors"] - previous_nvme["read_sectors"]) * nvme["sector_size"]
+                    write_bytes = (nvme["write_sectors"] - previous_nvme["write_sectors"]) * nvme["sector_size"]
+                    io_ms = nvme["io_ms"] - previous_nvme["io_ms"]
+                    weighted_ms = nvme["weighted_io_ms"] - previous_nvme["weighted_io_ms"]
+
+                    io_util = (io_ms / (dt * 1000)) * 100
+                    avg_q = weighted_ms / (dt * 1000)
+                    print(
+                        "iostat-like: read {r_iops:.1f} r/s, {r_mbps:.2f} MB/s; "
+                        "write {w_iops:.1f} w/s, {w_mbps:.2f} MB/s; util {util:.1f}%, avg_q {avgq:.2f}".format(
+                            r_iops=read_ios / dt,
+                            r_mbps=read_bytes / dt / (1024 ** 2),
+                            w_iops=write_ios / dt,
+                            w_mbps=write_bytes / dt / (1024 ** 2),
+                            util=io_util,
+                            avgq=avg_q,
+                        )
+                    )
+            previous_nvme = nvme
+            previous_ts = now
+
+        print("\nCtrl-C to stop")
+        time.sleep(interval)
+
+
+aliases["memwatch"] = memwatch
 
 
 from pathlib import Path
@@ -499,4 +725,9 @@ if npm_global_bin not in $PATH:
     $PATH.insert(0, npm_global_bin)
 
 
+bun_global_bin = os.path.expanduser("~/.bun/bin")
+if bun_global_bin not in $PATH:
+    $PATH.insert(0, bun_global_bin)
+
 # XONSH WEBCONFIG END
+
