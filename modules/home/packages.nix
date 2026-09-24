@@ -51,7 +51,6 @@
     scc
 
     exercism
-    erlang
 
     nix-output-monitor
 
@@ -72,6 +71,5 @@
 
     mosh
     code-cursor-fhs
-    jj
   ];
 }

@@ -81,5 +81,10 @@ in
     pv
     nixos-anywhere
     nautilus
+
+    # Jujutsu VCS for the interactive shell (user request, 2026-09-24). The
+    # system layer is its single owner; the HM layer carries no copy
+    # (package-layer ownership rule).
+    jj
   ];
 }
