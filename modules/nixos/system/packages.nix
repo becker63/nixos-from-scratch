@@ -156,7 +156,9 @@ let
     done
   '';
 
-  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (builtins.readFile ../../../config/minisweagent/attune.yaml);
+  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (
+    builtins.readFile ../../../config/minisweagent/attune.yaml
+  );
 
   miniAttune = pkgs.writeShellApplication {
     name = "mini-attune";

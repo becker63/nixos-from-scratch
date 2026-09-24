@@ -15,7 +15,10 @@ final: prev: {
         src = xontrib-jedi-src;
 
         build-system = [ ps-final.poetry-core ];
-        propagatedBuildInputs = [ ps-final.jedi ps-final.xonsh ];
+        propagatedBuildInputs = [
+          ps-final.jedi
+          ps-final.xonsh
+        ];
       };
 
       xontrib-prompt-starship = ps-final.buildPythonPackage {
@@ -25,7 +28,10 @@ final: prev: {
         doCheck = false;
         pyproject = true;
 
-        build-system = [ ps-final.setuptools ps-final.wheel ];
+        build-system = [
+          ps-final.setuptools
+          ps-final.wheel
+        ];
         propagatedBuildInputs = [ ps-final.xonsh ];
       };
 
@@ -40,7 +46,10 @@ final: prev: {
 
         pyproject = true;
         build-system = [ ps-final.pdm-backend ];
-        propagatedBuildInputs = [ ps-final.jinja2 ps-final.copier ];
+        propagatedBuildInputs = [
+          ps-final.jinja2
+          ps-final.copier
+        ];
         doCheck = false;
       };
 

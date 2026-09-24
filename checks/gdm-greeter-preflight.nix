@@ -132,77 +132,80 @@ let
     '';
   };
 
-  check = pkgs.runCommand "gdm-greeter-preflight-check" {
-    nativeBuildInputs = with pkgs; [
-      binutils
-      coreutils
-      gnugrep
-      gnused
-      gawk
-    ];
-  } ''
-    set -euo pipefail
+  check =
+    pkgs.runCommand "gdm-greeter-preflight-check"
+      {
+        nativeBuildInputs = with pkgs; [
+          binutils
+          coreutils
+          gnugrep
+          gnused
+          gawk
+        ];
+      }
+      ''
+        set -euo pipefail
 
-    unit='${systemBuild}/etc/systemd/system/display-manager.service'
-    display_manager_xdg_data_dirs="$(sed -n 's/^Environment="XDG_DATA_DIRS=\([^"]*\)"/\1/p' "$unit")"
-    display_manager_path="$(sed -n 's/^Environment="PATH=\([^"]*\)"/\1/p' "$unit")"
+        unit='${systemBuild}/etc/systemd/system/display-manager.service'
+        display_manager_xdg_data_dirs="$(sed -n 's/^Environment="XDG_DATA_DIRS=\([^"]*\)"/\1/p' "$unit")"
+        display_manager_path="$(sed -n 's/^Environment="PATH=\([^"]*\)"/\1/p' "$unit")"
 
-    [ -n "$display_manager_xdg_data_dirs" ] || {
-      echo "FAIL: display-manager.service does not export XDG_DATA_DIRS" >&2
-      exit 1
-    }
+        [ -n "$display_manager_xdg_data_dirs" ] || {
+          echo "FAIL: display-manager.service does not export XDG_DATA_DIRS" >&2
+          exit 1
+        }
 
-    [ -n "$display_manager_path" ] || {
-      echo "FAIL: display-manager.service does not export PATH" >&2
-      exit 1
-    }
+        [ -n "$display_manager_path" ] || {
+          echo "FAIL: display-manager.service does not export PATH" >&2
+          exit 1
+        }
 
-    gdm_share=""
-    while IFS= read -r data_dir; do
-      if [ -f "$data_dir/gnome-session/sessions/gnome-login.session" ]; then
-        gdm_share="$data_dir"
-        break
-      fi
-    done < <(printf '%s\n' "$display_manager_xdg_data_dirs" | tr ':' '\n')
+        gdm_share=""
+        while IFS= read -r data_dir; do
+          if [ -f "$data_dir/gnome-session/sessions/gnome-login.session" ]; then
+            gdm_share="$data_dir"
+            break
+          fi
+        done < <(printf '%s\n' "$display_manager_xdg_data_dirs" | tr ':' '\n')
 
-    [ -n "$gdm_share" ] || {
-      echo "FAIL: display-manager.service does not expose a gdm share containing gnome-login.session" >&2
-      exit 1
-    }
+        [ -n "$gdm_share" ] || {
+          echo "FAIL: display-manager.service does not expose a gdm share containing gnome-login.session" >&2
+          exit 1
+        }
 
-    system_session='${systemBuild}/sw/share/gnome-session/sessions/gnome-login.session'
-    [ -f "$system_session" ] || {
-      echo "FAIL: built system profile does not expose gnome-login.session under sw/share/gnome-session" >&2
-      exit 1
-    }
+        system_session='${systemBuild}/sw/share/gnome-session/sessions/gnome-login.session'
+        [ -f "$system_session" ] || {
+          echo "FAIL: built system profile does not expose gnome-login.session under sw/share/gnome-session" >&2
+          exit 1
+        }
 
-    systemd_dropin='${systemBuild}/sw/share/systemd/user/gnome-session@gnome-login.target.d/gnome-login.session.conf'
-    [ -f "$systemd_dropin" ] || {
-      echo "FAIL: built system profile does not expose the gnome-login systemd drop-in" >&2
-      exit 1
-    }
+        systemd_dropin='${systemBuild}/sw/share/systemd/user/gnome-session@gnome-login.target.d/gnome-login.session.conf'
+        [ -f "$systemd_dropin" ] || {
+          echo "FAIL: built system profile does not expose the gnome-login systemd drop-in" >&2
+          exit 1
+        }
 
-    gnome_session_bin="$(PATH="$display_manager_path" command -v gnome-session || true)"
-    [ -x "$gnome_session_bin" ] || {
-      echo "FAIL: gnome-session is not resolvable from display-manager PATH" >&2
-      exit 1
-    }
+        gnome_session_bin="$(PATH="$display_manager_path" command -v gnome-session || true)"
+        [ -x "$gnome_session_bin" ] || {
+          echo "FAIL: gnome-session is not resolvable from display-manager PATH" >&2
+          exit 1
+        }
 
-    wrapper_xdg_data_dirs="$(
-      strings "$gnome_session_bin" \
-        | sed -n "s/.*--prefix 'XDG_DATA_DIRS' ':' '\\([^']*\\)'.*/\\1/p; s/.*--suffix 'XDG_DATA_DIRS' ':' '\\([^']*\\)'.*/\\1/p" \
-        | awk 'BEGIN { ORS = ":" } { print $0 }'
-    )"
-    wrapper_xdg_data_dirs="''${wrapper_xdg_data_dirs%:}"
+        wrapper_xdg_data_dirs="$(
+          strings "$gnome_session_bin" \
+            | sed -n "s/.*--prefix 'XDG_DATA_DIRS' ':' '\\([^']*\\)'.*/\\1/p; s/.*--suffix 'XDG_DATA_DIRS' ':' '\\([^']*\\)'.*/\\1/p" \
+            | awk 'BEGIN { ORS = ":" } { print $0 }'
+        )"
+        wrapper_xdg_data_dirs="''${wrapper_xdg_data_dirs%:}"
 
-    [ -n "$wrapper_xdg_data_dirs" ] || {
-      echo "FAIL: could not extract wrapped gnome-session XDG_DATA_DIRS" >&2
-      exit 1
-    }
+        [ -n "$wrapper_xdg_data_dirs" ] || {
+          echo "FAIL: could not extract wrapped gnome-session XDG_DATA_DIRS" >&2
+          exit 1
+        }
 
-    mkdir -p "$out"
-    echo "ok" > "$out/result"
-  '';
+        mkdir -p "$out"
+        echo "ok" > "$out/result"
+      '';
 in
 {
   package = preflight;

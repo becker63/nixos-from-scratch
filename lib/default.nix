@@ -16,7 +16,8 @@
     (import ../overlays/my-xonsh.nix)
     (import ../overlays/scripts.nix)
     (import ../overlays/alacritty-copy-buffer.nix)
-    (final: prev:
+    (
+      final: prev:
       let
         # This wrapper is personal, unpublished source.  Keep it as an
         # explicitly optional local override so the flake remains evaluable

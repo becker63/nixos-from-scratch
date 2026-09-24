@@ -24,23 +24,25 @@
 
   # GDM's media-key daemon handles these keys before logind sees them.
   programs.dconf.profiles.gdm.databases = lib.mkBefore [
-    (let
-      emptyStringArray = lib.gvariant.mkEmptyArray lib.gvariant.type.string;
-    in
-    {
-      settings = {
-        "org/gnome/settings-daemon/plugins/media-keys" = {
-          suspend = emptyStringArray;
-          suspend-static = emptyStringArray;
-          hibernate = emptyStringArray;
-          hibernate-static = emptyStringArray;
+    (
+      let
+        emptyStringArray = lib.gvariant.mkEmptyArray lib.gvariant.type.string;
+      in
+      {
+        settings = {
+          "org/gnome/settings-daemon/plugins/media-keys" = {
+            suspend = emptyStringArray;
+            suspend-static = emptyStringArray;
+            hibernate = emptyStringArray;
+            hibernate-static = emptyStringArray;
+          };
+          "org/gnome/settings-daemon/plugins/power" = {
+            power-button-action = "nothing";
+          };
         };
-        "org/gnome/settings-daemon/plugins/power" = {
-          power-button-action = "nothing";
-        };
-      };
-      lockAll = true;
-    })
+        lockAll = true;
+      }
+    )
   ];
 
   # GDM's greeter session file lives under share/gnome-session, and GNOME 50's

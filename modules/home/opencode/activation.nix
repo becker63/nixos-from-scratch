@@ -29,7 +29,9 @@
       "${config.home.homeDirectory}/.cache/opencode/packages/@slkiser/opencode-quota@latest"
 
     mkdir -p "${config.home.homeDirectory}/.config/opencode/node_modules"
-    for packageName in ${lib.concatMapStringsSep " " (pkg: "\"${pkg}\"") runtime.opencodeRuntimeNodeModulePackages}; do
+    for packageName in ${
+      lib.concatMapStringsSep " " (pkg: "\"${pkg}\"") runtime.opencodeRuntimeNodeModulePackages
+    }; do
       target="${config.home.homeDirectory}/.config/opencode/node_modules/$packageName"
       source="${runtime.opencodeRuntime}/lib/node_modules/$packageName"
       mkdir -p "$(dirname "$target")"
@@ -38,7 +40,9 @@
     done
 
     mkdir -p "${config.home.homeDirectory}/.cache/opencode/packages"
-    for cacheName in ${lib.concatMapStringsSep " " (pkg: "\"${pkg}\"") runtime.opencodeRuntimeCachePackages}; do
+    for cacheName in ${
+      lib.concatMapStringsSep " " (pkg: "\"${pkg}\"") runtime.opencodeRuntimeCachePackages
+    }; do
       target="${config.home.homeDirectory}/.cache/opencode/packages/$cacheName"
       source="${runtime.opencodeRuntime}/cache-packages/$cacheName"
       mkdir -p "$(dirname "$target")"
@@ -86,9 +90,7 @@
   '';
 
   xdg.configFile =
-    openspecSkills.xdgConfigFiles
-    // tokenAudit.xdgConfigFiles
-    // settings.xdgConfigFiles;
+    openspecSkills.xdgConfigFiles // tokenAudit.xdgConfigFiles // settings.xdgConfigFiles;
 
   home.packages = [
     runtime.opencodeRuntime

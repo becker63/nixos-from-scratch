@@ -1,4 +1,7 @@
-{ pkgs, sourceRoot ? ../. }:
+{
+  pkgs,
+  sourceRoot ? ../.,
+}:
 let
   e2e = pkgs.writeShellApplication {
     name = "opencode-context-stack-e2e";
@@ -343,14 +346,17 @@ let
     '';
   };
 
-  check = pkgs.runCommand "opencode-context-stack-e2e-check" {
-    nativeBuildInputs = [ e2e ];
-  } ''
-    set -euo pipefail
-    opencode-context-stack-e2e --source-only --source-root ${sourceRoot}
-    mkdir -p "$out"
-    echo ok > "$out/result"
-  '';
+  check =
+    pkgs.runCommand "opencode-context-stack-e2e-check"
+      {
+        nativeBuildInputs = [ e2e ];
+      }
+      ''
+        set -euo pipefail
+        opencode-context-stack-e2e --source-only --source-root ${sourceRoot}
+        mkdir -p "$out"
+        echo ok > "$out/result"
+      '';
 in
 {
   package = e2e;

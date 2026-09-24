@@ -6,7 +6,9 @@ let
     # This intentionally older package set predates the current nullable
     # `nixpkgs.config.rewriteURL`.  Its fetchurl implementation expects an
     # actual URL-rewriting function, so preserve the current URLs explicitly.
-    config = prev.config // { rewriteURL = url: url; };
+    config = prev.config // {
+      rewriteURL = url: url;
+    };
   };
 in
 {
