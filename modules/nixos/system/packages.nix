@@ -43,9 +43,9 @@ in
     pavucontrol
     gnome-keyring
 
-    # Kept in the system layer: the HM layer's copies are being removed by the
-    # home-manager-cleanup feature, and the screenshot script needs them on
-    # PATH wherever it is invoked from.
+    # Single owner: the system layer only. The HM layer carries no copies, and
+    # every consumer (screenshot, hypr/sway binds, xonsh helpers) resolves
+    # them from the system PATH.
     grim
     slurp
     wl-clipboard

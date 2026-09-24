@@ -65,7 +65,7 @@ Custom Next.js + MDX writing system for technical essays, diagrams, search, and 
 
 ### [nixos-from-scratch](https://github.com/becker63/nixos-from-scratch)
 
-Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.
+Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen kernel boundary, evaluation-first invariant checks, portable Factory tooling for aarch64 + x86_64, and zram with disk swap tiering.
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
@@ -102,7 +102,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 
 ## Recently Active Repos
 
-- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Flake-based NixOS and packaging experiments, including an Asahi Linux workstation on Apple Silicon.  
+- [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen kernel boundary, evaluation-first invariant checks, portable Factory tooling for aarch64 + x86_64, and zram with disk swap tiering.  
   Nix · updated 2026-09-23
 - [becker63/attuneradii](https://github.com/becker63/attuneradii) — No public description yet.  
   Mixed · updated 2026-09-16

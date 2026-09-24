@@ -54,8 +54,9 @@ REPO_DESCRIPTION_FALLBACKS = {
         "and static rendering."
     ),
     "nixos-from-scratch": (
-        "Flake-based NixOS and packaging experiments, including an Asahi Linux "
-        "workstation on Apple Silicon."
+        "Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen "
+        "kernel boundary, evaluation-first invariant checks, portable Factory "
+        "tooling for aarch64 + x86_64, and zram with disk swap tiering."
     ),
     "tcp-reassembly-experiments": (
         "Low-level networking experiments around TCP stream reconstruction and packet "

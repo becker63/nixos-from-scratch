@@ -67,6 +67,9 @@ in
   services.blueman.enable = true;
   services.tailscale.enable = true;
 
+  # Deliberate: the mixer autostarts with every graphical session. Looks like
+  # leftover cruft but is kept intentionally — flagged as possibly load-bearing,
+  # with no stronger rationale on record.
   systemd.user.services.pavucontrol = {
     description = "PulseAudio Volume Control";
     wantedBy = [ "graphical-session.target" ];

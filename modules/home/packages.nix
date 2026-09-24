@@ -51,12 +51,10 @@
     scc
 
     exercism
-    #gleam
     erlang
 
     nix-output-monitor
 
-    # Iso writer tool, provides cli at popsicle
     popsicle
 
     zoxide

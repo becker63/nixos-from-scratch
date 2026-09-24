@@ -19,6 +19,9 @@
 
   services.displayManager.gdm = {
     enable = true;
+    # Debug logging stays on: greeter failures on this Asahi setup are
+    # diagnosed from GDM's own logs, and checks/system-invariants.nix pins
+    # this flag so a cleanup pass cannot silently drop it.
     debug = true;
   };
 
