@@ -89,6 +89,8 @@ let
     ) "the NixOS host platform must remain aarch64-linux")
     (expect (config.networking.hostName == "nixos-btw") "the host name must remain nixos-btw")
     (expect (config.system.stateVersion == "25.05") "the NixOS state version must remain 25.05")
+    # Kernel-pname defense-in-depth: checks/asahi-gaming.nix repeats this
+    # assert to guard the gaming stack; keep both in sync.
     (expect (
       config.boot.kernelPackages.kernel.pname == "linux-asahi"
     ) "the boot kernel must remain linux-asahi")
@@ -202,7 +204,7 @@ let
     (expect config.users.users.becker.isNormalUser "becker must remain a normal user")
     (expect (
       actualGroups == expectedGroups
-    ) "becker's input/video/podman/docker/wheel/storage group set changed")
+    ) "becker's docker/input/kvm/podman/storage/video/wheel group set changed")
     (expect (
       toString config.users.users.becker.shell == "${pkgs.xonsh}/bin/xonsh"
     ) "becker's login shell must remain Xonsh")

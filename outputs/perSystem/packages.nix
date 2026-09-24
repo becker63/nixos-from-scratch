@@ -46,6 +46,11 @@ let
           config = hostConfig;
           hyprConfigFile = ../../config/hypr/hyprland.conf;
           sourceRoot = ../..;
+          # switch-safety's wrapper interpolates the factory-invariants
+          # marker, which fires that check's fail-loud missing-argument
+          # assert unless the suite sees the portable set. `portable` above
+          # is exactly the portable half of this output.
+          portablePackages = portable;
         };
       in
       {

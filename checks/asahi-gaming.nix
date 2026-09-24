@@ -25,12 +25,14 @@ assert expect (builtins.elem "kvm" config.users.users.becker.extraGroups)
   "becker must have KVM access";
 assert expect config.hardware.asahi.enable "Asahi hardware support must remain enabled";
 assert expect config.hardware.graphics.enable "host graphics acceleration must remain enabled";
+# Kernel-pname defense-in-depth: checks/system-invariants.nix owns the
+# kernel-pname assert for the whole system; this duplicate guards it
+# specifically against replacement by the gaming stack. Keep both in sync.
 assert expect (
   config.boot.kernelPackages.kernel.pname == "linux-asahi"
 ) "the gaming stack must not replace linux-asahi";
-assert expect config.zramSwap.enable "the existing zram policy must remain enabled";
-assert expect (config.zramSwap.algorithm == "zstd") "zram must continue to use zstd";
-assert expect (config.zramSwap.memoryPercent == 50) "zram must remain sized at 50 percent of RAM";
+# Swap/zram invariants (enable, algorithm, size, priority tiering) are owned
+# by checks/system-invariants.nix — do not duplicate them here.
 assert expect (
   config.boot.kernel.sysctl."vm.max_map_count" == 1048576
 ) "the Proton map-count limit must be configured";
