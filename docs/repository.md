@@ -24,6 +24,9 @@ a NixOS module. One host; per-system outputs for `aarch64-linux` and `x86_64-lin
 - `outputs/perSystem/` — flake outputs split into a portable set (jev-mcp,
   factory-config, factory-droid; exposed on both systems) and a host-bound
   aarch64-only set (zed, steam-asahi, check wrappers, apps, devShell).
+- `secrets/` + `.sops.yaml` — sops-encrypted declarative user passwords
+  (keys `becker_password`, `root_password`); the age private key stays outside
+  the repo at `~/.config/sops/age/keys.txt` and is never committed.
 - `checks/` — the invariant check suite (below).
 - `lib/default.nix` — overlay wiring.
 

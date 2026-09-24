@@ -446,10 +446,31 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixverse": "nixverse",
         "nur-unstable": "nur-unstable",
+        "sops-nix": "sops-nix",
         "steam-asahi": "steam-asahi",
         "xontrib-jedi-src": "xontrib-jedi-src",
         "xontrib-prompt-starship-src": "xontrib-prompt-starship-src",
         "zed-preview-bin": "zed-preview-bin"
+      }
+    },
+    "sops-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790247521,
+        "narHash": "sha256-TNfgoHsqsYYvaJImlWctfRkh4PseTagzegU1Dgdbehw=",
+        "owner": "Mic92",
+        "repo": "sops-nix",
+        "rev": "2bd00bd9bb35fe6d114888c8f1c2e946c541dd8f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "sops-nix",
+        "type": "github"
       }
     },
     "steam-asahi": {

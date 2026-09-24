@@ -26,6 +26,10 @@ in
     modules'.system
     inputs.apple-silicon.modules.apple-silicon-support
     inputs.steam-asahi.modules.default
+    # Decrypts secrets/users.yaml for the declarative user passwords in
+    # modules/nixos/system/base.nix. nixverse re-exposes each input's
+    # nixosModules as `modules`, so this is inputs.sops-nix.modules.sops.
+    inputs.sops-nix.modules.sops
   ];
 
   _module.args.nixosBtwFlakeBuild = true;

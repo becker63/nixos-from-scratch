@@ -42,6 +42,14 @@
     # Keep llm-agents on its tested nixpkgs revision for binary-cache reuse.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
+    # Declarative user passwords are sops-encrypted (secrets/users.yaml); the
+    # age private key lives outside the repo. nixpkgs follows our pin so the
+    # lock gains exactly the sops-nix node and no kernel-relevant input moves.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     # Zed Preview tarball for aarch64 Linux, pinned to the immutable GitHub
     # release asset. zed.dev's `preview/latest` endpoint re-packs the tarball
     # on every release, so the locked narHash drifts out from under the lock
