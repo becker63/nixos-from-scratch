@@ -2,6 +2,9 @@
   config,
   hyprConfigFile,
   pkgs,
+  # Forwarded by the checks output wiring so factory-invariants can assert
+  # the portable package exposure; check-suite wrapper imports may omit it.
+  portablePackages ? null,
   sourceRoot,
 }:
 
@@ -41,6 +44,9 @@ let
   desktopOsd = import ./desktop-osd-contract.nix {
     inherit pkgs sourceRoot;
   };
+  factoryInvariants = import ./factory-invariants.nix {
+    inherit config pkgs portablePackages;
+  };
   xonshConfig = import ./xonsh-config.nix {
     inherit pkgs sourceRoot;
   };
@@ -64,6 +70,7 @@ in
     alacrittyCopybuffer
     asahiGaming
     desktopOsd
+    factoryInvariants
     greeter
     homeInvariants
     hyprlandGpu

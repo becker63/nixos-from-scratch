@@ -21,12 +21,14 @@ let
         config = nodes.nixos-btw.config;
         hyprConfigFile = ../../config/hypr/hyprland.conf;
         sourceRoot = ../..;
+        portablePackages = outputs'.packages;
       };
     in
     {
       alacritty-copybuffer = checkSuite.alacrittyCopybuffer;
       asahi-gaming = checkSuite.asahiGaming;
       desktop-osd-contract = checkSuite.desktopOsd.check;
+      factory-invariants = checkSuite.factoryInvariants;
       gdm-greeter-preflight = checkSuite.greeter.check;
       home-invariants = checkSuite.homeInvariants.check;
       hyprland-gpu-preflight = checkSuite.hyprlandGpu.check;
