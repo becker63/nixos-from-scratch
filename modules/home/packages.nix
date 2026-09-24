@@ -22,10 +22,6 @@
     virt-viewer
     eww
     swaybg
-    grim
-    slurp
-    wl-clipboard
-    jq
     bottom
     tofi
     alacritty
@@ -49,6 +45,8 @@
     # upstream does not publish a Linux ARM IDE artifact.
     # kiro-fhs
 
+    # cloc is deliberately absent: the xonsh login shell aliases cloc to tokei
+    # (config/xonsh/rc.xsh), so the real binary never resolves in interactive use.
     tokei
     scc
 
@@ -68,7 +66,6 @@
     television
     spotify-player
     protobuf_29
-    cloc
     moonlight-qt
 
     obs-studio
