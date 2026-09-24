@@ -6,4 +6,10 @@ __pycache__/
 result
 result-*
 
+# direnv's local flake profile cache (nix-direnv); regenerated per environment
+.direnv/
+
+# repoclip xonsh function output; regenerable on demand into whatever cwd
+repomix-output.xml
+
 # hardware-configuration.nix is tracked on purpose (nodes/nixos-btw/)
