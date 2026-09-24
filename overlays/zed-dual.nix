@@ -207,9 +207,9 @@ in
 {
   inherit zed-deps-report;
 
-  zed_raw = zed-bin;
-
-  # Same derivation as zed_raw — autoPatchelfHook handles runtime libs,
-  # so no FHS wrapper is needed.
+  # One derivation, one name: autoPatchelfHook handles runtime libs, so no
+  # FHS wrapper is needed. The perSystem packages file re-exports it as
+  # `zed_raw` for the rc.xsh shell alias and this file's build hint, which
+  # both use that name.
   zed = zed-bin;
 }

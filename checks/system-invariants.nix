@@ -18,9 +18,12 @@ let
   m1n1 = config.system.build.m1n1;
   peripheralFirmwareSource = "${sourceRoot}/firmware";
 
+  # Matches users.users.becker.extraGroups exactly; gaming.nix legitimately
+  # adds kvm for /dev/kvm access.
   expectedGroups = [
     "docker"
     "input"
+    "kvm"
     "podman"
     "storage"
     "video"

@@ -82,6 +82,13 @@
     in
     nixverse.lib.load {
       inherit inputs flakePath;
-      systems = [ "aarch64-linux" ];
+      # Hosts are per-node (nodes/*/host.nix), so listing both systems only
+      # fans the perSystem outputs out — the aarch64 host is never
+      # instantiated on x86_64. Host-bound perSystem exports are guarded to
+      # aarch64 in outputs/perSystem/*.
+      systems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
     };
 }

@@ -1,6 +1,14 @@
-{ outputs', ... }:
-
 {
+  lib,
+  outputs',
+  system,
+  ...
+}:
+
+# Every app here drives an aarch64 host package (zed-deps-report, the
+# preflight checks, ...), so the whole set is host-bound; nixverse itself
+# contributes the deploy apps on every system.
+lib.optionalAttrs (system == "aarch64-linux") {
   attune-demo-director = {
     type = "app";
     program = "${outputs'.packages.attune-demo-director}/bin/attune-demo-director";

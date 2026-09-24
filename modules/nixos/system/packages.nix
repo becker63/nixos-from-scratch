@@ -156,43 +156,9 @@ let
     done
   '';
 
-  miniAttuneConfig = pkgs.writeText "mini-attune.yaml" (
-    builtins.readFile ../../../config/minisweagent/attune.yaml
-  );
-
-  miniAttune = pkgs.writeShellApplication {
-    name = "mini-attune";
-    runtimeInputs = [
-      pkgs.mini-swe-agent
-      pkgs.xonsh
-    ];
-    text = ''
-      # mini's setup wizard is global-state based, even with an explicit
-      # config. This launcher is fully configured below, so bypass it.
-      export MSWEA_CONFIGURED=true
-      export MSWEA_SILENT_STARTUP=1
-      export MSWEA_ATTUNE_CONVENTIONS=1
-
-      if [ ! -f SPEC.md ]; then
-        echo "mini-attune: SPEC.md is required at the project root" >&2
-        exit 2
-      fi
-
-      if [ -f .env ]; then
-        set -a
-        # shellcheck source=/dev/null
-        . ./.env
-        set +a
-      fi
-
-      if [ -z "''${OPENROUTER_API_KEY:-}" ]; then
-        echo "mini-attune: add OPENROUTER_API_KEY=... to this project's .env" >&2
-        exit 2
-      fi
-
-      exec mini --yolo --exit-immediately --config '${miniAttuneConfig}' "$@"
-    '';
-  };
+  # Shared mini-attune definition (packages/mini-attune); it needs this
+  # host's overlay pkgs for mini-swe-agent and xonsh.
+  miniAttune = pkgs.callPackage ../../../packages/mini-attune { };
 in
 {
   environment.systemPackages = with pkgs; [

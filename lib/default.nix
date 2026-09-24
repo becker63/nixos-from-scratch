@@ -30,6 +30,10 @@
             prev.codex;
       in
       {
+        # codex-base stays the pristine upstream codex: nothing in-tree
+        # consumes it, but it keeps an unwrapped escape hatch reachable as
+        # `nix build .#codex-base` while codex/codex-ext may be the locally
+        # wrapped build.
         codex-base = prev.codex;
         codex-ext = codexExt;
         codex = codexExt;
