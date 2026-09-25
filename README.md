@@ -7,7 +7,7 @@ I build tools that move uncertainty out of people's heads and into inspectable a
 - Portfolio: [becker63.digital](https://www.becker63.digital)
 - Writing: [essays and project notes](https://www.becker63.digital)
 - GitHub: [@becker63](https://github.com/becker63)
-- Last refreshed: 2026-09-24
+- Last refreshed: 2026-09-25
 
 ## What I Build
 
@@ -69,8 +69,9 @@ Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen kernel bound
 
 - Why it matters: It is ongoing proof that I like owning the full stack of my tooling, from packages and wrappers down to hardware-specific configuration.
 - Stack: Nix
-- Last push: 2026-09-23
+- Last push: 2026-09-25
 - GitHub: `becker63/nixos-from-scratch`
+
 
 ## Secrets (nixos-from-scratch)
 
@@ -106,7 +107,7 @@ Writing snapshot: 0 published posts. Current themes: technical writing, systems 
 ## Recently Active Repos
 
 - [becker63/nixos-from-scratch](https://github.com/becker63/nixos-from-scratch) — Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen kernel boundary, evaluation-first invariant checks, portable Factory tooling for aarch64 + x86_64, and zram with disk swap tiering.  
-  Nix · updated 2026-09-23
+  Nix · updated 2026-09-25
 - [becker63/attuneradii](https://github.com/becker63/attuneradii) — No public description yet.  
   Mixed · updated 2026-09-16
 - [becker63/latent-shell](https://github.com/becker63/latent-shell) — No public description yet.  
