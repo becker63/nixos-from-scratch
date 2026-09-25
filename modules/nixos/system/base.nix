@@ -92,8 +92,9 @@
   # never committed. neededForUsers decrypts to /run/secrets-for-users before
   # user creation — the only point where declarative passwords apply at all,
   # since users.mutableUsers keeps its default true. The secret VALUES are
-  # unchanged from the plaintext options they replace, so neither the live
-  # logins nor a fresh install's declarative values differ.
+  # mkpasswd yescrypt crypt hashes of the same login password as before the
+  # sops migration, so live logins are unchanged; storing hashes (not
+  # plaintext) is what makes a fresh install land a proper shadow hash.
   sops = {
     defaultSopsFile = ../../../secrets/users.yaml;
     age.keyFile = "/home/becker/.config/sops/age/keys.txt";
@@ -103,7 +104,7 @@
 
   users.users.becker = {
     isNormalUser = true;
-    passwordFile = config.sops.secrets.becker_password.path;
+    hashedPasswordFile = config.sops.secrets.becker_password.path;
     extraGroups = [
       "input"
       "video"
@@ -127,10 +128,10 @@
     shell = "${pkgs.xonsh}/bin/xonsh";
   };
 
-  # No initialPasswordFile option exists upstream; passwordFile is the closest
-  # declarative equivalent and (like initialPassword) only applies at user
-  # creation on this host's default mutableUsers setting.
-  users.users.root.passwordFile = config.sops.secrets.root_password.path;
+  # Same sops-backed hash wiring as becker: hashedPasswordFile is the real
+  # option (passwordFile was only its deprecated alias, which surfaced rename
+  # warnings on every full-config evaluation).
+  users.users.root.hashedPasswordFile = config.sops.secrets.root_password.path;
 
   nix = {
     settings = {

@@ -211,10 +211,10 @@ let
     # Password PATHS only: these asserts pin where the declarative passwords
     # come from, never their content (secret values never enter evaluation).
     (expect (
-      config.users.users.becker.passwordFile == config.sops.secrets.becker_password.path
+      config.users.users.becker.hashedPasswordFile == config.sops.secrets.becker_password.path
     ) "becker's declarative password must come from the sops becker_password secret")
     (expect (
-      config.users.users.root.passwordFile == config.sops.secrets.root_password.path
+      config.users.users.root.hashedPasswordFile == config.sops.secrets.root_password.path
     ) "root's declarative password must come from the sops root_password secret")
     (expect config.virtualisation.docker.enable "Docker must remain enabled")
     (expect (!config.virtualisation.podman.enable) "Podman must remain disabled")
