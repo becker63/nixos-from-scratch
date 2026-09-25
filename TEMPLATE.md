@@ -30,6 +30,10 @@
 
 {{ end FLAGSHIP_REPOS }}
 
+## Secrets (nixos-from-scratch)
+
+The `nixos-from-scratch` secrets are sops-encrypted (`secrets/users.yaml`). The age key that decrypts them lives off-repo at `~/.config/sops/age/keys.txt`. Back that key up off-machine — without it the secrets are undecryptable and a rebuild needing them fails. A local backup copy exists at `~/.config/sops/age/keys.txt.bak`. Credentials are stored as crypt hashes (login password unchanged), and the sops wiring first activates at the next `nixos-rebuild switch`.
+
 ## Recent Writing
 
 {{ loop RECENT_POSTS }}

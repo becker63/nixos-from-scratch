@@ -72,6 +72,9 @@ Nixverse-based NixOS flake for an aarch64 Asahi workstation: frozen kernel bound
 - Last push: 2026-09-23
 - GitHub: `becker63/nixos-from-scratch`
 
+## Secrets (nixos-from-scratch)
+
+The `nixos-from-scratch` secrets are sops-encrypted (`secrets/users.yaml`). The age key that decrypts them lives off-repo at `~/.config/sops/age/keys.txt`. Back that key up off-machine — without it the secrets are undecryptable and a rebuild needing them fails. A local backup copy exists at `~/.config/sops/age/keys.txt.bak`. Credentials are stored as crypt hashes (login password unchanged), and the sops wiring first activates at the next `nixos-rebuild switch`.
 
 ## Recent Writing
 
