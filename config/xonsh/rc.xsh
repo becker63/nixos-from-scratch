@@ -512,8 +512,12 @@ aliases["copybuffer"] = _copybuffer
 aliases["copyall"] = _copybuffer
 
 
+npm_global_bin = os.path.expanduser("~/.npm-global/bin")
+if npm_global_bin not in $PATH:
+    $PATH.insert(0, npm_global_bin)
+
 REAL_ALACRITTY = shutil.which("alacritty")
-REAL_CODEX = shutil.which("codex")
+REAL_CODEX = shutil.which("codex", path=os.pathsep.join($PATH))
 
 
 _GUTTER_EVENTS = frozenset({
@@ -718,12 +722,6 @@ $SSL_CERT_DIR = "/etc/ssl/certs"
 
 if "~/.local/bin" not in $PATH:
     $PATH.append("~/.local/bin")
-
-
-npm_global_bin = os.path.expanduser("~/.npm-global/bin")
-if npm_global_bin not in $PATH:
-    $PATH.insert(0, npm_global_bin)
-
 
 bun_global_bin = os.path.expanduser("~/.bun/bin")
 if bun_global_bin not in $PATH:

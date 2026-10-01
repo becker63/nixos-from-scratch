@@ -1,11 +1,37 @@
 {
   droid,
+  fetchurl,
+  stdenv,
   python3,
   writeShellApplication,
   writeText,
 }:
 
 let
+  # Update only the CLI binary; keep all flake inputs and kernel pins frozen.
+  version = "0.231.0";
+  platforms = {
+    aarch64-linux = {
+      path = "linux/arm64";
+      hash = "02jl8m49x8nml0d1l8hrqwppi4vhjkmxd2479gsdxpsqp73cf85c";
+    };
+    x86_64-linux = {
+      path = "linux/x64";
+      hash = "168jqbmc74pflqcwff5hx5px31kixm7jq6xw8hvccs8mb14pj67p";
+    };
+    aarch64-darwin = {
+      path = "darwin/arm64";
+      hash = "1n6w2y33k9gm3ixnb37qh146fhsnzf50cgyxxbbhx06961ck86nw";
+    };
+  };
+  platform = platforms.${stdenv.hostPlatform.system};
+  updatedDroid = droid.overrideAttrs {
+    inherit version;
+    src = fetchurl {
+      url = "https://downloads.factory.ai/factory-cli/releases/${version}/${platform.path}/droid";
+      sha256 = platform.hash;
+    };
+  };
   launcher = writeText "droid-launcher.py" ''
     import json
     import os
@@ -58,7 +84,7 @@ let
     environment = os.environ.copy()
     environment["OPENROUTER_JEV_KEY"] = values[0]
     environment["FACTORY_DROID_AUTO_UPDATE_ENABLED"] = "false"
-    executable = "${droid}/bin/droid"
+    executable = "${updatedDroid}/bin/droid"
     os.execve(executable, [executable, *sys.argv[1:]], environment)
   '';
 in

@@ -52,7 +52,8 @@ pkgs.runCommand "xonsh-config-check"
     rc='${sourceRoot}/config/xonsh/rc.xsh'
     export HOME="$TMPDIR/home"
     export XONSH_DATA_DIR="$TMPDIR/xonsh-data"
-    mkdir -p "$HOME" "$XONSH_DATA_DIR"
+    mkdir -p "$HOME/.npm-global/bin" "$XONSH_DATA_DIR"
+    cp '${codexMock}/bin/codex' "$HOME/.npm-global/bin/codex"
     # Prompt xontribs are packaged by an overlay and are not relevant to these
     # shell semantics, so test a copy of the RC without their two load lines.
     test_rc="$TMPDIR/rc.xsh"
@@ -151,7 +152,7 @@ pkgs.runCommand "xonsh-config-check"
       || fail "gutter IPC escaped its Alacritty targeting gate"
     export ALACRITTY_SOCKET="$TMPDIR/alacritty.sock"
     ${pkgs.xonsh}/bin/xonsh --rc "$test_rc" -c \
-      'assert callable(aliases["codex"]); codex resume' \
+      'assert REAL_CODEX == os.path.expanduser("~/.npm-global/bin/codex"); assert callable(aliases["codex"]); codex resume' \
       || fail "codex alias did not run"
     test "$(cat "$CODEX_MOCK_LOG")" = 'resume' \
       || fail "codex alias did not invoke Codex"
