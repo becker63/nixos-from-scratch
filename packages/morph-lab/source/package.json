@@ -13,7 +13,8 @@
     "smoke:systemone": "bun --no-env-file scripts/smoke-systemone.ts",
     "smoke:jev": "bun --no-env-file scripts/smoke-jev.ts",
     "diagnose:systemone": "bun --no-env-file scripts/diagnose-systemone.ts",
-    "retry:systemone": "bun --no-env-file scripts/retry-systemone.ts"
+    "retry:systemone": "bun --no-env-file scripts/retry-systemone.ts",
+    "chat": "bun --no-env-file src/chat.ts"
   },
   "dependencies": {
     "@oh-my-pi/pi-coding-agent": "18.6.1",

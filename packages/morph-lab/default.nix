@@ -51,6 +51,7 @@ let
       ./source/package.json
       ./source/bun.lock
       ./source/src
+      ./source/chat
       ./source/scripts/plugin-host.ts
       ./source/upstream/oh-my-pi-plugin-morph/src
       ./source/upstream/oh-my-pi-plugin-morph/LICENSE
@@ -90,10 +91,23 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/lib/morph-lab" "$out/bin"
-    cp -R src scripts upstream package.json bun.lock "$out/lib/morph-lab/"
+    cp -R src chat scripts upstream package.json bun.lock "$out/lib/morph-lab/"
     # Preserve the real node_modules path: Pi detects native leaf packages from it.
     cp -R ${nodeModules} "$out/lib/morph-lab/node_modules"
     makeWrapper ${bun}/bin/bun "$out/bin/morph-lab" \
+      --add-flags "--no-env-file $out/lib/morph-lab/src/chat.ts" \
+      --prefix PATH : ${
+        lib.makeBinPath [
+          bun
+          git
+          ripgrep
+        ]
+      } \
+      --set-default SSL_CERT_FILE ${cacert}/etc/ssl/certs/ca-bundle.crt \
+      --set-default MORPH_LAB_DECISION_PROVIDER jev \
+      --run 'export MORPH_LAB_ENV_FILE="''${MORPH_LAB_ENV_FILE:-$HOME/nixos-from-scratch/.env}"' \
+      --run 'export MORPH_LAB_DEFAULT_REPO="''${MORPH_LAB_DEFAULT_REPO:-$HOME/projects/attuneflix-tree-reuse}"'
+    makeWrapper ${bun}/bin/bun "$out/bin/morph-find" \
       --add-flags "--no-env-file $out/lib/morph-lab/src/cli.ts" \
       --prefix PATH : ${
         lib.makeBinPath [

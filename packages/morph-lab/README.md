@@ -31,3 +31,9 @@ The source fileset is explicit; neither the lab's `.env`, dependencies, receipts
 Jev's three-type public fixture smoke succeeded. A read-only localization in Attuneflix found `src/TreeReuse.flix` with two decisions, native search, no specialists or general generation, and returned billing data. Installed-package receipts are retained in the original lab's `receipts/` directory. Localization does not prove code correctness or modify the repository.
 
 To refresh this snapshot, copy only the lab's source files and `scripts/plugin-host.ts`, the two dependency manifests, and the plugin's source/license/manifest. Never copy the full workspace or `.env`. If dependencies change, recompute the fixed-output dependency hash. Build only this package; repository safeguards prohibit system builds and pin changes.
+
+## Pi chat default
+
+`morph-lab` now opens Pi's interactive terminal UI in Attuneflix with GPT-6.1 Sol medium over the existing Codex subscription login. `morph-find` retains the previous bounded CLI. `/morph-status` shows the three Morph worker models and four roles. Jev decisions and the unchanged specialist plugin are available in chat and workers.
+
+Runtime-only Codex access is read from `~/.codex/auth.json` (or CODEX_HOME); no login credential is copied into this package, persisted by the extension, or refreshed behind the active Codex CLI. Relaunch after refreshing an expired login. Runtime keys remain in the ignored root `.env`. Native Pi task fan-out is capped at 32, five minutes per worker, and workers do not spawn nested tasks. Kimi is excluded after an incoherent full-context smoke response. No system closure build/switch is needed.
