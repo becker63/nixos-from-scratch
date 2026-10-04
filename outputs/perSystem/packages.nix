@@ -18,6 +18,7 @@ let
   # Portable set: pure Python/shell tooling that builds from plain nixpkgs
   # on every system listed in flake.nix.
   portable = {
+    morph-lab = pkgs.callPackage ../../packages/morph-lab { };
     jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
     factory-config = pkgs.callPackage ../../packages/factory-config { };
   }

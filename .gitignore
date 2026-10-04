@@ -13,3 +13,8 @@ result-*
 repomix-output.xml
 
 # hardware-configuration.nix is tracked on purpose (nodes/nixos-btw/)
+
+# Runtime harness credentials; never include in flake sources.
+.env
+.env.*
+!.env.example

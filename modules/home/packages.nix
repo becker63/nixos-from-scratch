@@ -1,7 +1,11 @@
 { pkgs, ... }:
 
+let
+  morph-lab = pkgs.callPackage ../../packages/morph-lab { };
+in
 {
   home.packages = with pkgs; [
+    morph-lab
     # Bundle Widevine CDM so DRM-protected streaming works on aarch64.
     (chromium.override { enableWideVine = true; })
     firefox
