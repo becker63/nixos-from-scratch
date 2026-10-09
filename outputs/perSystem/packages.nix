@@ -21,6 +21,14 @@ let
     morph-lab = pkgs.callPackage ../../packages/morph-lab { };
     jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
     factory-config = pkgs.callPackage ../../packages/factory-config { };
+    # The dedicated local DSH integration profile. It wraps the pinned `dsh`
+    # above with its own profile home and store, so it is portable for exactly
+    # the same reason `dsh` is; it changes no flake input and no system closure.
+    # The wrapped `dsh` is named explicitly rather than through a `rec` binding
+    # of this set, so this attribute stays independent of the sibling entries.
+    attune-dsh-integration = pkgs.callPackage ../../packages/attune-dsh-integration {
+      dsh = pkgs.callPackage ../../packages/dsh { };
+    };
   }
   // lib.optionalAttrs ((inputs'.llm-agents.packages or { }) ? droid) {
     # factory-droid wraps llm-agents' droid, which is published per system

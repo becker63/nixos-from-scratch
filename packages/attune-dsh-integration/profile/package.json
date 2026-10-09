@@ -1,0 +1,18 @@
+{
+  "name": "dsh-profile-attune",
+  "private": true,
+  "dependencies": {
+    "@benz-ai-x/dsh-research-graph": "0.2.0-rc.2.1",
+    "dsh-maze": "2.4.0"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dsh-maze",
+        "@benz-ai-x/dsh-research-graph"
+      ]
+    }
+  }
+}

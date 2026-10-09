@@ -13,6 +13,12 @@ lib.optionalAttrs (system == "aarch64-linux") {
     type = "app";
     program = "${outputs'.packages.attune-demo-director}/bin/attune-demo-director";
   };
+  # The dedicated local DSH integration profile: `nix run .#attune-dsh-integration`
+  # boots the pinned web composition from its own profile home and store.
+  attune-dsh-integration = {
+    type = "app";
+    program = "${outputs'.packages.attune-dsh-integration}/bin/attune-dsh-integration";
+  };
   zed-deps-report = {
     type = "app";
     program = "${outputs'.packages.zed-deps-report}/bin/zed-deps-report";

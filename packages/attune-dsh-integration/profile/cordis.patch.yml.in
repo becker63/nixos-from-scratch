@@ -1,0 +1,16 @@
+# The Attune integration profile's declared configuration, materialized into the
+# dedicated DSH home on the first launch. It points the pinned session
+# persistence and the supported SQLite session-query index at the dedicated
+# integration store (never the personal `~/.dsh`) and binds the research UI to
+# loopback 3180. `@STORE@` is replaced with the dedicated store root.
+- id: session-persistence-jsonl
+  config:
+    root: '@STORE@/sessions'
+- id: session-query-sqlite
+  config:
+    path: '@STORE@/query.sqlite'
+    openAt: first-search
+- id: webserver
+  config:
+    host: '127.0.0.1'
+    port: 3180
