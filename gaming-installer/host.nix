@@ -12,12 +12,16 @@ let
   mode = pkgs.writeShellApplication {
     name = "gaming-mode";
     runtimeInputs = [
+      pkgs.steamos-manager
       config.programs.hyprland.package
       pkgs.alacritty
     ];
     text = ''
       case "''${1:-}" in
-        steam) exec hyprctl dispatch exit ;;
+        steam)
+          steamosctl switch-to-game-mode
+          exec hyprctl dispatch exit
+          ;;
         terminal) exec alacritty -e bash -l ;;
         *) echo 'Usage: gaming-mode {steam|terminal}; use Steam Switch to Desktop for desktop mode.' >&2; exit 2 ;;
       esac
@@ -36,6 +40,8 @@ let
       && !(lib.hasPrefix "env = QT_SCALE_FACTOR" line)
       && !(lib.hasPrefix "env = XWAYLAND_DPI" line)
       && !(lib.hasInfix "kb_model = apple" line)
+      && !(lib.hasInfix "kb_options =" line)
+      && !(lib.hasInfix "pseudotile =" line)
     ) (lib.splitString "\n" (builtins.readFile (desktopSource + "/hypr/hyprland.conf")))
   );
 in
@@ -48,6 +54,10 @@ in
       autoStart = true;
       user = "becker";
       desktopSession = "hyprland";
+      # The legacy boot core aborts in libseat's logind sd-bus dispatch.
+      # Use the dedicated seat broker for Gamescope, leaving Hyprland on logind.
+      environment.LIBSEAT_BACKEND = "seatd";
+      environment.GAMESCOPE_FORCE_GENERAL_QUEUE = "1";
     };
   };
   boot.loader.systemd-boot.enable = true;
@@ -81,11 +91,39 @@ in
     memoryPercent = 25;
   };
   services.fstrim.enable = true;
+  services.seatd = {
+    enable = true;
+    # Existing user managers retain their pre-switch supplementary groups.
+    # Reuse GPU access membership so migrating doesn't require logging out TTYs.
+    group = "video";
+  };
+  # Hyprland imports its display into the persistent user manager. Gamescope
+  # must start on DRM rather than trying to nest inside the departed desktop.
+  systemd.user.services.gamescope-session.serviceConfig.UnsetEnvironment = [
+    "WAYLAND_DISPLAY"
+    "DISPLAY"
+    "HYPRLAND_INSTANCE_SIGNATURE"
+  ];
+  systemd.services.display-manager = {
+    requires = [ "seatd.service" ];
+    after = [ "seatd.service" ];
+  };
+  # Keep an independent recovery console available before graphical login.
+  systemd.services."getty@tty2".wantedBy = [ "multi-user.target" ];
 
   networking.hostName = "gaming-box";
   networking.networkmanager.enable = true;
   time.timeZone = "America/New_York";
   nixpkgs.config.allowUnfree = true;
+  # Jovian's session launcher references pkgs.steam directly. Apply the UI
+  # workaround after its overlay so desktop and gaming launchers both use it.
+  nixpkgs.overlays = lib.mkAfter [
+    (_final: prev: {
+      steam = prev.steam.override {
+        extraArgs = "-cef-disable-gpu -cef-disable-gpu-compositing";
+      };
+    })
+  ];
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
@@ -165,7 +203,7 @@ in
     (pkgs.writeTextDir "share/applications/return-to-gaming.desktop" ''
       [Desktop Entry]
       Type=Application
-      Name=Return to Gaming
+      Name=Steam Gaming Mode
       Exec=${lib.getExe mode} steam
       Icon=steam
       Terminal=false
@@ -244,8 +282,8 @@ in
         mkdir -p "$HOME/.config/hypr" "$HOME/nixos-from-scratch/walls"
         ln -sfn /etc/gaming-box/hyprland.conf "$HOME/.config/hypr/hyprland.conf"
         for name in alacritty tofi starship atuin fastfetch eww; do
-          if [ ! -e "$HOME/.config/$name" ]; then
-            ln -s ${desktopSource}/"$name" "$HOME/.config/$name"
+          if [ ! -e "$HOME/.config/$name" ] || { [ -L "$HOME/.config/$name" ] && [[ "$(readlink "$HOME/.config/$name")" == /nix/store/* ]]; }; then
+            ln -sfn ${desktopSource}/"$name" "$HOME/.config/$name"
           fi
         done
         ln -sfn ${wallpaper} "$HOME/nixos-from-scratch/walls/arnold-bocklin-isle-of-the-dead.jpg"
@@ -262,6 +300,9 @@ in
   environment.etc."gaming-box/hyprland.conf".text = hypr + ''
 
     monitor = , preferred, auto, 1
+    input {
+      kb_options =
+    }
     exec-once = sh -c 'dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP; eww daemon'
     bind = $mainMod SHIFT, G, exec, gaming-mode steam
     bind = $mainMod SHIFT, T, exec, gaming-mode terminal

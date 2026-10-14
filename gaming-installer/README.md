@@ -8,19 +8,52 @@ desktop fallback. The Apple Silicon host and root flake pins are untouched.
 
 The first ISO was built/flashed on 2026-10-14 with full USB readback verification
 and a matching bundled nixpkgs NAR hash. Its custom Gamescope wrapper failed on the
-actual gaming PC. The precise NVIDIA/Gamescope error still needs local diagnosis.
+actual gaming PC. Its saved boot core shows SIGABRT from a double free in
+`libsystemd` message cleanup, called through `libseat` logind dispatch and
+Gamescope's `libseat_event`. NVIDIA 595.91.07 enumerates the RTX 2080 Ti successfully
+through Vulkan; a subsequent legacy login runs Gamescope and Steam. No NVIDIA Xid
+appears in the inspected boot kernel journal. Steam's first bootstrap also failed
+to download its manifest before the crash. This does not establish a GPU fault.
+
+Gamescope now uses seatd explicitly, with the socket shared through the existing `video` group
+and display-manager startup ordered after the broker. This bypasses the observed
+logind crash path. Reusing `video` avoids a permission failure from the old user
+manager retaining its pre-migration supplementary groups. TTY2 starts independently.
+The PC desktop uses ordinary Ctrl/Super/Caps keys rather than the exported laptop
+remapping; Alt-based shortcuts remain.
 
 This branch switches to Jovian and includes the installation fixes: clearing old
 ZFS signatures, explicit filesystem mounts, enabled Nix experimental features, and
 a signature exception limited to copying the bundled source. Host and installer
-evaluation passes. Jovian has not yet been built or activated on the gaming PC.
+evaluation passes. Jovian was built and activated on the gaming PC on 2026-10-14.
+Steam-to-Hyprland switching, return through the gaming launcher, and switching to
+TTY2 and back have run on the actual RTX 2080 Ti. Cold boot, games, controllers,
+and audio still need separate testing.
 The original wrapper remains under `legacy/` for diagnosis.
+
+Additional migration fixes:
+
+- Strip the inherited desktop display variables from Gamescope's service so
+  returning from Hyprland starts a standalone DRM session, not a nested session
+  against a closed Wayland socket.
+- Return to gaming selects Jovian's game login mode before exiting Hyprland.
+- Remove the obsolete Hyprland `dwindle:pseudotile` option. `hyprctl configerrors`
+  is empty on the installed desktop.
+- Refresh exported store-backed dotfile symlinks while preserving user-owned
+  configuration files. Tofi tolerates absent Nix profiles and invalidates its
+  desktop cache when the system generation changes. Its live menu contains
+  **Steam Gaming Mode**, which returns to the Steam UI.
+- Use NVIDIA's general Vulkan queue. This reduced reported UI corruption but
+  did not eliminate it. Steam now starts with `-cef-disable-gpu` and
+  `-cef-disable-gpu-compositing`, avoiding Chromium UI GPU-buffer sharing while
+  retaining GPU rendering for games. Visual confirmation of this last workaround
+  is pending. A live forced-composition trial did not help and was reverted.
 
 ## Experience
 
 - SDDM autologin as `becker` into Jovian's `gamescope-wayland` session.
-- Steam Switch to Desktop opens Hyprland; logging out returns to gaming.
-- Alt+Shift+G and the Return to Gaming launcher log out of Hyprland.
+- Steam Switch to Desktop opens Hyprland.
+- Alt+Shift+G and **Steam Gaming Mode** in tofi select gaming and exit Hyprland.
 - Your bindings, wallpaper, screenshots, launcher, terminal appearance, and volume
   overlay are exported in `desktop-config/`, independent of unrelated local edits.
 - Ctrl+Alt+F2 gives an independent login TTY. Alt+Return or Alt+Shift+T opens a
@@ -67,6 +100,13 @@ Record hardware fixes declaratively here. Validate Steam, controllers, sound,
 desktop switching, and TTY recovery on real hardware, then commit/push changes.
 Future rebuilds must use this same expression; cloning the branch does not update
 the old `/etc/nixos` configuration automatically.
+
+The migrated PC has a self-contained snapshot in `/etc/nixos/jovian`, referenced
+by `/etc/nixos/system.nix` and `configuration.nix`. Its original configuration is
+backed up under `/etc/nixos.before-jovian.*`. On that installed PC, use
+`sudo nixos-rebuild switch --file /etc/nixos/system.nix` for maintenance. Updating
+the Git checkout does not update this installed snapshot. The temporary
+passwordless sudo bootstrap rule is not part of this configuration.
 
 ## Codex from the TTY
 
