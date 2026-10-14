@@ -62,6 +62,14 @@ The final configuration was built and switched, Steam/Hyprland switching and TTY
 recovery were exercised, and the user confirmed the mouse fix. Extended idle
 rendering, cold boot, games, controllers, and audio remain separate checks.
 
+Cyberpunk 2077 was tested afterward with Proton Experimental 11.0 (2026-10-08).
+The first reported frozen launch left Gamescope responsive, with an idle GPU and
+no new NVIDIA Xid or OOM event. Forcing Steam app 769 restored the Steam UI and
+the user confirmed the Windows-key escape worked. A restart loaded substantial
+game data, then reached sustained GPU rendering; a live screen capture showed a
+rendered game scene and FPS counter. The original stall's cause is not established;
+no speculative Proton flags, driver changes, or cache deletion were applied.
+
 ## Experience
 
 - SDDM autologin as `becker` into Jovian's `gamescope-wayland` session.
