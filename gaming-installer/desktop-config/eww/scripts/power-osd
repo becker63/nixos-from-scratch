@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-toggle}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+runtime_root="${XDG_RUNTIME_DIR:-/tmp}"
+runtime_dir="$runtime_root/minimal-osd-${UID}"
+lock_file="$runtime_dir/power.lock"
+deadline_file="$runtime_dir/power.deadline"
+worker_file="$runtime_dir/power.worker"
+display_duration_ms=4000
+
+case "$mode" in
+  toggle | show | hide | keepalive | expire)
+    ;;
+  *)
+    printf 'usage: %s {toggle|show|hide|keepalive|expire}\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+umask 077
+mkdir -p -- "$runtime_dir"
+exec 9>>"$lock_file"
+flock 9
+
+window_is_open() {
+  local window="$1"
+  local active_windows
+  active_windows="$(eww active-windows 2>/dev/null)" || return 1
+  grep -Eq "^${window}: ${window}$" <<<"$active_windows"
+}
+
+arm_timer() {
+  local deadline worker_unit
+
+  deadline=$(( $(date +%s%3N) + display_duration_ms ))
+  printf '%s\n' "$deadline" >"$deadline_file"
+
+  worker_unit=""
+  if [[ -r "$worker_file" ]]; then
+    worker_unit="$(<"$worker_file")"
+  fi
+
+  if [[ -z "$worker_unit" ]] || ! systemctl --user is-active --quiet "$worker_unit"; then
+    worker_unit="minimal-osd-power-hide-$(date +%s%N)-$$-$RANDOM.service"
+    printf '%s\n' "$worker_unit" >"$worker_file"
+    systemd-run --user \
+      --quiet \
+      --collect \
+      --unit="$worker_unit" \
+      "$script_dir/power-osd" expire
+  fi
+}
+
+if [[ "$mode" == "expire" ]]; then
+  while true; do
+    deadline=0
+    if [[ -r "$deadline_file" ]]; then
+      deadline="$(<"$deadline_file")"
+    fi
+
+    now="$(date +%s%3N)"
+    if [[ ! "$deadline" =~ ^[0-9]+$ ]] || ((now >= deadline)); then
+      if window_is_open power; then
+        eww close power >/dev/null 2>&1 || true
+        if window_is_open volume; then
+          "$script_dir/volume-osd" reposition
+        fi
+      fi
+      exit 0
+    fi
+
+    remaining=$((deadline - now))
+    flock -u 9
+    sleep "$(awk -v milliseconds="$remaining" 'BEGIN { printf "%.3f", milliseconds / 1000 }')"
+    flock 9
+  done
+fi
+
+active_windows="$(eww active-windows 2>/dev/null || true)"
+volume_was_open=false
+power_window=""
+
+if grep -Eq '^volume: volume$' <<<"$active_windows"; then
+  volume_was_open=true
+fi
+
+if grep -Eq '^power: power$' <<<"$active_windows"; then
+  power_window="power"
+elif grep -Eq '^power_confirm: power_confirm$' <<<"$active_windows"; then
+  power_window="power_confirm"
+fi
+
+if [[ "$mode" == "keepalive" ]]; then
+  if [[ "$power_window" == "power" ]]; then
+    arm_timer
+  fi
+  exit 0
+fi
+
+if [[ "$mode" == "show" && -n "$power_window" ]]; then
+  if [[ "$power_window" == "power" ]]; then
+    arm_timer
+  fi
+  exit 0
+fi
+
+if [[ -n "$power_window" ]]; then
+  eww close "$power_window" >/dev/null 2>&1 || true
+  if [[ "$volume_was_open" == true ]]; then
+    "$script_dir/volume-osd" reposition
+  fi
+  exit 0
+fi
+
+if [[ "$mode" == "hide" ]]; then
+  exit 0
+fi
+
+summary="$(charge-status --fastfetch-status)"
+rate="$(charge-status --fastfetch-rate)"
+detail="$(charge-status --fastfetch-electrical)"
+capacity="$(sed -n 's/.* · \([0-9][0-9]*\)%.*/\1/p' <<<"$summary")"
+state="battery"
+
+if [[ ! "$capacity" =~ ^[0-9]+$ ]]; then
+  capacity=0
+elif [[ "$summary" == Charging* ]]; then
+  state="charging"
+elif [[ "$summary" == Full* ]]; then
+  state="full"
+elif ((capacity <= 15)); then
+  state="critical"
+elif ((capacity <= 35)); then
+  state="low"
+fi
+
+eww open power \
+  --arg "summary=$summary" \
+  --arg "rate=$rate" \
+  --arg "detail=$detail" \
+  --arg "capacity=$capacity" \
+  --arg "state=$state"
+
+arm_timer
+
+if [[ "$volume_was_open" == true ]]; then
+  "$script_dir/volume-osd" reposition
+fi
+
+flock -u 9

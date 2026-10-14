@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-show}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+runtime_root="${XDG_RUNTIME_DIR:-/tmp}"
+runtime_dir="$runtime_root/minimal-osd-${UID}"
+lock_file="$runtime_dir/volume.lock"
+deadline_file="$runtime_dir/volume.deadline"
+worker_file="$runtime_dir/volume.worker"
+
+umask 077
+mkdir -p -- "$runtime_dir"
+exec 9>>"$lock_file"
+flock 9
+
+volume_is_open() {
+  local active_windows
+  active_windows="$(eww active-windows 2>/dev/null)" || return 1
+  grep -Eq '^volume: volume$' <<<"$active_windows"
+}
+
+volume_offset() {
+  local active_windows
+  active_windows="$(eww active-windows 2>/dev/null)" || active_windows=""
+
+  if grep -Eq '^power: power$' <<<"$active_windows"; then
+    printf '202px\n'
+  elif grep -Eq '^power_confirm: power_confirm$' <<<"$active_windows"; then
+    printf '70px\n'
+  else
+    printf '14px\n'
+  fi
+}
+
+if [[ "$action" == "expire" ]]; then
+  while true; do
+    deadline=0
+    if [[ -r "$deadline_file" ]]; then
+      deadline="$(<"$deadline_file")"
+    fi
+
+    now="$(date +%s%3N)"
+    if [[ ! "$deadline" =~ ^[0-9]+$ ]] || ((now >= deadline)); then
+      if volume_is_open; then
+        eww close volume >/dev/null 2>&1 || true
+      fi
+      exit 0
+    fi
+
+    remaining=$((deadline - now))
+    flock -u 9
+    sleep "$(awk -v milliseconds="$remaining" 'BEGIN { printf "%.3f", milliseconds / 1000 }')"
+    flock 9
+  done
+fi
+
+if [[ "$action" == "reposition" ]]; then
+  if volume_is_open; then
+    offset="$(volume_offset)"
+    eww close volume >/dev/null 2>&1 || true
+    eww open volume --arg "offset=$offset"
+  fi
+  exit 0
+fi
+
+target="@DEFAULT_AUDIO_SINK@"
+kind="vol"
+
+case "$action" in
+  up)
+    wpctl set-mute "$target" 0
+    wpctl set-volume -l 2.0 "$target" 5%+
+    ;;
+  down)
+    wpctl set-mute "$target" 0
+    wpctl set-volume "$target" 5%-
+    ;;
+  mute)
+    wpctl set-mute "$target" toggle
+    ;;
+  mic-mute)
+    target="@DEFAULT_AUDIO_SOURCE@"
+    kind="mic"
+    wpctl set-mute "$target" toggle
+    ;;
+  show)
+    ;;
+  *)
+    printf 'usage: %s {up|down|mute|mic-mute|show|reposition|expire}\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+status="$(wpctl get-volume "$target")"
+fraction="$(awk '{ print $2 }' <<<"$status")"
+percent="$(awk -v value="$fraction" 'BEGIN { printf "%d", (value * 100) + 0.5 }')"
+
+muted=false
+if [[ "$status" == *"[MUTED]"* ]]; then
+  muted=true
+  if [[ "$kind" == "mic" ]]; then
+    kind="mic off"
+  else
+    kind="mute"
+  fi
+fi
+
+eww update \
+  "volume_percent=$percent" \
+  "volume_muted=$muted" \
+  "volume_kind=$kind"
+
+if ! volume_is_open; then
+  offset="$(volume_offset)"
+  eww open volume --arg "offset=$offset"
+fi
+
+deadline=$(( $(date +%s%3N) + 1400 ))
+printf '%s\n' "$deadline" >"$deadline_file"
+
+worker_unit=""
+if [[ -r "$worker_file" ]]; then
+  worker_unit="$(<"$worker_file")"
+fi
+
+if [[ -z "$worker_unit" ]] || ! systemctl --user is-active --quiet "$worker_unit"; then
+  worker_unit="minimal-osd-volume-hide-$(date +%s%N)-$$-$RANDOM.service"
+  printf '%s\n' "$worker_unit" >"$worker_file"
+  systemd-run --user \
+    --quiet \
+    --collect \
+    --unit="$worker_unit" \
+    "$script_dir/volume-osd" expire
+fi
+
+flock -u 9

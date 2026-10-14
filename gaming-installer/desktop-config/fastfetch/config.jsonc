@@ -1,0 +1,120 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  "logo": {
+    "type": "data",
+    "source": "                N I X O S\n          system & power overview",
+    "color": {
+      "1": "bright_blue"
+    },
+    "position": "top",
+    "padding": {
+      "right": 2
+    }
+  },
+  "display": {
+    "separator": "  ",
+    "key": {
+      "width": 14
+    },
+    "color": {
+      "output": "white"
+    }
+  },
+  "modules": [
+    "title",
+    {
+      "type": "custom",
+      "format": "{#blue}╭─ {#white}System {#blue}──────────────────"
+    },
+    {
+      "type": "os",
+      "key": "󰣇  OS",
+      "keyColor": "bright_blue"
+    },
+    {
+      "type": "kernel",
+      "key": "󰌽  Kernel",
+      "keyColor": "bright_blue"
+    },
+    {
+      "type": "uptime",
+      "key": "󰅐  Uptime",
+      "keyColor": "bright_blue"
+    },
+    {
+      "type": "packages",
+      "key": "󰏖  Packages",
+      "keyColor": "bright_blue"
+    },
+    {
+      "type": "custom",
+      "format": "{#magenta}├─ {#white}Hardware {#magenta}────────────────"
+    },
+    {
+      "type": "host",
+      "key": "󰟀  Host",
+      "keyColor": "bright_magenta"
+    },
+    {
+      "type": "cpu",
+      "key": "󰘚  CPU",
+      "keyColor": "bright_magenta"
+    },
+    {
+      "type": "gpu",
+      "key": "󰢮  GPU",
+      "keyColor": "bright_magenta"
+    },
+    {
+      "type": "memory",
+      "key": "󰍛  Memory",
+      "keyColor": "bright_magenta"
+    },
+    {
+      "type": "disk",
+      "key": "󰋊  Disk",
+      "keyColor": "bright_magenta"
+    },
+    {
+      "type": "custom",
+      "format": "{#yellow}├─ {#white}Power {#yellow}───────────────────"
+    },
+    {
+      "type": "battery",
+      "key": "󰁹  Battery",
+      "keyColor": "bright_yellow"
+    },
+    {
+      "type": "poweradapter",
+      "key": "󱐋  Adapter",
+      "keyColor": "bright_yellow"
+    },
+    {
+      "type": "command",
+      "key": "󰂄  Status",
+      "keyColor": "bright_yellow",
+      "text": "charge-status --fastfetch-status"
+    },
+    {
+      "type": "command",
+      "key": "󰚥  Rate",
+      "keyColor": "bright_yellow",
+      "text": "charge-status --fastfetch-rate"
+    },
+    {
+      "type": "command",
+      "key": "󰍛  Electric",
+      "keyColor": "bright_yellow",
+      "text": "charge-status --fastfetch-electrical"
+    },
+    {
+      "type": "custom",
+      "format": "{#yellow}╰─────────────────────────"
+    },
+    {
+      "type": "colors",
+      "paddingLeft": 2,
+      "symbol": "circle"
+    }
+  ]
+}
