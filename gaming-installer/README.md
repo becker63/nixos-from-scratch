@@ -33,9 +33,21 @@ The original wrapper remains under `legacy/` for diagnosis.
 
 Additional migration fixes:
 
-- Strip the inherited desktop display variables from Gamescope's service so
-  returning from Hyprland starts a standalone DRM session, not a nested session
-  against a closed Wayland socket.
+- Run pinned Gamescope fullscreen through SDL inside a minimal Hyprland gaming
+  compositor, avoiding the direct NVIDIA DRM path that showed idle corruption.
+  Import the new host's Wayland socket and monitor dimensions on every login;
+  clear inherited DISPLAY. Gamescope runs without the privileged DRM wrapper.
+- Disable Gamescope WSI injection in this nested session to avoid the observed
+  hooking failure and repeated error dialogs. Keep NVIDIA's general Vulkan queue.
+- Isolate only the Gamescope renderer from session D-Bus to avoid a startup
+  deadlock querying a portal ordered after Gamescope readiness. The readiness
+  helper and Steam retain the real session bus for desktop/game switching.
+- Replace touchscreen passthrough mode with hover mode: SDL routes absolute mouse
+  motion through the touch handler, so passthrough leaves Steam's pointer still.
+  Hover moves the pointer; SDL forwards mouse buttons separately. Mouse hover
+  and clicks were confirmed working on the installed PC.
+- A failed gaming session stops its Steam launcher and selects desktop recovery
+  before exiting the host compositor, preventing the observed autologin loop.
 - Return to gaming selects Jovian's game login mode before exiting Hyprland.
 - Remove the obsolete Hyprland `dwindle:pseudotile` option. `hyprctl configerrors`
   is empty on the installed desktop.
@@ -43,11 +55,12 @@ Additional migration fixes:
   configuration files. Tofi tolerates absent Nix profiles and invalidates its
   desktop cache when the system generation changes. Its live menu contains
   **Steam Gaming Mode**, which returns to the Steam UI.
-- Use NVIDIA's general Vulkan queue. This reduced reported UI corruption but
-  did not eliminate it. Steam now starts with `-cef-disable-gpu` and
-  `-cef-disable-gpu-compositing`, avoiding Chromium UI GPU-buffer sharing while
-  retaining GPU rendering for games. Visual confirmation of this last workaround
-  is pending. A live forced-composition trial did not help and was reverted.
+
+The CPU Chromium flags and forced-composition trials did not resolve the direct
+session corruption and are not enabled. The nested SDL session starts successfully.
+The final configuration was built and switched, Steam/Hyprland switching and TTY2
+recovery were exercised, and the user confirmed the mouse fix. Extended idle
+rendering, cold boot, games, controllers, and audio remain separate checks.
 
 ## Experience
 

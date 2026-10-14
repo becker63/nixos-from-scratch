@@ -9,6 +9,42 @@
   ...
 }:
 let
+  gamingHost = pkgs.writeShellApplication {
+    name = "gaming-host-session";
+    runtimeInputs = [ config.programs.hyprland.package ];
+    text = ''
+      exec Hyprland --config /etc/gaming-box/gaming-host.conf
+    '';
+  };
+  nestedStart = pkgs.writeShellApplication {
+    name = "gaming-nested-start";
+    runtimeInputs = [
+      pkgs.gamescope-session
+      pkgs.systemd
+      pkgs.steamos-manager
+      pkgs.jq
+      config.programs.hyprland.package
+    ];
+    text = ''
+      # Replace stale desktop values with this gaming compositor's socket.
+      read -r GAMESCOPE_HOST_WIDTH GAMESCOPE_HOST_HEIGHT < <(
+        hyprctl monitors -j | jq -r '.[0] | "\(.width | floor) \(.height | floor)"'
+      )
+      export GAMESCOPE_HOST_WIDTH GAMESCOPE_HOST_HEIGHT
+      systemctl --user import-environment WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE GAMESCOPE_HOST_WIDTH GAMESCOPE_HOST_HEIGHT
+      export XDG_CURRENT_DESKTOP=gamescope DESKTOP_SESSION=gamescope-wayland
+      status=0
+      start-gamescope-session || status=$?
+      result="$(systemctl --user show gamescope-session --property=Result --value)"
+      if [ "$status" -ne 0 ] || [ "$result" != success ]; then
+        # A failed gaming session must return to recovery, never autologin-loop.
+        systemctl --user stop steam-launcher.service || true
+        steamosctl switch-to-desktop-mode || true
+      fi
+      hyprctl dispatch exit || true
+      exit "$status"
+    '';
+  };
   mode = pkgs.writeShellApplication {
     name = "gaming-mode";
     runtimeInputs = [
@@ -47,6 +83,8 @@ let
 in
 {
   imports = [ (jovianSource + "/modules") ];
+  # Nested Gamescope uses Hyprland's display and needs no privileged DRM access.
+  security.wrappers.gamescope.enable = false;
   jovian = {
     devices.steamdeck.enable = false;
     steam = {
@@ -58,6 +96,16 @@ in
       # Use the dedicated seat broker for Gamescope, leaving Hyprland on logind.
       environment.LIBSEAT_BACKEND = "seatd";
       environment.GAMESCOPE_FORCE_GENERAL_QUEUE = "1";
+      # The SteamOS WSI layer cannot hook the outer compositor's swapchain.
+      environment.ENABLE_GAMESCOPE_WSI = "0";
+      # SDL otherwise asks the portal for cursor settings synchronously, while
+      # Jovian orders that portal after Gamescope's startup notification.
+      environment.XCURSOR_THEME = "breeze_cursors";
+      environment.XCURSOR_SIZE = "24";
+      # This fullscreen host supplies no client-side window decorations. Avoid
+      # libdecor's GTK settings/portal startup while Gamescope is not ready yet.
+      environment.SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR = "0";
+      environment.SDL_VIDEO_WAYLAND_WMCLASS = "gamescope";
     };
   };
   boot.loader.systemd-boot.enable = true;
@@ -97,12 +145,10 @@ in
     # Reuse GPU access membership so migrating doesn't require logging out TTYs.
     group = "video";
   };
-  # Hyprland imports its display into the persistent user manager. Gamescope
-  # must start on DRM rather than trying to nest inside the departed desktop.
+  # The nested startup helper imports the current gaming host's Wayland socket.
+  # Desktop X11 display values must still stay out of Gamescope's environment.
   systemd.user.services.gamescope-session.serviceConfig.UnsetEnvironment = [
-    "WAYLAND_DISPLAY"
     "DISPLAY"
-    "HYPRLAND_INSTANCE_SIGNATURE"
   ];
   systemd.services.display-manager = {
     requires = [ "seatd.service" ];
@@ -115,13 +161,29 @@ in
   networking.networkmanager.enable = true;
   time.timeZone = "America/New_York";
   nixpkgs.config.allowUnfree = true;
-  # Jovian's session launcher references pkgs.steam directly. Apply the UI
-  # workaround after its overlay so desktop and gaming launchers both use it.
+  # Keep Jovian's service lifecycle and SteamOS integration, with Hyprland
+  # owning display output to avoid NVIDIA's idle-frame corruption on direct DRM.
   nixpkgs.overlays = lib.mkAfter [
     (_final: prev: {
-      steam = prev.steam.override {
-        extraArgs = "-cef-disable-gpu -cef-disable-gpu-compositing";
-      };
+      gamescope-session = prev.gamescope-session.overrideAttrs (old: {
+        postInstall = (old.postInstall or "") + ''
+          substituteInPlace "$out/share/wayland-sessions/gamescope-wayland.desktop" \
+            --replace-fail 'Exec=start-gamescope-session' 'Exec=gaming-host-session'
+          # Only the renderer skips session D-Bus. The readiness helper keeps
+          # the real bus in gamescope-environment for Steam and its services.
+          substituteInPlace "$out/lib/steamos/gamescope-session" \
+            --replace-fail 'exec gamescope' \
+            'exec ${prev.coreutils}/bin/env DBUS_SESSION_BUS_ADDRESS=unix:path=/dev/null gamescope --backend sdl --fullscreen'
+          substituteInPlace "$out/lib/steamos/gamescope-session" \
+            --replace-fail '-w 1280 -h 800' \
+            '-w "''${GAMESCOPE_HOST_WIDTH:-1920}" -h "''${GAMESCOPE_HOST_HEIGHT:-1080}" -W "''${GAMESCOPE_HOST_WIDTH:-1920}" -H "''${GAMESCOPE_HOST_HEIGHT:-1080}"'
+          # SDL forwards absolute mouse motion through the touch handler.
+          # Passthrough (4) emits touch events without moving Steam's pointer;
+          # hover (0) warps the pointer while SDL forwards buttons separately.
+          substituteInPlace "$out/lib/steamos/gamescope-session" \
+            --replace-fail '--default-touch-mode 4' '--default-touch-mode 0'
+        '';
+      });
     })
   ];
   nix.settings.experimental-features = [
@@ -199,6 +261,8 @@ in
   users.users.root.hashedPassword = "!";
 
   environment.systemPackages = with pkgs; [
+    gamingHost
+    nestedStart
     mode
     (pkgs.writeTextDir "share/applications/return-to-gaming.desktop" ''
       [Desktop Entry]
@@ -306,6 +370,41 @@ in
     exec-once = sh -c 'dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP; eww daemon'
     bind = $mainMod SHIFT, G, exec, gaming-mode steam
     bind = $mainMod SHIFT, T, exec, gaming-mode terminal
+  '';
+  environment.etc."gaming-box/gaming-host.conf".text = ''
+    monitor = , preferred, auto, 1
+    input {
+      kb_layout = us
+      kb_options =
+    }
+    general {
+      gaps_in = 0
+      gaps_out = 0
+      border_size = 0
+    }
+    decoration {
+      rounding = 0
+      blur {
+        enabled = false
+      }
+      shadow {
+        enabled = false
+      }
+    }
+    animations {
+      enabled = false
+    }
+    misc {
+      disable_hyprland_logo = true
+      disable_splash_rendering = true
+      background_color = 0x000000
+    }
+    windowrule {
+      name = gamescope-fullscreen
+      match:class = gamescope
+      fullscreen = on
+    }
+    exec-once = gaming-nested-start
   '';
   # Opt in on the installed box: services.ollama.enable = true;
   # services.ollama.package = pkgs.ollama-cuda; (models are downloaded separately).
