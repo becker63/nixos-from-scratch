@@ -46,6 +46,12 @@ Additional migration fixes:
   motion through the touch handler, so passthrough leaves Steam's pointer still.
   Hover moves the pointer; SDL forwards mouse buttons separately. Mouse hover
   and clicks were confirmed working on the installed PC.
+- Force cursor capture for the dedicated fullscreen gaming session. Automatic
+  relative-mode selection depends on hidden-cursor and pointer-constraint
+  detection, and game input was subsequently reported desynchronized. SDL now
+  forwards relative motion consistently and Gamescope draws its own cursor.
+  The rebuilt session starts with this option; Steam focus and TTY2 recovery
+  pass. Physical mouse alignment in Steam and Cyberpunk awaits user testing.
 - A failed gaming session stops its Steam launcher and selects desktop recovery
   before exiting the host compositor, preventing the observed autologin loop.
 - Return to gaming selects Jovian's game login mode before exiting Hyprland.
@@ -69,6 +75,10 @@ the user confirmed the Windows-key escape worked. A restart loaded substantial
 game data, then reached sustained GPU rendering; a live screen capture showed a
 rendered game scene and FPS counter. The original stall's cause is not established;
 no speculative Proton flags, driver changes, or cache deletion were applied.
+The earlier nested Gamescope process also segfaulted in `CVulkanDevice` teardown
+during an intentional session stop; desktop recovery and the new login completed.
+This shutdown issue is distinct from the running game's input alignment and
+remains unresolved in the pinned renderer.
 
 ## Experience
 

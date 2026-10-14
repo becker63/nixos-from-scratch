@@ -190,9 +190,11 @@ in
             --replace-fail 'Exec=start-gamescope-session' 'Exec=gaming-host-session'
           # Only the renderer skips session D-Bus. The readiness helper keeps
           # the real bus in gamescope-environment for Steam and its services.
+          # Keep SDL's pointer captured across Steam/game focus transitions;
+          # automatic hidden-cursor/constraint detection left game input desynced.
           substituteInPlace "$out/lib/steamos/gamescope-session" \
             --replace-fail 'exec gamescope' \
-            'exec ${prev.coreutils}/bin/env DBUS_SESSION_BUS_ADDRESS=unix:path=/dev/null gamescope --backend sdl --fullscreen'
+            'exec ${prev.coreutils}/bin/env DBUS_SESSION_BUS_ADDRESS=unix:path=/dev/null gamescope --backend sdl --fullscreen --force-grab-cursor'
           substituteInPlace "$out/lib/steamos/gamescope-session" \
             --replace-fail '-w 1280 -h 800' \
             '-w "''${GAMESCOPE_HOST_WIDTH:-1920}" -h "''${GAMESCOPE_HOST_HEIGHT:-1080}" -W "''${GAMESCOPE_HOST_WIDTH:-1920}" -H "''${GAMESCOPE_HOST_HEIGHT:-1080}"'
