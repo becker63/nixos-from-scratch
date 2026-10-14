@@ -9,6 +9,25 @@
   ...
 }:
 let
+  steamHome = pkgs.writeShellApplication {
+    name = "gaming-steam-home";
+    runtimeInputs = [
+      pkgs.xorg.xprop
+      pkgs.gnused
+    ];
+    text = ''
+      # The outer compositor has a different DISPLAY from Steam's Xwayland.
+      environmentFile="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/gamescope-environment"
+      display="$(sed -n 's/^DISPLAY=//p' "$environmentFile")"
+      if [ -z "$display" ]; then
+        echo 'Steam session display is unavailable.' >&2
+        exit 1
+      fi
+      # Focus Steam without killing the game; Steam Resume selects it again.
+      xprop -display "$display" -root -f GAMESCOPECTRL_BASELAYER_APPID 32c \
+        -set GAMESCOPECTRL_BASELAYER_APPID 769
+    '';
+  };
   gamingHost = pkgs.writeShellApplication {
     name = "gaming-host-session";
     runtimeInputs = [ config.programs.hyprland.package ];
@@ -259,9 +278,22 @@ in
     # Installed interactively by the installer; no credential goes in the ISO/store.
   };
   users.users.root.hashedPassword = "!";
+  # User requested keeping the passwordless bootstrap access across switches.
+  security.sudo.extraRules = [
+    {
+      users = [ "becker" ];
+      commands = [
+        {
+          command = "ALL";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 
   environment.systemPackages = with pkgs; [
     gamingHost
+    steamHome
     nestedStart
     mode
     (pkgs.writeTextDir "share/applications/return-to-gaming.desktop" ''
@@ -373,6 +405,9 @@ in
   '';
   environment.etc."gaming-box/gaming-host.conf".text = ''
     monitor = , preferred, auto, 1
+    bindr = SUPER, Super_L, exec, ${lib.getExe steamHome}
+    bindr = SUPER, Super_R, exec, ${lib.getExe steamHome}
+    bind = SUPER SHIFT, Escape, exec, steamosctl switch-to-desktop-mode
     input {
       kb_layout = us
       kb_options =

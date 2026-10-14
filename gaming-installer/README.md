@@ -66,6 +66,9 @@ rendering, cold boot, games, controllers, and audio remain separate checks.
 
 - SDDM autologin as `becker` into Jovian's `gamescope-wayland` session.
 - Steam Switch to Desktop opens Hyprland.
+- In gaming mode, press/release either Windows key to focus Steam without killing
+  the game. Select Resume in Steam to return to the game. Windows+Shift+Escape
+  switches to the Hyprland desktop for recovery.
 - Alt+Shift+G and **Steam Gaming Mode** in tofi select gaming and exit Hyprland.
 - Your bindings, wallpaper, screenshots, launcher, terminal appearance, and volume
   overlay are exported in `desktop-config/`, independent of unrelated local edits.
@@ -118,8 +121,9 @@ The migrated PC has a self-contained snapshot in `/etc/nixos/jovian`, referenced
 by `/etc/nixos/system.nix` and `configuration.nix`. Its original configuration is
 backed up under `/etc/nixos.before-jovian.*`. On that installed PC, use
 `sudo nixos-rebuild switch --file /etc/nixos/system.nix` for maintenance. Updating
-the Git checkout does not update this installed snapshot. The temporary
-passwordless sudo bootstrap rule is not part of this configuration.
+the Git checkout does not update this installed snapshot. Passwordless
+sudo access for `becker` is now declared in `host.nix`, as requested,
+and persists across system switches.
 
 ## Codex from the TTY
 
