@@ -1,53 +1,99 @@
-# Attune research workbench
+# Codex visualization workbench
 
-This directory contains two small frontends over one JSONL event contract. The
-frontends are observers; scientific results remain in the experiment's own
-artifacts. `events.jsonl` is a deterministic eight-row fixture shared by both.
+Textual is the default interactive Codex frontend in the configured xonsh
+profile. It starts the official `codex app-server --stdio` child process on the
+first prompt and inherits Codex's existing `~/.codex` account, settings,
+sandbox, approval, model catalog, thread store, and project instructions.
+Nothing in the Nix store contains a credential. `codex exec`, `codex app-server`,
+login commands, and other native subcommands still go to the npm-managed CLI.
+Use `codex-native` or `CODEX_VISUAL=0 codex` for the original Codex TUI. The
+default changes after a Home Manager activation; this repository does not
+switch the running system.
 
-## Run
+## Launch
 
 ```sh
+codex                         # Textual, interactive; default model from account
+codex --model MODEL_ID        # choose a model returned by model/list
+codex --cd /path/to/project   # preserve project working directory
+codex resume THREAD_ID        # resume an App Server thread
+codex-native                  # original Codex CLI/TUI
+CODEX_VISUAL=0 codex          # temporary native fallback
 nix develop -c research-textual
-nix develop -c research-ratatui
-nix develop -c codex app-server --stdio
-nix develop -c research-textual --resume THREAD_ID
-nix develop -c research-ratatui --resume THREAD_ID
+nix run .#research-ratatui
 ```
 
-Use `nix develop -c research-textual --check-fixture` and
-`nix develop -c research-ratatui --check-fixture` for noninteractive fixture
-smoke checks. Both frontends start `codex app-server --stdio` only after the
-first prompt. Install Codex CLI through the existing npm-managed
-`~/.npm-global` setup; the child process inherits the regular `~/.codex`
-configuration and ChatGPT subscription login. No credential path or token is
-passed through Nix.
+`nix run .#research-textual` and `nix run .#research-ratatui` are also
+available. Ratatui is an alternative frontend; it reads the same event and
+visualization fixtures. Both clients start App Server only when a prompt is
+sent. Escape closes the frontend; Ctrl+C interrupts the current turn.
 
-Textual plots each treatment's best objective as a line and shows the prompt
-and streamed assistant deltas. Ratatui plots the J0 objective curve, shows
-evaluation latency as a sparkline, and displays the latest recall, harm, cost,
-latency, and state. Both currently load the same static fixture at startup.
+Textual controls: Ctrl+G toggles graphs, Ctrl+N cycles graphs. Prompt commands
+include `/next`, `/pin`, `/data`, `/table`, `/provenance`, `/graphs`,
+`/jev on|off`, `/mode automatic|minimal|manual`, and `/fixture-study`.
+Automatic mode is the default. The conversation remains active when JEv is
+disabled or unavailable. Approval requests are declined by default; the
+visualization tool itself performs no approval-gated operation. Codex execution
+approvals are shown with their request details and wait for an explicit
+`/approve ID` or `/deny ID` (Ratatui uses `:approve ID` and `:deny ID`). The
+frontend will not accept unrecognized permission grant types.
 
-App Server server-side approval requests are declined by default. The clients
-do not change the account's model, sandbox, or approval settings. Each selects
-the account's default model from `model/list`; if no default is marked, it
-uses the first model returned. Turn events are consumed from the JSON-RPC
-stream. Press Ctrl+C to interrupt the active turn and Escape to stop a client;
-it closes the child process. Pass `--resume THREAD_ID` to continue a saved
-Codex thread.
+## Visualization paths
 
-## Event format
+`visualizations.jsonl` is a shared `attune.visualization.v1` fixture consumed by
+both frontends. It records chart ID/type, labels and units, series or graph data,
+identifiers, provenance, observed/inferred status, optional uncertainty, and
+replace/update behavior. Payloads are bounded and validated. Explicit graph
+edges must reference supplied node IDs. The fixture is separate from source
+experiment measurements.
 
-Each line is an `attune.research-event.v1` JSON object with experiment/run and
-candidate IDs, parent candidates, treatment, iteration, timestamp, objective
-and best objective, recall@10, harm, cost, latency, and state. Append one event
-per candidate evaluation. Useful next views include treatment comparisons,
-parent-edge frontier graphs, throughput and cost summaries, and run-state
-filters. A future experiment writer should emit this format alongside its
-reproducible raw results rather than relying on UI state.
+The deterministic router turns structured `attune.research-event.v1` rows into
+a multi-treatment best-objective line chart, without inference. It reads
+structured MCP results and bounded command output deltas, extracting only
+complete JSONL records carrying that explicit research schema. The Codex dynamic `visualize` tool
+accepts a bounded JSON specification and updates an existing chart by stable
+ID. Codex protocol calls are supported by the installed 0.162.0
+`item/tool/call` method; this adds no MCP service or listener.
 
-## Test
+JEv is an optional semantic observer using the existing OpenRouter Decisions
+MCP and pinned `typesafe/jev-1.13` decision model. When the frontend starts in a
+directory with an owner-private, non-symlink `.env`, it reads only
+`OPENROUTER_API_KEY` at runtime and passes it to the child MCP process. Set
+`CODEX_JEV_ENV_FILE` to an alternate credential file. The key never appears in
+the store, chart payload, or logs. Default budget is three decisions per
+session (`CODEX_JEV_BUDGET`, capped at eight). Requests contain compact
+structured evidence and independent typed questions for graphworthiness,
+compatible visualization type, and bounded priority score. Duplicate evidence
+is coalesced. An unavailable key, disabled route, timeout, or provider error
+falls back to deterministic behavior. JEv scores are relative judgments, not
+calibrated probabilities. Existing Factory credential launchers are unchanged.
+
+The small evaluation fixture has twelve cases covering benchmark curves,
+ambiguous metrics, explicit dependencies, branching search, build timelines,
+plain text, incomplete data, duplicates, updates, and multiple plausible graph
+types. Run `research-textual --evaluate-routing` or enter `/fixture-study`.
+The included JEv labels are explicit fixture outputs, not live inference: they
+make strategy deltas reproducible and are not statistical evidence of model
+quality. A live JEv decision is separately smoke-tested when credentials and
+network access are available.
+
+## Event contract and extension
+
+Each `events.jsonl` row is an `attune.research-event.v1` measurement with
+experiment/run/candidate IDs, parent candidates, treatment, iteration,
+timestamp, objective/best objective, recall@10, harm, cost, latency, and state.
+The observation UI does not modify scientific measurements. Extend the
+experiment producer to append raw records beside its independently reproducible
+artifacts. Then add a deterministic extractor or a compact ambiguous candidate
+for JEv to classify. JEv chooses among representations; it cannot invent
+values, categories, or graph edges.
+
+## Checks
 
 ```sh
 nix develop -c python -m unittest discover -s packages/research-workbench/python/tests
-nix build .#research-ratatui
+nix develop -c research-textual --check-fixture
+nix develop -c research-textual --evaluate-routing
+nix build .#research-textual .#research-ratatui
+nix run .#research-ratatui -- --check-fixture
 ```

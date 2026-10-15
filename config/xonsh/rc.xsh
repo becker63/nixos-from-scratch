@@ -562,19 +562,43 @@ def _gutter_command_finished(cmd, rtn, out, ts, **kwargs):
 
 
 def _codex(args, stdin=None):
-    """Run Codex inside the semantic gutter's agent interval."""
+    """Default interactive Codex to Textual while preserving native subcommands."""
     if REAL_CODEX is None:
         print("codex: command not found")
         return 127
 
     _gutter_event("codex-start")
     try:
+        visual = shutil.which("research-textual")
+        visual_enabled = os.environ.get("CODEX_VISUAL", "1").lower() not in {"0", "false", "no"}
+        native_commands = {"exec", "app-server", "login", "logout", "mcp", "completion", "debug", "features", "cloud"}
+        forwarded = list(args)
+        supported_flags = {"--resume", "--model", "-m", "--cd", "-C"}
+        if forwarded and forwarded[0] == "resume":
+            forwarded = ["--resume", *forwarded[1:]]
+        index = 0
+        flags_supported = True
+        while index < len(forwarded):
+            item = forwarded[index]
+            if item in supported_flags:
+                if index + 1 >= len(forwarded):
+                    flags_supported = False
+                    break
+                index += 2
+            elif item.startswith("--model=") or item.startswith("--cd="):
+                index += 1
+            else:
+                flags_supported = False
+                break
+        if visual and visual_enabled and flags_supported and not (args and args[0] in native_commands):
+            return subprocess.run([visual, *forwarded], stdin=stdin).returncode
         return subprocess.run([REAL_CODEX, *args], stdin=stdin).returncode
     finally:
         _gutter_event("codex-stop")
 
 
 aliases["codex"] = _codex
+aliases["codex-native"] = lambda args, stdin=None: subprocess.run([REAL_CODEX, *args], stdin=stdin).returncode if REAL_CODEX else 127
 
 
 REAL_NIX = shutil.which("nix")

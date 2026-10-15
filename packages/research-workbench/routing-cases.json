@@ -1,0 +1,14 @@
+[
+  {"id":"benchmark","expectedType":"line","deterministicType":"line","fixtureJevType":"line","agentType":"line"},
+  {"id":"ambiguous-metrics","expectedType":"scatter","deterministicType":null,"fixtureJevType":"scatter","agentType":null},
+  {"id":"dependency-edges","expectedType":"tree","deterministicType":null,"fixtureJevType":"tree","agentType":"tree"},
+  {"id":"branch-search","expectedType":"tree","deterministicType":"tree","fixtureJevType":"tree","agentType":null},
+  {"id":"build-performance","expectedType":"timeline","deterministicType":"timeline","fixtureJevType":"timeline","agentType":"timeline"},
+  {"id":"source-only","expectedType":"none","deterministicType":null,"fixtureJevType":"none","agentType":null},
+  {"id":"plain-question","expectedType":"none","deterministicType":null,"fixtureJevType":"none","agentType":null},
+  {"id":"incomplete-data","expectedType":"table","deterministicType":"table","fixtureJevType":"table","agentType":null},
+  {"id":"duplicate-tool-output","expectedType":"bar","deterministicType":"bar","fixtureJevType":"bar","agentType":"bar","duplicate":true},
+  {"id":"incremental-update","expectedType":"line","deterministicType":"line","fixtureJevType":"line","agentType":null},
+  {"id":"multiple-plausible-types","expectedType":"heatmap","deterministicType":null,"fixtureJevType":"heatmap","agentType":"heatmap"},
+  {"id":"no-graph-preferred","expectedType":"none","deterministicType":null,"fixtureJevType":"none","agentType":null}
+]

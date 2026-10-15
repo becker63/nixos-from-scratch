@@ -9,6 +9,8 @@
 let
   upstreamDroid = inputs'.llm-agents.packages.droid;
   jevMcp = pkgs.callPackage ../../../packages/jev-mcp { };
+  researchTextual = pkgs.callPackage ../../../packages/research-workbench/python { };
+  researchRatatui = pkgs.callPackage ../../../packages/research-workbench/rust { };
   droid = pkgs.callPackage ../../../packages/factory-droid {
     droid = upstreamDroid;
   };
@@ -47,10 +49,19 @@ in
   home.packages = [
     droid
     jevMcp
+    researchTextual
+    researchRatatui
     pkgs.xdg-utils
   ];
 
   home.file.".factory/AGENTS.md".text = factoryInstructions;
+  home.file.".codex/AGENTS.md".text = ''
+    Favor visual explanation whenever available evidence contains meaningful structure, trends, comparisons, dependencies, or distributions.
+    Use the visualization tool proactively when a graph improves understanding.
+    The interface also performs automatic visualization using deterministic extraction and JEv. Do not duplicate those visualizations unnecessarily.
+    Preserve factual grounding. Never fabricate measurements or relationships to create a graph.
+    Prefer clear text when a graph adds no meaningful information.
+  '';
   home.file.".factory/droids/conceptual-escalator.md".text = conceptualEscalator;
 
   home.activation.configureFactory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
