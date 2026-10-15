@@ -87,17 +87,11 @@ let
 
   hasDroid = (inputs'.llm-agents.packages or { }) ? droid;
 
-  # Forcing drvPaths evaluates the portable derivations on x86_64 without
+  # Forcing every portable derivation on x86_64 evaluates the whole public surface without
   # building anything. The assert below forces every element through
   # builtins.all — a bare `portableDrvPaths != [ ]` never would, because
   # list disequality short-circuits on length without forcing elements.
-  portableDrvPaths = map (name: outputs'.packages.${name}.drvPath) (
-    [
-      "jev-mcp"
-      "factory-config"
-    ]
-    ++ lib.optionals hasDroid [ "factory-droid" ]
-  );
+  portableDrvPaths = map (name: outputs'.packages.${name}.drvPath) portableNames;
 in
 if system == "aarch64-linux" then
   aarch64Checks

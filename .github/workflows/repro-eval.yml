@@ -1,0 +1,38 @@
+name: Reproducibility (evaluation only)
+
+on:
+  pull_request:
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nodes/**'
+      - 'modules/**'
+      - 'outputs/**'
+      - 'checks/**'
+      - 'overlays/**'
+      - 'packages/**'
+      - 'scripts/repro-eval.sh'
+      - '.github/workflows/repro-eval.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repro-eval-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cross-architecture-eval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          enable_kvm: false
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            allow-import-from-derivation = false
+      - name: Evaluate x86 portable packages and Asahi host; no builds
+        run: bash scripts/repro-eval.sh all
