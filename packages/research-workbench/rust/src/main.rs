@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{self, BufRead, BufReader, Write},
     process::{Child, ChildStdin, Command, Stdio},
     sync::mpsc::{self, Receiver},
@@ -38,6 +39,49 @@ struct ResearchEvent {
     state: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct VisualizationSpec {
+    schema: String,
+    id: String,
+    #[serde(rename = "type")]
+    kind: String,
+    title: String,
+    #[serde(default, rename = "xAxis")]
+    x_axis: AxisSpec,
+    #[serde(default, rename = "yAxis")]
+    y_axis: AxisSpec,
+    data: VisualizationData,
+    provenance: serde_json::Value,
+    epistemic: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct AxisSpec {
+    #[serde(default)]
+    label: String,
+    #[serde(default)]
+    unit: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct VisualizationData {
+    #[serde(default)]
+    series: Vec<VisualizationSeries>,
+    #[serde(default)]
+    nodes: Vec<serde_json::Value>,
+    #[serde(default)]
+    edges: Vec<serde_json::Value>,
+    #[serde(default)]
+    rows: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct VisualizationSeries {
+    label: String,
+    x: Vec<f64>,
+    y: Vec<f64>,
+}
+
 fn load_fixture() -> Result<Vec<ResearchEvent>, Box<dyn std::error::Error>> {
     const FIXTURE: &str = include_str!("../../events.jsonl");
     FIXTURE
@@ -51,6 +95,28 @@ fn load_fixture() -> Result<Vec<ResearchEvent>, Box<dyn std::error::Error>> {
             Ok(event)
         })
         .collect()
+}
+
+fn load_visualization() -> Result<VisualizationSpec, Box<dyn std::error::Error>> {
+    const FIXTURE: &str = include_str!("../../visualizations.jsonl");
+    let spec: VisualizationSpec = serde_json::from_str(
+        FIXTURE
+            .lines()
+            .next()
+            .ok_or("missing visualization fixture")?,
+    )?;
+    if spec.schema != "attune.visualization.v1" || spec.epistemic != "observed" {
+        return Err("unsupported or ungrounded visualization fixture".into());
+    }
+    if spec
+        .data
+        .series
+        .iter()
+        .any(|series| series.x.len() != series.y.len())
+    {
+        return Err("invalid visualization series lengths".into());
+    }
+    Ok(spec)
 }
 
 enum ServerMessage {
@@ -67,6 +133,8 @@ struct AppServer {
     thread_id: Option<String>,
     thread_ready: bool,
     active_turn_id: Option<String>,
+    visualization: VisualizationSpec,
+    pending_approvals: HashMap<String, Value>,
 }
 
 impl AppServer {
@@ -107,8 +175,10 @@ impl AppServer {
             thread_id: None,
             thread_ready: false,
             active_turn_id: None,
+            visualization: load_visualization()?,
+            pending_approvals: HashMap::new(),
         };
-        server.request("initialize", json!({"clientInfo":{"name":"attune-ratatui-workbench","title":"Attune Research Workbench","version":"0.1.0"}}))?;
+        server.request("initialize", json!({"clientInfo":{"name":"attune-ratatui-workbench","title":"Attune Research Workbench","version":"0.1.0"},"capabilities":{"experimentalApi":true}}))?;
         server.notify("initialized", json!({}))?;
         let models = server.request("model/list", json!({"limit":100}))?;
         let names: Vec<String> = models["data"]
@@ -171,6 +241,48 @@ impl AppServer {
             return Ok(());
         }
         let params = &message["params"];
+        if message.get("id").is_some() && method == "item/tool/call" {
+            let valid_tool = params["tool"] == "visualize";
+            let candidate = params["arguments"].clone();
+            let parsed = serde_json::from_value::<VisualizationSpec>(candidate.clone());
+            let valid_spec = parsed.ok().filter(|spec| {
+                spec.schema == "attune.visualization.v1"
+                    && matches!(spec.epistemic.as_str(), "observed" | "inferred")
+                    && spec
+                        .data
+                        .series
+                        .iter()
+                        .all(|series| series.x.len() == series.y.len())
+                    && matches!(
+                        spec.kind.as_str(),
+                        "line"
+                            | "bar"
+                            | "histogram"
+                            | "scatter"
+                            | "heatmap"
+                            | "tree"
+                            | "timeline"
+                            | "sparkline"
+                            | "table"
+                    )
+                    && serde_json::to_vec(&candidate)
+                        .map(|bytes| bytes.len() <= 32_768)
+                        .unwrap_or(false)
+            });
+            if valid_tool {
+                if let Some(spec) = valid_spec {
+                    self.visualization = spec;
+                    self.log
+                        .push(format!("Codex visualization: {}", self.visualization.title));
+                    self.send(json!({"jsonrpc":"2.0","id":message["id"],"result":{"success":true,"contentItems":[{"type":"inputText","text":"Visualization displayed with observed values and provenance."}]}}))?;
+                } else {
+                    self.send(json!({"jsonrpc":"2.0","id":message["id"],"result":{"success":false,"contentItems":[{"type":"inputText","text":"Invalid bounded visualization specification."}]}}))?;
+                }
+            } else {
+                self.send(json!({"jsonrpc":"2.0","id":message["id"],"result":{"success":false,"contentItems":[{"type":"inputText","text":"Unsupported visualization tool."}]}}))?;
+            }
+            return Ok(());
+        }
         match method {
             "item/agentMessage/delta" => {
                 if let Some(delta) = params["delta"].as_str() {
@@ -185,12 +297,13 @@ impl AppServer {
             _ if message.get("id").is_some()
                 && (method.contains("Approval") || method.ends_with("/requestApproval")) =>
             {
-                self.log
-                    .push(format!("Approval request: {method} — denied by default"));
-                // Codex approval response schemas use a `decision` enum; decline is the fail-closed choice.
-                self.send(
-                    json!({"jsonrpc":"2.0","id":message["id"],"result":{"decision":"decline"}}),
-                )?;
+                let id = message["id"].to_string();
+                self.pending_approvals.insert(id.clone(), message.clone());
+                let detail = serde_json::to_string(&message["params"]).unwrap_or_default();
+                self.log.push(format!(
+                    "Approval pending id={id}: {} · type :approve {id} or :deny {id}",
+                    detail.chars().take(700).collect::<String>()
+                ));
             }
             _ if message.get("id").is_some() && method == "item/tool/requestUserInput" => {
                 self.log
@@ -233,7 +346,11 @@ impl AppServer {
             }
             thread_id
         } else {
-            let thread = self.request("thread/start", json!({"cwd":cwd,"model":model}))?;
+            let thread = self.request("thread/start", json!({
+                "cwd":cwd,"model":model,
+                "dynamicTools":[{"type":"function","name":"visualize","description":"Show a grounded chart or relationship graph with provenance; updates replace a matching chart id.","inputSchema":{"type":"object","required":["schema","id","type","title","data","provenance","epistemic"],"properties":{"schema":{"const":"attune.visualization.v1"},"id":{"type":"string"},"type":{"enum":["line","bar","histogram","scatter","heatmap","tree","timeline","sparkline","table"]},"title":{"type":"string"},"xAxis":{"type":"object"},"yAxis":{"type":"object"},"data":{"type":"object"},"identifiers":{"type":"object"},"provenance":{"type":"object"},"epistemic":{"enum":["observed","inferred"]},"uncertainty":{"type":"object"},"update":{"type":"object"}},"additionalProperties":false}}],
+                "developerInstructions":"Favor grounded visual explanations for meaningful structure, trends, comparisons, dependencies, or distributions. Use visualize proactively; avoid duplicating automatic charts. Never fabricate data or relationships."
+            }))?;
             let thread_id = thread["thread"]["id"]
                 .as_str()
                 .ok_or("thread/start did not return a thread id")?
@@ -259,6 +376,48 @@ impl AppServer {
             )?;
             self.log.push("Interrupt requested".into());
         }
+        Ok(())
+    }
+
+    fn resolve_approval(
+        &mut self,
+        id: &str,
+        allow: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let normalized = id
+            .parse::<u64>()
+            .map(|n| n.to_string())
+            .unwrap_or_else(|_| format!("\"{id}\""));
+        let Some(request) = self
+            .pending_approvals
+            .get(id)
+            .cloned()
+            .or_else(|| self.pending_approvals.get(&normalized).cloned())
+        else {
+            self.log.push(format!("No pending approval id={id}"));
+            return Ok(());
+        };
+        let method = request["method"].as_str().unwrap_or("");
+        if allow
+            && !matches!(
+                method,
+                "item/commandExecution/requestApproval"
+                    | "item/fileChange/requestApproval"
+                    | "execCommandApproval"
+                    | "applyPatchApproval"
+            )
+        {
+            self.log.push(format!(
+                "Approval type {method} cannot be accepted by this frontend"
+            ));
+            return Ok(());
+        }
+        self.send(json!({"jsonrpc":"2.0","id":request["id"],"result":{"decision":if allow {"accept"} else {"decline"}}}))?;
+        self.pending_approvals.remove(id);
+        self.log.push(format!(
+            "Approval {}: {id}",
+            if allow { "accepted" } else { "declined" }
+        ));
         Ok(())
     }
 
@@ -315,6 +474,7 @@ fn fixture_summary(events: &[ResearchEvent]) -> String {
 fn draw(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     events: &[ResearchEvent],
+    spec: &VisualizationSpec,
     prompt: &str,
     log: &[String],
 ) -> io::Result<()> {
@@ -322,12 +482,21 @@ fn draw(
         let outer = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(3), Constraint::Min(8), Constraint::Length(3), Constraint::Length(3), Constraint::Length(8)]).split(frame.area());
         frame.render_widget(Paragraph::new("Attune workbench · fixture observations · App Server on first prompt; Ctrl+C interrupts").block(Block::default().borders(Borders::ALL).title("Ratatui")), outer[0]);
         let body = Layout::default().direction(Direction::Horizontal).constraints([Constraint::Percentage(70), Constraint::Percentage(30)]).split(outer[1]);
-        let points: Vec<(f64, f64)> = events.iter().filter(|e| e.treatment == "J0").map(|e| (e.iteration as f64, e.best_objective)).collect();
+        let points: Vec<Vec<(f64, f64)>> = spec.data.series.iter().map(|series| series.x.iter().copied().zip(series.y.iter().copied()).collect()).collect();
         let data: Vec<u64> = events.iter().filter(|e| e.treatment == "J0").map(|e| e.latency_ms).collect();
-        let dataset = Dataset::default().name("J0 best objective").marker(symbols::Marker::Braille).style(Style::default().fg(Color::Cyan)).data(&points);
-        frame.render_widget(Chart::new(vec![dataset]).block(Block::default().title("Best objective by iteration").borders(Borders::ALL))
-            .x_axis(Axis::default().title("iteration").bounds([0.0, 4.0]).labels(vec![Line::from("0"), Line::from("2"), Line::from("4")]))
-            .y_axis(Axis::default().title("reward").bounds([0.0, 1.0]).labels(vec![Line::from("0"), Line::from("0.5"), Line::from("1")])), body[0]);
+        let palette = [Color::Cyan, Color::Yellow, Color::Magenta, Color::Green];
+        let datasets: Vec<Dataset> = spec.data.series.iter().zip(points.iter()).enumerate().map(|(i, (series, values))|
+            Dataset::default().name(series.label.as_str()).marker(symbols::Marker::Braille).style(Style::default().fg(palette[i % palette.len()])).data(values)
+        ).collect();
+        let x_max = points.iter().flatten().map(|point| point.0).fold(1.0_f64, f64::max);
+        if datasets.is_empty() {
+            let description = serde_json::to_string(&spec.data.nodes.iter().chain(spec.data.edges.iter()).chain(spec.data.rows.iter()).collect::<Vec<_>>()).unwrap_or_default();
+            frame.render_widget(Paragraph::new(description).block(Block::default().title(format!("{} · {} · {}", spec.title, spec.kind, spec.id)).borders(Borders::ALL)), body[0]);
+        } else {
+            frame.render_widget(Chart::new(datasets).block(Block::default().title(format!("{} · {} · {}", spec.title, spec.kind, spec.id)).borders(Borders::ALL))
+            .x_axis(Axis::default().title(format!("{} ({})", spec.x_axis.label, spec.x_axis.unit)).bounds([0.0, x_max + 1.0]).labels(vec![Line::from("0"), Line::from(format!("{x_max:.0}"))]))
+            .y_axis(Axis::default().title(format!("{} ({})", spec.y_axis.label, spec.y_axis.unit)).bounds([0.0, 1.0]).labels(vec![Line::from("0"), Line::from("0.5"), Line::from("1")])), body[0]);
+        }
         frame.render_widget(Sparkline::default().block(Block::default().title("Evaluation latency ms").borders(Borders::ALL)).data(&data).style(Style::default().fg(Color::Yellow)), body[1]);
         let metrics = events.last().map(|event| format!("last: {} · recall@10 {:.2} · harm {:.2} · ${:.4} · {}ms · {}", event.candidate, event.recall_at_10, event.harm, event.cost_usd, event.latency_ms, event.state)).unwrap_or_default();
         frame.render_widget(Paragraph::new(metrics).block(Block::default().borders(Borders::ALL).title("Fixture metrics")), outer[2]);
@@ -340,6 +509,7 @@ fn draw(
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let events = load_fixture()?;
+    let default_visualization = load_visualization()?;
     if std::env::args().any(|arg| arg == "--check-fixture") {
         println!("{}", fixture_summary(&events));
         return Ok(());
@@ -356,7 +526,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             server.poll();
             log = server.log.clone();
         }
-        draw(&mut terminal, &events, &prompt, &log)?;
+        let spec = server
+            .as_ref()
+            .map(|active| &active.visualization)
+            .unwrap_or(&default_visualization);
+        draw(&mut terminal, &events, spec, &prompt, &log)?;
         if event::poll(Duration::from_millis(120))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Press {
@@ -377,6 +551,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     KeyCode::Enter if !prompt.trim().is_empty() => {
                         let value = std::mem::take(&mut prompt);
+                        if let Some((command, request_id)) = value.trim().split_once(' ') {
+                            if matches!(command, ":approve" | ":deny") {
+                                if let Some(server) = server.as_mut() {
+                                    if let Err(error) =
+                                        server.resolve_approval(request_id, command == ":approve")
+                                    {
+                                        log.push(format!("Approval response failed: {error}"));
+                                    }
+                                } else {
+                                    log.push("No active Codex session".into());
+                                }
+                                continue;
+                            }
+                        }
                         if server.is_none() {
                             match AppServer::start() {
                                 Ok(value) => server = Some(value),
@@ -424,5 +612,21 @@ mod tests {
         );
         assert!(events.iter().any(|e| e.state == "failed"));
         assert!(events.iter().any(|e| e.recall_at_10 > 0.7 && e.harm < 0.05));
+    }
+
+    #[test]
+    fn both_frontends_read_the_same_visualization_contract() {
+        let spec = load_visualization().unwrap();
+        assert_eq!(spec.schema, "attune.visualization.v1");
+        assert_eq!(spec.id, "fixture:treatment-objective");
+        assert_eq!(
+            spec.data
+                .series
+                .iter()
+                .map(|series| series.label.as_str())
+                .collect::<Vec<_>>(),
+            ["J0", "J32", "J100", "uniform"]
+        );
+        assert_eq!(spec.provenance["eventCount"], 8);
     }
 }
