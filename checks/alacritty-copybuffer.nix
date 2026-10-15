@@ -16,6 +16,7 @@ pkgs.runCommand "alacritty-copybuffer-check"
       pkgs.xwd
       pkgs.xclip
       pkgs.xorg-server
+      pkgs.python3
     ];
   }
   ''
@@ -132,6 +133,8 @@ pkgs.runCommand "alacritty-copybuffer-check"
       -o window.dimensions.columns=40 \
       -o window.dimensions.lines=10 \
       -o window.padding.x=70 \
+      -o colors.primary.background='"#000000"' \
+      -o colors.primary.foreground='"#cbd5e1"' \
       -e sh -c '
         printf "%s\n" "$ALACRITTY_SOCKET" > "$TEST_STATE/socket"
         printf "%s\n" "$ALACRITTY_WINDOW_ID" > "$TEST_STATE/window"
@@ -142,9 +145,17 @@ pkgs.runCommand "alacritty-copybuffer-check"
           i=$((i + 1))
         done
         printf "native-before-tail\n"
+        # Paint unique cells at both advertised PTY edges for pixel geometry.
+        printf "\033[s\033[1;1H\033[48;2;0;255;255m \033[0m\033[1;40H\033[48;2;255;0;255m \033[0m\033[u"
         sleep 0.2
         touch "$TEST_STATE/ready"
-        while [ ! -e "$TEST_STATE/release" ]; do sleep 0.02; done
+        while [ ! -e "$TEST_STATE/release" ]; do
+          if [ -e "$TEST_STATE/repaint" ] && [ ! -e "$TEST_STATE/repaint-done" ]; then
+            printf "\033[2K\r"
+            touch "$TEST_STATE/repaint-done"
+          fi
+          sleep 0.02
+        done
         printf "native-after\n"
         sleep 0.2
         touch "$TEST_STATE/after"
@@ -170,10 +181,16 @@ pkgs.runCommand "alacritty-copybuffer-check"
     # The private fixture deliberately reserves 70px: the fallback test font
     # is wider than the configured JetBrains Mono font used on the desktop.
     xwd -root -silent \
-      | magick xwd:- -crop 70x220+0+0 -format '%k' info: \
+      | magick xwd:- -crop 220x220+0+0 -format '%k' info: \
       > "$TMPDIR/gutter-colors"
     [ "$(cat "$TMPDIR/gutter-colors")" -gt 1 ] \
       || fail "the Zed-style line-number gutter did not render pixels"
+
+    # The wide, symmetric padding must not clip the final PTY column.
+    xwd -id "$(cat "$state/window")" -silent \
+      | magick xwd:- -format '%c' histogram:info:- > "$TMPDIR/right-edge-colors"
+    grep -i '#FF00FF' "$TMPDIR/right-edge-colors" >/dev/null \
+      || fail "the final PTY column is clipped by asymmetric gutter padding"
 
     socket_path="$(cat "$state/socket")"
     window_id="$(cat "$state/window")"
@@ -203,20 +220,76 @@ pkgs.runCommand "alacritty-copybuffer-check"
       alacritty msg gutter-event reset
 
     xwd -root -silent \
-      | magick xwd:- -crop 70x220+0+0 +repage -format '%#' info: \
+      | magick xwd:- -crop 220x220+0+0 +repage -format '%#' info: \
       > "$TMPDIR/gutter-before"
     ALACRITTY_SOCKET="$socket_path" \
       ALACRITTY_WINDOW_ID="$window_id" \
       alacritty msg gutter-event campaign-launch
     sleep 0.15
     xwd -root -silent \
-      | magick xwd:- -crop 70x220+0+0 +repage -format '%#' info: \
+      | magick xwd:- -crop 220x220+0+0 +repage -format '%#' info: \
       > "$TMPDIR/gutter-after"
-    [ "$(cat "$TMPDIR/gutter-before")" != "$(cat "$TMPDIR/gutter-after")" ] \
-      || fail "campaign-launch did not change the rendered gutter"
+    [ "$(cat "$TMPDIR/gutter-before")" = "$(cat "$TMPDIR/gutter-after")" ] \
+      || fail "campaign-launch drew an execution overlay"
     ALACRITTY_SOCKET="$socket_path" \
       ALACRITTY_WINDOW_ID="$window_id" \
       alacritty msg gutter-event complete
+
+    # Trace IPC remains available to Pi, while both edges stay visually quiet.
+    trace() {
+      ALACRITTY_SOCKET="$socket_path" ALACRITTY_WINDOW_ID="$window_id" \
+        alacritty msg trace-event "$@"
+    }
+    ALACRITTY_SOCKET="$socket_path" ALACRITTY_WINDOW_ID="$window_id" \
+      alacritty msg trace-reset
+    xwd -id "$window_id" -silent | magick xwd:- "$TMPDIR/neutral.png"
+    TEST_IMAGE="$TMPDIR/neutral.png" python3 - <<'PY'
+    import os, subprocess
+    image = os.environ['TEST_IMAGE']
+    width, height = map(int, subprocess.check_output(['magick', image, '-format', '%w %h', 'info:']).split())
+    pixels = subprocess.check_output(['magick', image, '-depth', '8', 'rgb:-'])
+    cyan = []
+    magenta = []
+    for i in range(0, len(pixels), 3):
+        color = pixels[i:i+3]
+        if color == bytes((0, 255, 255)): cyan.append((i // 3) % width)
+        elif color == bytes((255, 0, 255)): magenta.append((i // 3) % width)
+    assert cyan and magenta, 'first or last PTY column is missing'
+    left, right = min(cyan), width - max(magenta) - 1
+    assert abs(left - right) <= 1, ('unequal terminal edge padding', left, right)
+    PY
+    alacritty msg trace-event --help > "$TMPDIR/trace-help"
+    for fact in id parent kind phase status count uncertainty; do
+      grep -F -- "--$fact" "$TMPDIR/trace-help" >/dev/null || fail "trace option $fact missing"
+    done
+    if trace --id 1 --kind arbitrary-ui-text --phase start --status active; then
+      fail "untyped kind accepted"
+    fi
+    if trace --id 1 --kind jev --phase start --status active --uncertainty 1001; then
+      fail "out-of-range metric accepted"
+    fi
+    trace --id 1 --kind codex --phase start --status active
+    trace --id 2 --parent 1 --kind fabric --phase start --status active
+    trace --id 3 --parent 2 --kind jev --phase start --status active --count 64
+    trace --id 3 --parent 2 --kind jev --phase finish --status failed --count 64
+    trace --id 2 --parent 1 --kind fabric --phase finish --status failed
+    trace --id 1 --kind codex --phase finish --status failed
+    sleep 0.15
+    xwd -id "$window_id" -silent | magick xwd:- "$TMPDIR/traced.png"
+    for image in neutral traced; do
+      magick "$TMPDIR/$image.png" -gravity West -crop 150x220+0+0 +repage \
+        -format '%#' info: > "$TMPDIR/$image.left"
+      magick "$TMPDIR/$image.png" -gravity East -crop 150x220+0+0 +repage \
+        -format '%#' info: > "$TMPDIR/$image.right"
+    done
+    [ "$(cat "$TMPDIR/neutral.left")" = "$(cat "$TMPDIR/traced.left")" ] \
+      || fail "Pi trace events drew in the left gutter"
+    [ "$(cat "$TMPDIR/neutral.right")" = "$(cat "$TMPDIR/traced.right")" ] \
+      || fail "Pi trace events drew in the right padding"
+    ALACRITTY_SOCKET="$socket_path" ALACRITTY_WINDOW_ID="$window_id" \
+      alacritty msg trace-reset
+    mkdir -p "$out/screenshots"
+    cp "$TMPDIR/neutral.png" "$TMPDIR/traced.png" "$out/screenshots/"
 
     # A request without an exact target must fail instead of copying another
     # Alacritty window by accident.

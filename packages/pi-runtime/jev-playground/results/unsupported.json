@@ -1,0 +1,437 @@
+{
+  "campaign": {
+    "version": 1,
+    "name": "unsupported",
+    "seed": 42,
+    "count": 1,
+    "instances": [
+      {
+        "id": "instance-000",
+        "workspaceHash": "ac075c2c128d75077fa822fd2cde04f4411fc99a35eb9cca0959cbcd2579d9ad",
+        "parameters": {
+          "boundary": true,
+          "unsupported": true,
+          "index": 0,
+          "seed": 42
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/unsupported/instance-000/runs/heuristic-42-a0fcc862",
+      "challengeId": "instance-000",
+      "policy": "heuristic",
+      "task": "Write a README explaining this architecture beautifully.",
+      "terminalPhase": "Localize",
+      "candidateRecall": false,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "result": {
+        "kind": "LocatedFile",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/unsupported/instance-000/runs/heuristic-42-a0fcc862/workspace/checks/behavior.test.mjs"
+      },
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 0,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 0,
+      "totalWorkspaceLegalEdits": 5,
+      "taskClassificationCorrect": false,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "Success",
+      "failure": "TaskClassificationFailure",
+      "choices": [],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1325,
+        "jevInferenceMs": 0,
+        "deterministicMs": 0,
+        "verificationMs": 0,
+        "solverWallMs": 1
+      },
+      "metrics": {
+        "steps": 1,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 0,
+        "phaseTransitions": 0,
+        "candidatesBefore": 4,
+        "candidatesAfter": 4,
+        "candidatesNarrowed": 4,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277549,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "ac075c2c128d75077fa822fd2cde04f4411fc99a35eb9cca0959cbcd2579d9ad",
+        "oracleHash": "9b1b394e6af7b191624ac13d036f3525c38d7a0a6f8a4e4b560f3e9a0dff65a1",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:14:31.765Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/unsupported/instance-000/runs/jev-42-a0fcc862",
+      "challengeId": "instance-000",
+      "policy": "jev",
+      "task": "Write a README explaining this architecture beautifully.",
+      "terminalPhase": "Localize",
+      "terminalReason": "Task outside finite task grammars",
+      "candidateRecall": false,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 0,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 0,
+      "totalWorkspaceLegalEdits": 5,
+      "taskClassificationCorrect": true,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "Unsupported",
+      "failure": "CorrectUnsupported",
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Unsupported",
+          "top": 0.67,
+          "runnerUp": 0.32,
+          "margin": 0.35000000000000003,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0.01,
+            "Inspect": 0.32,
+            "Repair": 0,
+            "Verify": 0,
+            "Unsupported": 0.67
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.67,
+          "runnerUp": 0.19,
+          "margin": 0.48000000000000004,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.19,
+            "Tests": 0.08,
+            "References": 0,
+            "Symbol": 0.06,
+            "Config": 0,
+            "Unknown": 0.67
+          }
+        }
+      ],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1325,
+        "jevInferenceMs": 398,
+        "deterministicMs": 0,
+        "verificationMs": 0,
+        "solverWallMs": 398
+      },
+      "metrics": {
+        "steps": 0,
+        "jevEvaluations": 1,
+        "jevHeads": 2,
+        "jevInputTokens": 777,
+        "jevOutputTokens": 110,
+        "jevLatencyMs": 398,
+        "reportedCost": null,
+        "deterministicMs": 0,
+        "phaseTransitions": 0,
+        "candidatesBefore": 0,
+        "candidatesAfter": 0,
+        "candidatesNarrowed": 0,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 398,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277310,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 1,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 1,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Unsupported",
+            "confidence": 0.58,
+            "probabilities": {
+              "Locate": 0.01,
+              "Inspect": 0.32,
+              "Repair": 0,
+              "Verify": 0,
+              "Unsupported": 0.67
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.6,
+            "probabilities": {
+              "File": 0.19,
+              "Tests": 0.08,
+              "References": 0,
+              "Symbol": 0.06,
+              "Config": 0,
+              "Unknown": 0.67
+            }
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "ac075c2c128d75077fa822fd2cde04f4411fc99a35eb9cca0959cbcd2579d9ad",
+        "oracleHash": "9b1b394e6af7b191624ac13d036f3525c38d7a0a6f8a4e4b560f3e9a0dff65a1",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:14:31.765Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/unsupported/instance-000/runs/random-42-a0fcc862",
+      "challengeId": "instance-000",
+      "policy": "random",
+      "task": "Write a README explaining this architecture beautifully.",
+      "terminalPhase": "Localize",
+      "candidateRecall": false,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "result": {
+        "kind": "LocatedFile",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/unsupported/instance-000/runs/random-42-a0fcc862/workspace/checks/behavior.test.mjs"
+      },
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 0,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 0,
+      "totalWorkspaceLegalEdits": 5,
+      "taskClassificationCorrect": false,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "Success",
+      "failure": "TaskClassificationFailure",
+      "choices": [],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1325,
+        "jevInferenceMs": 0,
+        "deterministicMs": 0,
+        "verificationMs": 0,
+        "solverWallMs": 4
+      },
+      "metrics": {
+        "steps": 1,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 0,
+        "phaseTransitions": 0,
+        "candidatesBefore": 4,
+        "candidatesAfter": 4,
+        "candidatesNarrowed": 4,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 4,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277484,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "ac075c2c128d75077fa822fd2cde04f4411fc99a35eb9cca0959cbcd2579d9ad",
+        "oracleHash": "9b1b394e6af7b191624ac13d036f3525c38d7a0a6f8a4e4b560f3e9a0dff65a1",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:14:31.765Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    }
+  ]
+}

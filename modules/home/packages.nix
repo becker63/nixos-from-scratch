@@ -1,11 +1,45 @@
 { pkgs, ... }:
 
 let
-  morph-lab = pkgs.callPackage ../../packages/morph-lab { };
+  dsh = pkgs.callPackage ../../packages/dsh { };
+  chatgpt-desktop = pkgs.callPackage ../../packages/chatgpt-desktop { };
+  tunnel-client = pkgs.callPackage ../../packages/tunnel-client { };
+  buildbuddy-history = pkgs.callPackage ../../packages/buildbuddy-history { };
+  jev-tunnel = pkgs.callPackage ../../packages/jev-mcp/tunnel.nix { };
 in
 {
+  systemd.user.services =
+    (import ../../packages/jev-mcp/services.nix {
+      helper = "${jev-tunnel}/bin/jev-tunnel";
+    })
+    // (import ../../packages/buildbuddy-history/services.nix { package = buildbuddy-history; })
+    // {
+      buildbuddy-tunnel = {
+        Unit = {
+          Description = "BuildBuddy MCP through OpenAI Secure MCP Tunnel";
+          ConditionPathExists = "%h/.config/tunnel-client/buildbuddy.yaml";
+        };
+        Service = {
+          ExecStart = "${tunnel-client}/bin/tunnel-client run --profile-file %h/.config/tunnel-client/buildbuddy.yaml";
+          Restart = "on-failure";
+          RestartSec = 5;
+          UMask = "0077";
+          NoNewPrivileges = true;
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
+
+    };
+  systemd.user.timers.jev-tunnel-health = jev-tunnel.timer;
+
+  systemd.user.timers.buildbuddy-history-health = buildbuddy-history.timer;
+
   home.packages = with pkgs; [
-    morph-lab
+    dsh
+    buildbuddy-history
+    jev-tunnel
+    chatgpt-desktop
+    tunnel-client
     # Bundle Widevine CDM so DRM-protected streaming works on aarch64.
     (chromium.override { enableWideVine = true; })
     firefox

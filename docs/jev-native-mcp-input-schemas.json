@@ -1,0 +1,567 @@
+{
+  "jev_decide": {
+    "$defs": {
+      "Choice": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "choice",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "object"
+                },
+                {
+                  "items": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 255,
+            "minProperties": 2,
+            "title": "Criteria",
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "instructions",
+          "criteria"
+        ],
+        "title": "Choice",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "Noul": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "noul",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": {
+                        "$ref": "#/$defs/JsonValue"
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "items": {
+                        "$ref": "#/$defs/JsonValue"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "propertyNames": {
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Criteria"
+          }
+        },
+        "required": [
+          "type",
+          "instructions"
+        ],
+        "title": "Noul",
+        "type": "object"
+      },
+      "Score": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "score",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "object"
+                },
+                {
+                  "items": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "maxItems": 10,
+            "minItems": 2,
+            "title": "Criteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "instructions",
+          "criteria"
+        ],
+        "title": "Score",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "state": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          {
+            "items": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "array"
+          }
+        ],
+        "title": "State"
+      },
+      "questions": {
+        "additionalProperties": {
+          "discriminator": {
+            "mapping": {
+              "choice": "#/$defs/Choice",
+              "noul": "#/$defs/Noul",
+              "score": "#/$defs/Score"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Noul"
+            },
+            {
+              "$ref": "#/$defs/Choice"
+            },
+            {
+              "$ref": "#/$defs/Score"
+            }
+          ]
+        },
+        "maxProperties": 64,
+        "minProperties": 1,
+        "title": "Questions",
+        "type": "object"
+      },
+      "model": {
+        "default": "jev-1.13.0",
+        "pattern": "^jev-[A-Za-z0-9][A-Za-z0-9.\\-]{0,63}$",
+        "title": "Model",
+        "type": "string"
+      }
+    },
+    "required": [
+      "state",
+      "questions"
+    ],
+    "title": "jev_decideArguments",
+    "type": "object"
+  },
+  "jev_decide_batch": {
+    "$defs": {
+      "Choice": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "choice",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "object"
+                },
+                {
+                  "items": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 255,
+            "minProperties": 2,
+            "title": "Criteria",
+            "type": "object"
+          }
+        },
+        "required": [
+          "type",
+          "instructions",
+          "criteria"
+        ],
+        "title": "Choice",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "Noul": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "noul",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "additionalProperties": {
+                        "$ref": "#/$defs/JsonValue"
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "items": {
+                        "$ref": "#/$defs/JsonValue"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "propertyNames": {
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Criteria"
+          }
+        },
+        "required": [
+          "type",
+          "instructions"
+        ],
+        "title": "Noul",
+        "type": "object"
+      },
+      "Record": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "State"
+          },
+          "questions": {
+            "additionalProperties": {
+              "discriminator": {
+                "mapping": {
+                  "choice": "#/$defs/Choice",
+                  "noul": "#/$defs/Noul",
+                  "score": "#/$defs/Score"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Noul"
+                },
+                {
+                  "$ref": "#/$defs/Choice"
+                },
+                {
+                  "$ref": "#/$defs/Score"
+                }
+              ]
+            },
+            "maxProperties": 64,
+            "minProperties": 1,
+            "title": "Questions",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "questions"
+        ],
+        "title": "Record",
+        "type": "object"
+      },
+      "Score": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "score",
+            "title": "Type",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "criteria": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "object"
+                },
+                {
+                  "items": {
+                    "$ref": "#/$defs/JsonValue"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "maxItems": 10,
+            "minItems": 2,
+            "title": "Criteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "instructions",
+          "criteria"
+        ],
+        "title": "Score",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "records": {
+        "items": {
+          "$ref": "#/$defs/Record"
+        },
+        "maxItems": 32,
+        "minItems": 1,
+        "title": "Records",
+        "type": "array"
+      },
+      "model": {
+        "default": "jev-1.13.0",
+        "pattern": "^jev-[A-Za-z0-9][A-Za-z0-9.\\-]{0,63}$",
+        "title": "Model",
+        "type": "string"
+      },
+      "concurrency": {
+        "default": 4,
+        "maximum": 4,
+        "minimum": 1,
+        "title": "Concurrency",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "records"
+    ],
+    "title": "jev_decide_batchArguments",
+    "type": "object"
+  }
+}

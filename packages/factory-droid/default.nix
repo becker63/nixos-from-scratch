@@ -9,19 +9,19 @@
 
 let
   # Update only the CLI binary; keep all flake inputs and kernel pins frozen.
-  version = "0.231.0";
+  version = "0.241.1";
   platforms = {
     aarch64-linux = {
       path = "linux/arm64";
-      hash = "02jl8m49x8nml0d1l8hrqwppi4vhjkmxd2479gsdxpsqp73cf85c";
+      hash = "0d22c2783710c83089f87d3b1f8228629cff12d8753c69b802298760f00bd019";
     };
     x86_64-linux = {
       path = "linux/x64";
-      hash = "168jqbmc74pflqcwff5hx5px31kixm7jq6xw8hvccs8mb14pj67p";
+      hash = "2e32c416a6763ea728418d63fec435571d16669a0485025200a4a547372a3723";
     };
     aarch64-darwin = {
       path = "darwin/arm64";
-      hash = "1n6w2y33k9gm3ixnb37qh146fhsnzf50cgyxxbbhx06961ck86nw";
+      hash = "f8bc0191309f005b9f78f5d479affe8fd5d205558e653d015e8be44fb5f644f8";
     };
   };
   platform = platforms.${stdenv.hostPlatform.system};

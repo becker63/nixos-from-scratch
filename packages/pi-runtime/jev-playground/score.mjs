@@ -1,0 +1,63 @@
+import {installTestBoundary} from './test-boundary.mjs';
+import {dependencyModules} from './runtime.mjs';
+installTestBoundary(dependencyModules);
+import {readFileSync,writeFileSync} from 'node:fs';
+import {join,basename} from 'node:path';
+import {compileKernel} from './runtime.mjs';
+import {hash,manifest,assertFrozen} from './freeze.mjs';
+import {rmSync} from 'node:fs';
+export async function score(instance,{record,output,spec}){
+ assertFrozen(join(instance,'workspace'),spec);if(record.workspaceHash!==spec.workspaceHash||record.challengeId!==spec.id)throw Error('Receipt belongs to another frozen instance');
+ const oracleText=readFileSync(join(instance,'private/oracle.json'),'utf8');if(hash(oracleText)!==spec.oracleHash)throw Error('Oracle hash changed');
+ const oracle=JSON.parse(oracleText),receipt=record.receipt,events=record.events;
+ const kernel=compileKernel();let exact;
+ try{const {RepositoryWorld}=await import(join(kernel,'jev-agent/actions.js'));const world=new RepositoryWorld(join(output,'workspace'),spec.grammar);const local=await world.verify(30000);const broad=world.checks.length>1?await world.verify(30000,true):local;exact={local:local.passed,broad:broad.passed};}finally{rmSync(kernel,{recursive:true,force:true});}
+ const expectedTests=oracle.expectedTests??Object.keys(spec.manifest).filter(path=>/\.(?:test|spec)\.(?:ts|js|mjs)$/.test(path)&&readFileSync(join(instance,'workspace',path),'utf8').includes(basename(oracle.targetFile).replace(/\.[^.]+$/,'')));
+ const navigation=spec.taskShape==='Locate'||spec.taskShape==='Inspect';
+ if(navigation){const returned=receipt.result;exact={returnedObjectCorrect:returned?.path===join(output,'workspace',oracle.targetFile)&&(spec.taskShape==='Locate'||returned?.symbol===oracle.targetSymbol),relationChainCompleted:!spec.relationChain||record.composition?.completed===true&&JSON.stringify((record.composition?.tests??[]).slice().sort())===JSON.stringify(expectedTests.map(path=>join(output,'workspace',path)).sort())};}
+ const matches=e=>oracle.successfulEdits.some(g=>g.file===e.file&&g.start===e.start&&g.end===e.end&&g.to===e.to);
+ const generated=events.filter(e=>e.kind==='prepare').flatMap(e=>e.edits??[]);
+ const singleSuccessfulIds=new Set(generated.filter(e=>oracle.successfulEdits.some(g=>g.singleStepSuccessful!==false&&g.file===e.file&&g.start===e.start&&g.end===e.end&&g.to===e.to)).map(e=>'A'+e.id));
+ const successfulIds=new Set(generated.filter(matches).map(e=>'A'+e.id));
+ const evaluations=events.filter(e=>e.kind==='evaluation');
+ const choices=evaluations.flatMap(e=>Object.entries(e.response.answers).filter(([,a])=>a.type==='choice').map(([head,answer])=>{
+  const probabilities=Object.entries(answer.probabilities).filter(([id])=>id!=='unknown').sort((a,b)=>b[1]-a[1]);
+  const later=events.slice(events.indexOf(e)+1);const nextEvaluation=later.findIndex(event=>event.kind==='evaluation');const executed=later.slice(0,nextEvaluation<0?later.length:nextEvaluation).some(event=>event.kind==='apply'&&'A'+event.args[0]===answer.choice);
+  const transform=e.request.state.phase==='Transform'&&head==='bestAction';
+  return {head,phase:e.request.state.phase??'Task',selected:answer.choice,top:probabilities[0]?.[1]??0,runnerUp:probabilities[1]?.[1]??0,margin:(probabilities[0]?.[1]??0)-(probabilities[1]?.[1]??0),unknown:answer.probabilities.unknown??0,executed:transform?executed:null,oraclePasses:transform?successfulIds.has(answer.choice):null,actionSuccessful:transform&&executed?singleSuccessfulIds.has(answer.choice):null,correctSurvivedNarrowing:transform?e.request.state.candidates.some(c=>successfulIds.has(c.id)):null,probabilities:answer.probabilities};
+ }));
+ const repairChoices=choices.filter(c=>c.phase==='Transform');
+ const baselineNarrowed=events.filter(e=>e.kind==='legal'&&e.args[0]==='Transform').map(e=>e.result.slice(0,8).some(a=>successfulIds.has(a.id)));
+ const frontier=events.find(e=>e.kind==='frontier');const target=frontier?.files.find(f=>f.path===oracle.targetFile);const retrievalRetainedTarget=!!target;
+ const candidateRecall=navigation?frontier?.objects.some(f=>f.path===oracle.targetFile):events.some(e=>e.kind==='legal'&&e.result?.some(a=>a.kind==='InspectFile'&&a.file===target?.id));
+ const regionActions=events.filter(e=>e.kind==='execute'&&e.args[0]?.kind==='InspectFamily');const regionSelected=regionActions.length?regionActions.some(e=>e.args[0].family===target?.family):null;
+ const inspections=receipt.trajectory?.filter(t=>t.action==='InspectFile')??[];
+ const symbols=receipt.trajectory?.filter(t=>t.action==='InspectSymbol')??[];
+ const mutationEvents=events.filter(e=>e.kind==='apply');
+ const applied=mutationEvents.map(e=>generated.find(edit=>edit.id===e.args[0]));
+ const after=manifest(join(output,'workspace'));const changed=Object.keys(after).filter(name=>after[name]!==spec.manifest[name]);
+ const sameFiles=JSON.stringify(Object.keys(after).sort())===JSON.stringify(Object.keys(spec.manifest).sort());
+ const legalFinalArtifact=sameFiles&&changed.every(name=>generated.some(edit=>edit.file===name&&mutationEvents.some(event=>event.args[0]===edit.id)&&hash(readFileSync(join(instance,'workspace',name),'utf8').slice(0,edit.start)+edit.to+readFileSync(join(instance,'workspace',name),'utf8').slice(edit.end))===after[name]));
+ const solved=legalFinalArtifact&&receipt.taskKind===spec.taskShape&&receipt.kind==='Success'&&(navigation?exact.returnedObjectCorrect&&exact.relationChainCompleted:exact.local&&exact.broad);
+ let failure;
+ if(!legalFinalArtifact)failure='VerificationFailure';
+ else if(receipt.kind==='ProviderFailure')failure='ProviderFailure';
+ else if(receipt.taskKind!==spec.taskShape)failure='TaskClassificationFailure';
+ else if(receipt.kind==='Exhausted')failure='BudgetExhaustion';
+ else if(solved)failure=null;
+ else if(oracle.expected==='Unsupported'&&receipt.kind==='Unsupported')failure='CorrectUnsupported';
+ else if(oracle.expected==='NeedsGeneration'&&receipt.kind==='NeedsGeneration')failure='CorrectNeedsGeneration';
+ else if(regionSelected===false)failure='RegionSelectionFailure';
+ else if(candidateRecall===false)failure='CandidateRecallFailure';
+ else if(navigation)failure='RelationSelectionFailure';
+ else if(!inspections.some(t=>t.file===oracle.targetFile))failure='FileSelectionFailure';
+ else if(!symbols.some(t=>t.symbol===oracle.targetSymbol))failure='SymbolSelectionFailure';
+ else if(!generated.some(matches))failure='ActionGenerationFailure';
+ else if(repairChoices.length&&!repairChoices.some(c=>c.correctSurvivedNarrowing))failure='NarrowingFailure';
+ else if((receipt.trajectory??[]).some(t=>t.action==='Revert')||receipt.phase==='Recover')failure='RecoveryFailure';
+ else if(receipt.kind==='NeedsGeneration')failure='PrematureNeedsGeneration';
+ else failure='ActionSelectionFailure';
+ const rollbackEvents=events.filter(e=>e.kind==='revert');
+ const result={recoveryReverts:rollbackEvents.filter(e=>e.args[0]!==false).length,cleanupReverts:rollbackEvents.filter(e=>e.args[0]===false).length,runPath:output,challengeId:spec.id,policy:record.policy,task:record.task,terminalPhase:receipt.phase,terminalReason:receipt.missingCapability,candidateRecall,retrievalRetainedTarget,regionSelected,result:receipt.result,composition:record.composition,difficulty:spec.difficulty,grammar:spec.grammar,admittedLegalEdits:oracle.targetLegalCount,totalWorkspaceLegalEdits:oracle.legalCount,taskClassificationCorrect:receipt.taskKind===spec.taskShape,fileSelected:inspections.some(t=>t.file===oracle.targetFile),symbolSelected:symbols.some(t=>t.symbol===oracle.targetSymbol),filesInspected:inspections.length,correctGenerated:generated.some(matches),correctSurvivedNarrowing:record.policy==='jev'?(repairChoices.length?repairChoices.some(c=>c.correctSurvivedNarrowing):null):(baselineNarrowed.length?baselineNarrowed.some(Boolean):null),firstEditSuccessful:applied.length?singleSuccessfulIds.has('A'+applied[0]?.id):null,legalFinalArtifact,changedVisibleFiles:changed,correctEditSelected:applied.some(e=>e&&matches(e)),exact,solved,terminal:receipt.kind,failure,choices,trajectory:receipt.trajectory,checks:events.filter(e=>e.kind==='verify').map(e=>({localOrBroad:e.args[1]?'broad':'local',passed:e.result.exitStatus===0,ms:e.ms})),timings:{...spec.timings,jevInferenceMs:receipt.metrics.jevLatencyMs,deterministicMs:navigation?Math.max(0,receipt.metrics.wallMs-receipt.metrics.jevLatencyMs-record.verificationMs):Math.max(0,receipt.metrics.deterministicMs-record.verificationMs),verificationMs:record.verificationMs,solverWallMs:receipt.metrics.wallMs},metrics:receipt.metrics,isolation:record.isolation};
+ writeFileSync(join(output,'score.json'),JSON.stringify(result,null,2)+'\n');return result;
+}

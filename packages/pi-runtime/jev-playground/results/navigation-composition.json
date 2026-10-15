@@ -1,0 +1,516 @@
+{
+  "campaign": {
+    "version": 1,
+    "name": "navigation-composition",
+    "seed": 42,
+    "count": 1,
+    "instances": [
+      {
+        "id": "instance-000",
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "parameters": {
+          "navigation": true,
+          "index": 0,
+          "seed": 42
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/heuristic-42-688d06a0-0",
+      "challengeId": "instance-000",
+      "policy": "heuristic",
+      "task": "Find the function compute and identify its containing file and tests.",
+      "terminalPhase": "Localize",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "result": {
+        "kind": "LocatedFile",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/heuristic-42-688d06a0-0/workspace/subject.ts"
+      },
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "returnedObjectCorrect": false,
+        "relationChainCompleted": false
+      },
+      "solved": false,
+      "terminal": "Success",
+      "failure": "RelationSelectionFailure",
+      "choices": [],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2211,
+        "jevInferenceMs": 0,
+        "deterministicMs": 1,
+        "verificationMs": 0,
+        "solverWallMs": 1
+      },
+      "metrics": {
+        "steps": 1,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 0,
+        "phaseTransitions": 0,
+        "candidatesBefore": 4,
+        "candidatesAfter": 4,
+        "candidatesNarrowed": 4,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 284771,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "0571376cc09974f8708dec27bc9a23cde73e11286942d1f43c3c0b0b7817fb49",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:16:28.374Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/jev-42-688d06a0-0",
+      "challengeId": "instance-000",
+      "policy": "jev",
+      "task": "Find the function compute and identify its containing file and tests.",
+      "terminalPhase": "Localize",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "result": {
+        "kind": "LocatedSymbol",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/jev-42-688d06a0-0/workspace/subject.ts",
+        "symbol": "compute"
+      },
+      "composition": {
+        "relations": [
+          "Symbol",
+          "ContainingFile",
+          "Tests"
+        ],
+        "symbol": "compute",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/jev-42-688d06a0-0/workspace/subject.ts",
+        "tests": [
+          "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/jev-42-688d06a0-0/workspace/subject.test.mjs",
+          "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/jev-42-688d06a0-0/workspace/checks/behavior.test.mjs"
+        ],
+        "completed": true
+      },
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "returnedObjectCorrect": true,
+        "relationChainCompleted": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Inspect",
+          "top": 0.76,
+          "runnerUp": 0.24,
+          "margin": 0.52,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0.24,
+            "Inspect": 0.76,
+            "Repair": 0,
+            "Verify": 0,
+            "Unsupported": 0
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Symbol",
+          "top": 0.97,
+          "runnerUp": 0.03,
+          "margin": 0.94,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0,
+            "Tests": 0,
+            "References": 0,
+            "Symbol": 0.97,
+            "Config": 0,
+            "Unknown": 0.03
+          }
+        },
+        {
+          "head": "target",
+          "phase": "Task",
+          "selected": "F3",
+          "top": 0.89,
+          "runnerUp": 0.01,
+          "margin": 0.88,
+          "unknown": 0.1,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "F3": 0.89,
+            "F0": 0,
+            "F1": 0,
+            "F2": 0.01,
+            "unknown": 0.1
+          }
+        },
+        {
+          "head": "symbol",
+          "phase": "Task",
+          "selected": "S4cd027da76b1",
+          "top": 0.94,
+          "runnerUp": 0,
+          "margin": 0.94,
+          "unknown": 0.06,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "S4cd027da76b1": 0.94,
+            "unknown": 0.06
+          }
+        }
+      ],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2211,
+        "jevInferenceMs": 685,
+        "deterministicMs": 10,
+        "verificationMs": 0,
+        "solverWallMs": 695
+      },
+      "metrics": {
+        "steps": 1,
+        "jevEvaluations": 3,
+        "jevHeads": 4,
+        "jevInputTokens": 1931,
+        "jevOutputTokens": 218,
+        "jevLatencyMs": 685,
+        "reportedCost": null,
+        "deterministicMs": 252,
+        "phaseTransitions": 0,
+        "candidatesBefore": 4,
+        "candidatesAfter": 4,
+        "candidatesNarrowed": 4,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 695,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 284699,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 3,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 3,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Inspect",
+            "confidence": 0.7,
+            "probabilities": {
+              "Locate": 0.24,
+              "Inspect": 0.76,
+              "Repair": 0,
+              "Verify": 0,
+              "Unsupported": 0
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Symbol",
+            "confidence": 0.96,
+            "probabilities": {
+              "File": 0,
+              "Tests": 0,
+              "References": 0,
+              "Symbol": 0.97,
+              "Config": 0,
+              "Unknown": 0.03
+            }
+          }
+        },
+        {
+          "target": {
+            "type": "choice",
+            "choice": "F3",
+            "confidence": 0.86,
+            "probabilities": {
+              "F3": 0.89,
+              "F0": 0,
+              "F1": 0,
+              "F2": 0.01,
+              "unknown": 0.1
+            }
+          }
+        },
+        {
+          "symbol": {
+            "type": "choice",
+            "choice": "S4cd027da76b1",
+            "confidence": 0.89,
+            "probabilities": {
+              "S4cd027da76b1": 0.94,
+              "unknown": 0.06
+            }
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "0571376cc09974f8708dec27bc9a23cde73e11286942d1f43c3c0b0b7817fb49",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:16:28.374Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/random-42-688d06a0-0",
+      "challengeId": "instance-000",
+      "policy": "random",
+      "task": "Find the function compute and identify its containing file and tests.",
+      "terminalPhase": "Localize",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "result": {
+        "kind": "LocatedFile",
+        "path": "/home/becker/nixos-from-scratch/.tmp/jev-playground/navigation-v2/instance-000/runs/random-42-688d06a0-0/workspace/subject.ts"
+      },
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": false,
+      "symbolSelected": false,
+      "filesInspected": 0,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": null,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "returnedObjectCorrect": false,
+        "relationChainCompleted": false
+      },
+      "solved": false,
+      "terminal": "Success",
+      "failure": "RelationSelectionFailure",
+      "choices": [],
+      "trajectory": [],
+      "checks": [],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2211,
+        "jevInferenceMs": 0,
+        "deterministicMs": 0,
+        "verificationMs": 0,
+        "solverWallMs": 0
+      },
+      "metrics": {
+        "steps": 1,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 0,
+        "phaseTransitions": 0,
+        "candidatesBefore": 4,
+        "candidatesAfter": 4,
+        "candidatesNarrowed": 4,
+        "reads": 0,
+        "searchExpansions": 0,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 0,
+        "failures": 0,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 0,
+        "actionFamilies": {},
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 284738,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "0571376cc09974f8708dec27bc9a23cde73e11286942d1f43c3c0b0b7817fb49",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:16:28.374Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    }
+  ]
+}

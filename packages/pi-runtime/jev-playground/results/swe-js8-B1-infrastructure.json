@@ -1,0 +1,99 @@
+{
+  "id": "swe-js8-B1-infrastructure",
+  "taskSelectionHash": "3d1064cb51b32296acfd144ce2c7fa997fab717c591635fe5403e15de23c0458",
+  "environmentIdentity": "0397745d113c42650e76c99a71be1733791cd5be4212836cd89c9d92b03725a9",
+  "compatibility": "Installed Nix FEX closure, read-only runtime mounts, 4KiB local guest; official images/scripts/grading unchanged",
+  "results": [
+    {
+      "instanceId": "vuejs__core-11915",
+      "imageReused": true,
+      "bootstrapMs": 69,
+      "empty": {
+        "instanceId": "vuejs__core-11915",
+        "runId": "pure-jev-vuejs__core-11915-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cached": false,
+        "passed": false,
+        "officialResolved": null,
+        "infrastructureFailure": true,
+        "status": "BenchmarkBootstrapFailure",
+        "failures": [],
+        "fingerprint": "cdbb6e0bf3f63e5a0e4e99e85e88d82f15b4775eacfca34ef9139d65d6e89acb",
+        "wallMs": 22355,
+        "error": "No authoritative test results",
+        "reportPath": "/home/becker/nixos-from-scratch/.tmp/swe-mini/stage-B1/canonical/pure-jev-vuejs__core-11915-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/official-result.json"
+      },
+      "runnable": false,
+      "terminal": "BootstrapUnavailable",
+      "error": "No authoritative test results"
+    },
+    {
+      "instanceId": "facebook__docusaurus-8927",
+      "bootstrapMs": 55917,
+      "empty": {
+        "instanceId": "facebook__docusaurus-8927",
+        "runId": "pure-jev-facebook__docusaurus-8927-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cached": false,
+        "passed": false,
+        "officialResolved": null,
+        "infrastructureFailure": true,
+        "status": "BenchmarkBootstrapFailure",
+        "failures": [],
+        "fingerprint": "cdbb6e0bf3f63e5a0e4e99e85e88d82f15b4775eacfca34ef9139d65d6e89acb",
+        "wallMs": 21358,
+        "error": "No authoritative test results",
+        "reportPath": "/home/becker/nixos-from-scratch/.tmp/swe-mini/stage-B1/canonical/pure-jev-facebook__docusaurus-8927-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/official-result.json"
+      },
+      "runnable": false,
+      "terminal": "BootstrapUnavailable",
+      "error": "No authoritative test results"
+    },
+    {
+      "instanceId": "preactjs__preact-3763",
+      "bootstrapMs": 7868,
+      "empty": {
+        "instanceId": "preactjs__preact-3763",
+        "runId": "pure-jev-preactjs__preact-3763-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cached": false,
+        "passed": false,
+        "officialResolved": null,
+        "infrastructureFailure": true,
+        "status": "BenchmarkBootstrapFailure",
+        "failures": [],
+        "fingerprint": "cdbb6e0bf3f63e5a0e4e99e85e88d82f15b4775eacfca34ef9139d65d6e89acb",
+        "wallMs": 22612,
+        "error": "No authoritative test results",
+        "reportPath": "/home/becker/nixos-from-scratch/.tmp/swe-mini/stage-B1/canonical/pure-jev-preactjs__preact-3763-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/official-result.json"
+      },
+      "runnable": false,
+      "terminal": "BootstrapUnavailable",
+      "error": "No authoritative test results"
+    },
+    {
+      "instanceId": "preactjs__preact-3345",
+      "bootstrapMs": 24531,
+      "empty": {
+        "instanceId": "preactjs__preact-3345",
+        "runId": "pure-jev-preactjs__preact-3345-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "cached": false,
+        "passed": false,
+        "officialResolved": null,
+        "infrastructureFailure": true,
+        "status": "BenchmarkBootstrapFailure",
+        "failures": [],
+        "fingerprint": "cdbb6e0bf3f63e5a0e4e99e85e88d82f15b4775eacfca34ef9139d65d6e89acb",
+        "wallMs": 25970,
+        "error": "No authoritative test results",
+        "reportPath": "/home/becker/nixos-from-scratch/.tmp/swe-mini/stage-B1/canonical/pure-jev-preactjs__preact-3345-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/official-result.json"
+      },
+      "runnable": false,
+      "terminal": "BootstrapUnavailable",
+      "error": "No authoritative test results"
+    }
+  ],
+  "immutable": true,
+  "completedAt": "2026-10-07T03:27:08.297Z"
+}

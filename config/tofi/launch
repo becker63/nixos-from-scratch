@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+# Profile updates replace symlinks, which tofi's desktop-directory cache can
+# miss. Include the user profile explicitly and refresh when it changes.
+export XDG_DATA_DIRS="$HOME/.nix-profile/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+tofi_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
+tofi_profile_marker="$tofi_cache_dir/tofi-profile-paths"
+tofi_profile_paths=$(readlink -f "$HOME/.nix-profile"; readlink -f "/etc/profiles/per-user/${USER:-becker}")
+
+mkdir -p "$tofi_cache_dir"
+if [ ! -f "$tofi_profile_marker" ] || [ "$(cat "$tofi_profile_marker")" != "$tofi_profile_paths" ]; then
+  if [ -f "$tofi_cache_dir/tofi-drun" ]; then
+    rm -- "$tofi_cache_dir/tofi-drun"
+  fi
+  printf '%s\n' "$tofi_profile_paths" > "$tofi_profile_marker"
+fi
+
+exec tofi-drun "$@"

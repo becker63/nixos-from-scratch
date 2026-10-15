@@ -1,0 +1,1021 @@
+{
+  "boundedSource": "/home/becker/nixos-from-scratch/packages/pi-runtime/semantic-policy.ts",
+  "mainBeforeHash": "cf1828407b0cfc3940bc3cf0116cb14175b7ed0fbf0d6a7bdbc1ba0b1e121b5e",
+  "mainAfterHash": "cf1828407b0cfc3940bc3cf0116cb14175b7ed0fbf0d6a7bdbc1ba0b1e121b5e",
+  "spec": {
+    "id": "real-source",
+    "taskShape": "Repair",
+    "task": "Repair the semantic-policy scoring regression and verify the existing checks.",
+    "grammar": "J2",
+    "source": "mutated-source",
+    "difficulty": {
+      "localizationDistractors": 0,
+      "symbolDistractors": 0,
+      "actionBranching": 9,
+      "requiredSuccessfulMutations": 1,
+      "misleadingEvidence": false,
+      "broadVerificationTrap": false
+    },
+    "seed": 42,
+    "budgets": {
+      "maxSteps": 32,
+      "maxTransforms": 10,
+      "maxTests": 24,
+      "maxEvaluations": 40,
+      "maxWallMs": 120000
+    },
+    "generator": {
+      "model": null,
+      "provider": null,
+      "timestamp": "2026-10-07T00:31:38.827Z"
+    },
+    "timings": {
+      "generationMs": 0,
+      "admissionMs": 6293
+    },
+    "version": 1,
+    "state": "ChallengeFrozen",
+    "manifest": {
+      "checks/behavior.test.mjs": "a5a8ffdf6c35a381c55b9c4f0a0872b38ebe0100a3e5036c2eb093b894d35ab1",
+      "policy.test.mjs": "1a0f228b1871db32bfbe327e86d9eb36b03f240838a7ba4033591c44f8ecf061",
+      "policy.ts": "84d13e6177938bcd9fc6785d208c0f818eec54621730593862cc4eaab4ef2adb"
+    },
+    "workspaceHash": "2b4a9221c4a5bc8a23c404d04121e931db760ce8932251a1ebbbb59d14a4d3d4",
+    "oracleHash": "4ddd4a3a798ec83d87e12f663abcc8f58b9ba13b4e5e835881130c74e7064d4a"
+  },
+  "results": [
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/real-source/runs/jev-42-ca613f06-0",
+      "challengeId": "real-source",
+      "policy": "jev",
+      "task": "Repair the semantic-policy scoring regression and verify the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 0,
+        "symbolDistractors": 0,
+        "actionBranching": 9,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": false,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 9,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "policy.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.95,
+          "runnerUp": 0.03,
+          "margin": 0.9199999999999999,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.03,
+            "Repair": 0.95,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Tests",
+          "top": 0.34,
+          "runnerUp": 0.33,
+          "margin": 0.010000000000000009,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.21,
+            "Tests": 0.34,
+            "References": 0,
+            "Symbol": 0.12,
+            "Config": 0,
+            "Unknown": 0.33
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF2",
+          "top": 0.97,
+          "runnerUp": 0.02,
+          "margin": 0.95,
+          "unknown": 0.01,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF2": 0.97,
+            "ANeedsGeneration": 0.02,
+            "unknown": 0.01
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS9194d2ac0348",
+          "top": 0.77,
+          "runnerUp": 0.13,
+          "margin": 0.64,
+          "unknown": 0.1,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS9194d2ac0348": 0.77,
+            "ANeedsGeneration": 0.13,
+            "unknown": 0.1
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE2660155d657c",
+          "top": 0.89,
+          "runnerUp": 0.03,
+          "margin": 0.86,
+          "unknown": 0.02,
+          "executed": true,
+          "oraclePasses": true,
+          "actionSuccessful": true,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AEab790b5a446f": 0.03,
+            "AEaa5c5b3c3e39": 0,
+            "AEc9969c8906dd": 0,
+            "AEd0a0ecc55f64": 0.02,
+            "AE654321f06383": 0,
+            "AE2660155d657c": 0.89,
+            "AEad5039c0c01f": 0.01,
+            "AEa37cebf646f0": 0.01,
+            "ANeedsGeneration": 0.02,
+            "unknown": 0.02
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Verify",
+          "selected": "AVerify",
+          "top": 0.71,
+          "runnerUp": 0.18,
+          "margin": 0.53,
+          "unknown": 0.11,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AVerify": 0.71,
+            "ANeedsGeneration": 0.18,
+            "unknown": 0.11
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Stop",
+          "selected": "ASuccess",
+          "top": 0.93,
+          "runnerUp": 0.06,
+          "margin": 0.8700000000000001,
+          "unknown": 0.01,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASuccess": 0.93,
+            "ANeedsGeneration": 0.06,
+            "unknown": 0.01
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy.ts",
+          "symbol": "shape",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 9,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression (sorted[0]?.[1]??0)+(sorted[1]?.[1]??0)"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 9
+        },
+        {
+          "action": "StopSuccess",
+          "file": "policy.ts",
+          "edits": 9
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 62
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 69
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 93
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 6293,
+        "jevInferenceMs": 1549,
+        "deterministicMs": 2992,
+        "verificationMs": 224,
+        "solverWallMs": 4770
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 7,
+        "jevHeads": 51,
+        "jevInputTokens": 11123,
+        "jevOutputTokens": 1463,
+        "jevLatencyMs": 1549,
+        "reportedCost": null,
+        "deterministicMs": 3216,
+        "phaseTransitions": 4,
+        "candidatesBefore": 13,
+        "candidatesAfter": 13,
+        "candidatesNarrowed": 12,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 0,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 4770,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "ReplaceOperator": 1,
+          "VerifyAffectedRegion": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 1
+      },
+      "isolation": {
+        "freshPid": 295652,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 7,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "checksRestricted": true,
+        "transportAudit": {
+          "classifierRequests": 7,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.95,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.03,
+              "Repair": 0.95,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Tests",
+            "confidence": 0.21,
+            "probabilities": {
+              "File": 0.21,
+              "Tests": 0.34,
+              "References": 0,
+              "Symbol": 0.12,
+              "Config": 0,
+              "Unknown": 0.33
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF2",
+            "confidence": 0.97,
+            "probabilities": {
+              "AFF2": 0.97,
+              "ANeedsGeneration": 0.02,
+              "unknown": 0.01
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.36
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.41
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.45
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.19
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.35
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS9194d2ac0348",
+            "confidence": 0.65,
+            "probabilities": {
+              "ASS9194d2ac0348": 0.77,
+              "ANeedsGeneration": 0.13,
+              "unknown": 0.1
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.68
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.34
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.57
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.24
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.41
+          }
+        },
+        {
+          "AEab790b5a446f": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "AEaa5c5b3c3e39": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "AEc9969c8906dd": {
+            "type": "noul",
+            "noul": 0.15
+          },
+          "AEd0a0ecc55f64": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "AE5c534c9ac74b": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "AE654321f06383": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "AE2660155d657c": {
+            "type": "noul",
+            "noul": 0.56
+          },
+          "AEad5039c0c01f": {
+            "type": "noul",
+            "noul": 0.14
+          },
+          "AEa37cebf646f0": {
+            "type": "noul",
+            "noul": 0.18
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE2660155d657c",
+            "confidence": 0.87,
+            "probabilities": {
+              "AEab790b5a446f": 0.03,
+              "AEaa5c5b3c3e39": 0,
+              "AEc9969c8906dd": 0,
+              "AEd0a0ecc55f64": 0.02,
+              "AE654321f06383": 0,
+              "AE2660155d657c": 0.89,
+              "AEad5039c0c01f": 0.01,
+              "AEa37cebf646f0": 0.01,
+              "ANeedsGeneration": 0.02,
+              "unknown": 0.02
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.77
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.5
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.52
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.26
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AVerify",
+            "confidence": 0.57,
+            "probabilities": {
+              "AVerify": 0.71,
+              "ANeedsGeneration": 0.18,
+              "unknown": 0.11
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.58
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.34
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.69
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.56
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.3
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASuccess",
+            "confidence": 0.89,
+            "probabilities": {
+              "ASuccess": 0.93,
+              "ANeedsGeneration": 0.06,
+              "unknown": 0.01
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.55
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.33
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.22
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.36
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.15
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.69
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.18
+          }
+        }
+      ]
+    },
+    {
+      "recoveryReverts": 4,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/real-source/runs/random-42-ca613f06-0",
+      "challengeId": "real-source",
+      "policy": "random",
+      "task": "Repair the semantic-policy scoring regression and verify the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 0,
+        "symbolDistractors": 0,
+        "actionBranching": 9,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": false,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 9,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "policy.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy.ts",
+          "symbol": "shape",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 9,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression 1-answer.noul"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 9
+        },
+        {
+          "action": "Revert",
+          "file": "policy.ts",
+          "edits": 9
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 8,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "/",
+            "description": "Replace numeric binary operator + with /; expression (sorted[0]?.[1]??0)+(sorted[1]?.[1]??0)"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 8
+        },
+        {
+          "action": "Revert",
+          "file": "policy.ts",
+          "edits": 8
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 7,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression 1-answer.noul"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 7
+        },
+        {
+          "action": "Revert",
+          "file": "policy.ts",
+          "edits": 7
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 6,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression b[1]-a[1]"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 6
+        },
+        {
+          "action": "Revert",
+          "file": "policy.ts",
+          "edits": 6
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression (sorted[0]?.[1]??0)+(sorted[1]?.[1]??0)"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 5
+        },
+        {
+          "action": "StopSuccess",
+          "file": "policy.ts",
+          "edits": 5
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 82
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 96
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 302
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 63
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 64
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 59
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 91
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 6293,
+        "jevInferenceMs": 0,
+        "deterministicMs": 12535,
+        "verificationMs": 757,
+        "solverWallMs": 13296
+      },
+      "metrics": {
+        "steps": 16,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 13292,
+        "phaseTransitions": 16,
+        "candidatesBefore": 57,
+        "candidatesAfter": 47,
+        "candidatesNarrowed": 46,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 5,
+        "mutations": 5,
+        "reverts": 4,
+        "checks": 7,
+        "failures": 5,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 13296,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 5,
+          "ReplaceOperator": 5,
+          "VerifyAffectedRegion": 5,
+          "Revert": 4,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 295698,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "checksRestricted": true,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": []
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/real-source/runs/heuristic-42-ca613f06-0",
+      "challengeId": "real-source",
+      "policy": "heuristic",
+      "task": "Repair the semantic-policy scoring regression and verify the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 0,
+        "symbolDistractors": 0,
+        "actionBranching": 9,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": false,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 9,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "policy.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy.ts",
+          "symbol": "shape",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy.ts",
+          "edits": 9,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression (sorted[0]?.[1]??0)+(sorted[1]?.[1]??0)"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy.ts",
+          "edits": 9
+        },
+        {
+          "action": "StopSuccess",
+          "file": "policy.ts",
+          "edits": 9
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 61
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 125
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 69
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 6293,
+        "jevInferenceMs": 0,
+        "deterministicMs": 4107,
+        "verificationMs": 255,
+        "solverWallMs": 4362
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 4362,
+        "phaseTransitions": 4,
+        "candidatesBefore": 13,
+        "candidatesAfter": 13,
+        "candidatesNarrowed": 12,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 0,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 4362,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "ReplaceOperator": 1,
+          "VerifyAffectedRegion": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 295825,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "checksRestricted": true,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": []
+    }
+  ]
+}

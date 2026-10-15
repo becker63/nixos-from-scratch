@@ -1,0 +1,163 @@
+diff --git a/alacritty/src/display/mod.rs b/alacritty/src/display/mod.rs
+--- a/alacritty/src/display/mod.rs
++++ b/alacritty/src/display/mod.rs
+@@ -333,24 +333,28 @@
+         dynamic_padding: bool,
+         reserve_gutter: bool,
+     ) -> SizeInfo {
+-        let gutter_width =
+-            if reserve_gutter { SHELL_GUTTER_COLUMNS as f32 * cell_width } else { 0. };
+-        let map_width = if reserve_gutter { 8. } else { 0. };
++        let gutter_width = if reserve_gutter {
++            let available = (width - 2. * padding_x - MIN_COLUMNS as f32 * cell_width).max(0.);
++            (SHELL_GUTTER_COLUMNS as f32 * cell_width).min(available / 2.)
++        } else {
++            0.
++        };
++        // Split spare sub-cell pixels evenly even when vertical padding is fixed.
++        if dynamic_padding || reserve_gutter {
++            padding_x = Self::dynamic_padding(
++                padding_x.floor(), width - 2. * gutter_width, cell_width,
++            );
++        }
+         if dynamic_padding {
+-            padding_x = Self::dynamic_padding(
+-                padding_x.floor(), width - gutter_width - map_width, cell_width,
+-            );
+             padding_y = Self::dynamic_padding(padding_y.floor(), height, cell_height);
+         }
+ 
+         let lines = (height - 2. * padding_y) / cell_height;
+         let screen_lines = cmp::max(lines as usize, MIN_SCREEN_LINES);
+ 
+-        // Reserve the gutter once on the left while retaining ordinary
+-        // configured padding on both edges. `padding_x` is the grid origin,
+-        // so calculating columns before shifting it avoids losing the same
+-        // six cells from the right edge too.
+-        let columns = (width - 2. * padding_x - gutter_width - map_width) / cell_width;
++        // Reserve equal font-scaled space on both sides of the PTY grid.
++        // Only the left reservation contains line numbers; both edges stay calm.
++        let columns = (width - 2. * padding_x - 2. * gutter_width) / cell_width;
+         let columns = cmp::max(columns as usize, MIN_COLUMNS);
+         padding_x += gutter_width;
+ 
+@@ -906,15 +910,8 @@
+         let metrics = self.glyph_cache.font_metrics();
+         let size_info = self.size_info;
+         let first_line = total_lines.saturating_sub(display_offset + size_info.screen_lines());
+-        let cursor_viewport_line =
+-            term::point_to_viewport(display_offset, cursor_point).map(|point| point.line);
++        // Retain IPC state and anchors without drawing Pi execution overlays.
+         terminal.grid_mut().semantic_validate();
+-        let semantic_rects = self.semantic_trace.project(
+-            &terminal.grid().semantic_anchors, terminal.grid().history_size(), display_offset,
+-            size_info.screen_lines(), size_info.width(), size_info.height(),
+-            size_info.padding_x(), size_info.padding_y(), size_info.cell_width(), size_info.cell_height(),
+-            terminal.mode().contains(TermMode::ALT_SCREEN), Instant::now(),
+-        );
+ 
+         let vi_mode = terminal.mode().contains(TermMode::VI);
+         let vi_cursor_point = if vi_mode { Some(terminal.vi_mode_cursor.point) } else { None };
+@@ -934,8 +931,6 @@
+ 
+         // Drop terminal as early as possible to free lock.
+         drop(terminal);
+-
+-        let gutter_animating = self.semantic_trace.animating(Instant::now());
+ 
+         // Invalidate highlighted hints if grid has changed.
+         self.validate_hint_highlights(display_offset);
+@@ -1151,9 +1146,7 @@
+             );
+         }
+         self.renderer.resize(&size_info);
+-        self.renderer.draw_rects(&size_info, &metrics, semantic_rects);
+-        // Edge and ownership changes need full damage on partial-present backends.
+-        // Cost is bounded rectangle projection, never a history scan per frame.
++        // Line numbers can change when output scrolls on partial-present backends.
+         self.damage_tracker.frame().mark_fully_damaged();
+ 
+         // Draw hyperlink uri preview.
+@@ -1189,19 +1182,8 @@
+             self.request_frame(scheduler);
+         }
+ 
+-        // One-shot ticks reschedule only while a wake, pulse, or semantic mode
+-        // remains alive. An ordinary idle terminal has no animation timer.
+-        let timer_id = TimerId::new(Topic::ShellGutterPulse, self.window.id());
+-        if gutter_animating && !scheduler.scheduled(timer_id) {
+-            scheduler.schedule(
+-                Event::new(EventType::ShellGutterPulse, self.window.id()),
+-                shell_gutter::FRAME_INTERVAL,
+-                false,
+-                timer_id,
+-            );
+-        } else if !gutter_animating {
+-            scheduler.unschedule(timer_id);
+-        }
++        // Execution events no longer animate either edge.
++        scheduler.unschedule(TimerId::new(Topic::ShellGutterPulse, self.window.id()));
+ 
+         self.damage_tracker.swap_damage();
+     }
+@@ -1788,7 +1770,7 @@
+     let grid_height = cell_height * dimensions.lines.max(MIN_SCREEN_LINES) as f32;
+ 
+     let gutter_width = SHELL_GUTTER_COLUMNS as f32 * cell_width;
+-    let width = (padding.0).mul_add(2., grid_width + gutter_width + 8.).floor();
++    let width = (padding.0).mul_add(2., grid_width + 2. * gutter_width).floor();
+     let height = (padding.1).mul_add(2., grid_height).floor();
+ 
+     PhysicalSize::new(width as u32, height as u32)
+@@ -1799,35 +1781,29 @@
+     use super::*;
+ 
+     #[test]
+-    fn zero_padding_reserves_the_gutter_once() {
+-        let plain = SizeInfo::new(160., 100., 10., 10., 0., 0., false);
+-        let gutter = SizeInfo::new_with_gutter(160., 100., 10., 10., 0., 0., false);
+-
+-        assert_eq!(plain.columns(), 16);
+-        assert_eq!(gutter.columns(), 4);
+-        assert_eq!(gutter.padding_x(), 110.);
+-    }
+-
+-    #[test]
+-    fn cell_grid_reaches_the_last_column_with_asymmetric_chrome() {
++    fn grid_preserves_equal_edges_across_font_sizes_and_window_widths() {
+         for cell_width in [8., 10., 18.] {
+             for padding in [0., 6., 70.] {
+                 for dynamic in [false, true] {
+-                    let width = 40. * cell_width + 11. * cell_width + 8. + 2. * padding;
+-                    let size = SizeInfo::new_with_gutter(
+-                        width, 300., cell_width, 20., padding, 6., dynamic,
+-                    );
+-                    assert_eq!(size.columns(), 40);
+-                    assert_eq!(size.grid_width(), 40. * cell_width);
+-                    assert!(size.padding_x() + size.grid_width() <= width - 8.);
+-                    // The old symmetric-padding viewport clipped the final columns.
+-                    assert!(size.grid_width() > width - 2. * size.padding_x());
++                    for extra in [0., 1., 7.] {
++                        let width = (40. + 2. * SHELL_GUTTER_COLUMNS as f32) * cell_width
++                            + 2. * padding + extra;
++                        let size = SizeInfo::new_with_gutter(
++                            width, 300., cell_width, 20., padding, 6., dynamic,
++                        );
++                        assert_eq!(size.columns(), 40);
++                        let right = width - size.padding_x() - size.grid_width();
++                        assert!((right - size.padding_x()).abs() <= 1.);
++                        assert!(size.padding_x() >= padding + 11. * cell_width);
++                    }
+                 }
+             }
+         }
+-        // A small window still has a positive renderer viewport despite its large gutter.
+         let narrow = SizeInfo::new_with_gutter(160., 100., 10., 10., 0., 0., false);
+-        assert_eq!(narrow.grid_width(), 40.);
++        assert_eq!(narrow.columns(), MIN_COLUMNS);
++        assert!(narrow.grid_width() > 0.);
++        assert!(narrow.padding_x() > 0.);
++        assert_eq!(160. - narrow.padding_x() - narrow.grid_width(), narrow.padding_x());
+     }
+ 
+     #[test]

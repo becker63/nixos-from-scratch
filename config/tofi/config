@@ -9,6 +9,7 @@ num-results = 5
 font = monospace
 background-color = #000A
 
+# Use launch alongside this config to refresh desktop entries after Nix updates.
 drun-launch = true
 history = true
 terminal = alacritty -e

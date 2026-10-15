@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "buildbuddy-history"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["httpx", "mcp", "pandas", "pyarrow", "numpy", "scipy", "matplotlib"]
+[project.scripts]
+buildbuddy-history = "buildbuddy_history.server:main"
+buildbuddy-history-evidence = "buildbuddy_history.evidence:main"
+buildbuddy-history-analyze = "buildbuddy_history.analysis:main"
+buildbuddy-history-tunnel = "buildbuddy_history.tunnel:main"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,741 @@
+{
+  "campaign": {
+    "version": 1,
+    "name": "multi-edit",
+    "seed": 42,
+    "count": 1,
+    "instances": [
+      {
+        "id": "instance-000",
+        "workspaceHash": "6999c7463f3f0bfff8ac8bd02b4417eb2108830aa8020c6685b49b1c111faa21",
+        "parameters": {
+          "family": "two-edit",
+          "files": 1,
+          "index": 0,
+          "seed": 42
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "recoveryReverts": 7,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/multi-edit/instance-000/runs/heuristic-42-1b8dc9cb-0",
+      "challengeId": "instance-000",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Transform",
+      "terminalReason": "No legal type-filtered repair in current grammar",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 0,
+        "symbolDistractors": 0,
+        "actionBranching": 7,
+        "requiredSuccessfulMutations": 2,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 7,
+      "totalWorkspaceLegalEdits": 7,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": true,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "NeedsGeneration",
+      "failure": "RecoveryFailure",
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 7,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "c",
+            "description": "Use existing same-type in-scope value c instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 7
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 7
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 6,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "b",
+            "description": "Use existing same-type in-scope value b instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 6
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 6
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "/",
+            "description": "Replace numeric binary operator + with /; expression a+a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "c",
+            "description": "Use existing same-type in-scope value c instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "*",
+            "description": "Replace numeric binary operator + with *; expression a+a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "b",
+            "description": "Use existing same-type in-scope value b instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression a+a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 1
+        },
+        {
+          "action": "NeedsGeneration",
+          "file": "subject.ts",
+          "edits": 0
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 58
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 96
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 77
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 63
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 62
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 61
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 62
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 59
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 3575,
+        "jevInferenceMs": 0,
+        "deterministicMs": 817,
+        "verificationMs": 538,
+        "solverWallMs": 1356
+      },
+      "metrics": {
+        "steps": 23,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1355,
+        "phaseTransitions": 23,
+        "candidatesBefore": 72,
+        "candidatesAfter": 44,
+        "candidatesNarrowed": 44,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 7,
+        "mutations": 7,
+        "reverts": 7,
+        "checks": 8,
+        "failures": 8,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1356,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 7,
+          "ReplaceVariable": 4,
+          "VerifyAffectedRegion": 7,
+          "Revert": 7,
+          "ReplaceOperator": 3,
+          "NeedsGeneration": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 288696,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "checksRestricted": true,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "6999c7463f3f0bfff8ac8bd02b4417eb2108830aa8020c6685b49b1c111faa21",
+        "oracleHash": "2c1cd333cf888327698f6ae52119cdfbcc1a16f3ec9ecd01e8164275a5abe2be",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:20:52.662Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "fbed617bdaab21d9a22b3e76783c4e98544e81b488e2cb862fb16bf57de926e2"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/multi-edit/instance-000/runs/jev-42-1b8dc9cb-0",
+      "challengeId": "instance-000",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Transform",
+      "terminalReason": "Flat/unknown action distribution after bounded evidence",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 0,
+        "symbolDistractors": 0,
+        "actionBranching": 7,
+        "requiredSuccessfulMutations": 2,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": false
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 7,
+      "totalWorkspaceLegalEdits": 7,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "NeedsGeneration",
+      "failure": "PrematureNeedsGeneration",
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.93,
+          "runnerUp": 0.05,
+          "margin": 0.88,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.05,
+            "Repair": 0.93,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Tests",
+          "top": 0.41000000000000003,
+          "runnerUp": 0.34,
+          "margin": 0.07,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.18,
+            "Tests": 0.41000000000000003,
+            "References": 0,
+            "Symbol": 0.07,
+            "Config": 0,
+            "Unknown": 0.34
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF2",
+          "top": 0.94,
+          "runnerUp": 0.04,
+          "margin": 0.8999999999999999,
+          "unknown": 0.02,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF2": 0.94,
+            "ANeedsGeneration": 0.04,
+            "unknown": 0.02
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS093b2595e22e",
+          "top": 0.48,
+          "runnerUp": 0.3,
+          "margin": 0.18,
+          "unknown": 0.22,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS093b2595e22e": 0.48,
+            "ANeedsGeneration": 0.3,
+            "unknown": 0.22
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AEba524fdd6435",
+          "top": 0.3,
+          "runnerUp": 0.21,
+          "margin": 0.09,
+          "unknown": 0.1,
+          "executed": false,
+          "oraclePasses": false,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AEf62b32bb8f3e": 0.02,
+            "AEc4ef14c77fe0": 0.03,
+            "AE898ed6b1c537": 0,
+            "AE481f32bccf99": 0.21,
+            "AEba524fdd6435": 0.3,
+            "AEf235607be6ac": 0.12,
+            "AE0ded845b09f7": 0.1,
+            "ANeedsGeneration": 0.12,
+            "unknown": 0.1
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 70
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 3575,
+        "jevInferenceMs": 977,
+        "deterministicMs": 480,
+        "verificationMs": 70,
+        "solverWallMs": 1528
+      },
+      "metrics": {
+        "steps": 2,
+        "jevEvaluations": 4,
+        "jevHeads": 26,
+        "jevInputTokens": 4853,
+        "jevOutputTokens": 815,
+        "jevLatencyMs": 977,
+        "reportedCost": null,
+        "deterministicMs": 550,
+        "phaseTransitions": 2,
+        "candidatesBefore": 9,
+        "candidatesAfter": 9,
+        "candidatesNarrowed": 9,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 1,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1528,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 288664,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 4,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "checksRestricted": true,
+        "transportAudit": {
+          "classifierRequests": 4,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.91,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.05,
+              "Repair": 0.93,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Tests",
+            "confidence": 0.28,
+            "probabilities": {
+              "File": 0.18,
+              "Tests": 0.41000000000000003,
+              "References": 0,
+              "Symbol": 0.07,
+              "Config": 0,
+              "Unknown": 0.34
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF2",
+            "confidence": 0.92,
+            "probabilities": {
+              "AFF2": 0.94,
+              "ANeedsGeneration": 0.04,
+              "unknown": 0.02
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.24
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.57
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.35
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS093b2595e22e",
+            "confidence": 0.22,
+            "probabilities": {
+              "ASS093b2595e22e": 0.48,
+              "ANeedsGeneration": 0.3,
+              "unknown": 0.22
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.78
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.36
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.62
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.38
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AEba524fdd6435",
+            "confidence": 0.2,
+            "probabilities": {
+              "AEf62b32bb8f3e": 0.02,
+              "AEc4ef14c77fe0": 0.03,
+              "AE898ed6b1c537": 0,
+              "AE481f32bccf99": 0.21,
+              "AEba524fdd6435": 0.3,
+              "AEf235607be6ac": 0.12,
+              "AE0ded845b09f7": 0.1,
+              "ANeedsGeneration": 0.12,
+              "unknown": 0.1
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.84
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.66
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.36
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.59
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.24
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.39
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "6999c7463f3f0bfff8ac8bd02b4417eb2108830aa8020c6685b49b1c111faa21",
+        "oracleHash": "2c1cd333cf888327698f6ae52119cdfbcc1a16f3ec9ecd01e8164275a5abe2be",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:20:52.662Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "fbed617bdaab21d9a22b3e76783c4e98544e81b488e2cb862fb16bf57de926e2"
+      }
+    }
+  ]
+}

@@ -27,3 +27,6 @@ packages/pi-runtime/jev-*-results.json
 .env
 .env.*
 !.env.example
+
+# Fabric runtime activity/state is mutable, not declarative source.
+.pi/fabric/

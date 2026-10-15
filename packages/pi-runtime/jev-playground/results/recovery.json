@@ -1,0 +1,5378 @@
+{
+  "campaign": {
+    "version": 1,
+    "name": "recovery",
+    "seed": 42,
+    "count": 5,
+    "instances": [
+      {
+        "id": "instance-000",
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "parameters": {
+          "family": "variable",
+          "branching": 4,
+          "index": 0,
+          "seed": 42
+        }
+      },
+      {
+        "id": "instance-001",
+        "workspaceHash": "292e2b54b7a35ead638f1880433a4faa57d3fa0a3c780156d09d6162917044fd",
+        "parameters": {
+          "family": "callable",
+          "branching": 5,
+          "index": 1,
+          "seed": 42
+        }
+      },
+      {
+        "id": "instance-002",
+        "workspaceHash": "caee3477e612d8d3a1b6ef393258623aca3625a818d0014195e0319c8b7a6595",
+        "parameters": {
+          "family": "argument",
+          "branching": 6,
+          "index": 2,
+          "seed": 42
+        }
+      },
+      {
+        "id": "instance-003",
+        "workspaceHash": "58734a482144aa6c4a824af16ab65698b001297aae93ab19122fb222eefc9d8f",
+        "parameters": {
+          "family": "operator",
+          "branching": 4,
+          "index": 3,
+          "seed": 42
+        }
+      },
+      {
+        "id": "instance-004",
+        "workspaceHash": "69f91e287f790cef263fd2cfe5d55f99a61040bc63d5e5d00488f0af0cbcf456",
+        "parameters": {
+          "family": "variable",
+          "branching": 5,
+          "index": 4,
+          "seed": 42
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "recoveryReverts": 1,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-000/runs/heuristic-42-1b8dc9cb",
+      "challengeId": "instance-000",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "end",
+            "description": "Use existing same-type in-scope value end instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 3
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 112
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 101
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 132
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 131
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 77
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2221,
+        "jevInferenceMs": 0,
+        "deterministicMs": 480,
+        "verificationMs": 553,
+        "solverWallMs": 1033
+      },
+      "metrics": {
+        "steps": 7,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1033,
+        "phaseTransitions": 7,
+        "candidatesBefore": 15,
+        "candidatesAfter": 14,
+        "candidatesNarrowed": 14,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 2,
+        "mutations": 2,
+        "reverts": 1,
+        "checks": 5,
+        "failures": 2,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1033,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 2,
+          "ReplaceVariable": 2,
+          "VerifyAffectedRegion": 2,
+          "Revert": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 276096,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "3a05a843297fd787a82babe0ce902f47f3631e26e4be367523a10af446f2d9fb",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:46.702Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-000/runs/jev-42-1b8dc9cb",
+      "challengeId": "instance-000",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Transform",
+      "terminalReason": "No supported legal semantic move",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "NeedsGeneration",
+      "failure": "PrematureNeedsGeneration",
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.91,
+          "runnerUp": 0.07,
+          "margin": 0.8400000000000001,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.07,
+            "Repair": 0.91,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.44,
+          "runnerUp": 0.33,
+          "margin": 0.10999999999999999,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.16,
+            "Tests": 0.33,
+            "References": 0,
+            "Symbol": 0.07,
+            "Config": 0,
+            "Unknown": 0.44
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF3",
+          "top": 0.65,
+          "runnerUp": 0.13,
+          "margin": 0.52,
+          "unknown": 0.09,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF1": 0.13,
+            "AFF3": 0.65,
+            "ANeedsGeneration": 0.13,
+            "unknown": 0.09
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS4cd027da76b1",
+          "top": 0.62,
+          "runnerUp": 0.22,
+          "margin": 0.4,
+          "unknown": 0.16,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS4cd027da76b1": 0.62,
+            "ANeedsGeneration": 0.22,
+            "unknown": 0.16
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE195bfbcf1d35",
+          "top": 0.49,
+          "runnerUp": 0.34,
+          "margin": 0.14999999999999997,
+          "unknown": 0.01,
+          "executed": false,
+          "oraclePasses": false,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AE195bfbcf1d35": 0.49,
+            "AE7dc9adda78f6": 0.13,
+            "AE7127f9ba3294": 0.34,
+            "AEcf83075de286": 0.01,
+            "ANeedsGeneration": 0.02,
+            "unknown": 0.01
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 136
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2221,
+        "jevInferenceMs": 915,
+        "deterministicMs": 501,
+        "verificationMs": 136,
+        "solverWallMs": 1553
+      },
+      "metrics": {
+        "steps": 2,
+        "jevEvaluations": 4,
+        "jevHeads": 26,
+        "jevInputTokens": 4559,
+        "jevOutputTokens": 765,
+        "jevLatencyMs": 915,
+        "reportedCost": null,
+        "deterministicMs": 637,
+        "phaseTransitions": 2,
+        "candidatesBefore": 7,
+        "candidatesAfter": 7,
+        "candidatesNarrowed": 7,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 1,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1553,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 275393,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 4,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 4,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.89,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.07,
+              "Repair": 0.91,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.32,
+            "probabilities": {
+              "File": 0.16,
+              "Tests": 0.33,
+              "References": 0,
+              "Symbol": 0.07,
+              "Config": 0,
+              "Unknown": 0.44
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF3",
+            "confidence": 0.54,
+            "probabilities": {
+              "AFF1": 0.13,
+              "AFF3": 0.65,
+              "ANeedsGeneration": 0.13,
+              "unknown": 0.09
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.23
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.56
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.18
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.35
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS4cd027da76b1",
+            "confidence": 0.42,
+            "probabilities": {
+              "ASS4cd027da76b1": 0.62,
+              "ANeedsGeneration": 0.22,
+              "unknown": 0.16
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.71
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.37
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.47
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE195bfbcf1d35",
+            "confidence": 0.38,
+            "probabilities": {
+              "AE195bfbcf1d35": 0.49,
+              "AE7dc9adda78f6": 0.13,
+              "AE7127f9ba3294": 0.34,
+              "AEcf83075de286": 0.01,
+              "ANeedsGeneration": 0.02,
+              "unknown": 0.01
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.87
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.73
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.15
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "3a05a843297fd787a82babe0ce902f47f3631e26e4be367523a10af446f2d9fb",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:46.702Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 7,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-000/runs/random-42-1b8dc9cb",
+      "challengeId": "instance-000",
+      "policy": "random",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 2,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy1.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy1.ts",
+          "symbol": "semanticMargin1",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "policy",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of policy"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "probability",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "/",
+            "description": "Replace numeric binary operator - with /; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "margin",
+            "description": "Use existing same-type in-scope value margin instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 2
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 131
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 134
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 85
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 88
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 116
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 104
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 90
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 146
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 123
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 84
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 78
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 100
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2221,
+        "jevInferenceMs": 0,
+        "deterministicMs": 737,
+        "verificationMs": 1279,
+        "solverWallMs": 2019
+      },
+      "metrics": {
+        "steps": 27,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 2016,
+        "phaseTransitions": 27,
+        "candidatesBefore": 58,
+        "candidatesAfter": 45,
+        "candidatesNarrowed": 45,
+        "reads": 4,
+        "searchExpansions": 2,
+        "transformAttempts": 8,
+        "mutations": 8,
+        "reverts": 7,
+        "checks": 12,
+        "failures": 8,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2019,
+        "actionFamilies": {
+          "InspectFile": 2,
+          "InspectSymbol": 2,
+          "ApplyEdit": 8,
+          "ReplaceVariable": 5,
+          "VerifyAffectedRegion": 8,
+          "Revert": 7,
+          "ReplaceOperator": 3,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 275630,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "8b9f5a2dc735aea799e6e9c7312a547708903af09f3f1224ebd55b30703e81e2",
+        "oracleHash": "3a05a843297fd787a82babe0ce902f47f3631e26e4be367523a10af446f2d9fb",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:46.702Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 2,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-001/runs/heuristic-42-1b8dc9cb",
+      "challengeId": "instance-001",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 6,
+      "totalWorkspaceLegalEdits": 31,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 6,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "b",
+            "to": "a",
+            "description": "Use existing same-type in-scope value a instead of b"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 6
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 6
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "b",
+            "description": "Use existing same-type in-scope value b instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceCallable",
+            "from": "add",
+            "to": "distance",
+            "description": "Call existing signature-compatible helper distance instead of add"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 4
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 115
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 131
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 130
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 127
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 4356,
+        "jevInferenceMs": 0,
+        "deterministicMs": 631,
+        "verificationMs": 606,
+        "solverWallMs": 1237
+      },
+      "metrics": {
+        "steps": 10,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1237,
+        "phaseTransitions": 10,
+        "candidatesBefore": 31,
+        "candidatesAfter": 28,
+        "candidatesNarrowed": 28,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 3,
+        "mutations": 3,
+        "reverts": 2,
+        "checks": 5,
+        "failures": 3,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1237,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 3,
+          "ReplaceVariable": 2,
+          "VerifyAffectedRegion": 3,
+          "Revert": 2,
+          "ReplaceCallable": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277113,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "292e2b54b7a35ead638f1880433a4faa57d3fa0a3c780156d09d6162917044fd",
+        "oracleHash": "3c2613e377d4f59f9724d57d45b23edfcdebbb3454d5c483b7d3e551dcc34244",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:51.060Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-001/runs/jev-42-1b8dc9cb",
+      "challengeId": "instance-001",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Transform",
+      "terminalReason": "No supported legal semantic move",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 6,
+      "totalWorkspaceLegalEdits": 31,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": null,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "NeedsGeneration",
+      "failure": "PrematureNeedsGeneration",
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.94,
+          "runnerUp": 0.04,
+          "margin": 0.8999999999999999,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.04,
+            "Repair": 0.94,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.43,
+          "runnerUp": 0.34,
+          "margin": 0.08999999999999997,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.18,
+            "Tests": 0.34,
+            "References": 0,
+            "Symbol": 0.05,
+            "Config": 0,
+            "Unknown": 0.43
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF3",
+          "top": 0.87,
+          "runnerUp": 0.05,
+          "margin": 0.82,
+          "unknown": 0.03,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF1": 0.05,
+            "AFF3": 0.87,
+            "ANeedsGeneration": 0.05,
+            "unknown": 0.03
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS2d0b61717704",
+          "top": 0.68,
+          "runnerUp": 0.12,
+          "margin": 0.56,
+          "unknown": 0.05,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS4cd027da76b1": 0.02,
+            "ASS12e2b7c2785f": 0.12,
+            "ASS98aff7601c66": 0.06,
+            "ASSd93eb047f570": 0,
+            "ASS2d0b61717704": 0.68,
+            "ANeedsGeneration": 0.07,
+            "unknown": 0.05
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE62c9422029ae",
+          "top": 0.52,
+          "runnerUp": 0.47,
+          "margin": 0.050000000000000044,
+          "unknown": 0,
+          "executed": false,
+          "oraclePasses": true,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AEfdd97e74eb3a": 0.47,
+            "AE62c9422029ae": 0.52,
+            "AE879889117d31": 0,
+            "AE9e73f88a3b3c": 0.01,
+            "AE258fa1a7e13d": 0,
+            "AE241180994a09": 0,
+            "ANeedsGeneration": 0,
+            "unknown": 0
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 141
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 4356,
+        "jevInferenceMs": 986,
+        "deterministicMs": 481,
+        "verificationMs": 141,
+        "solverWallMs": 1611
+      },
+      "metrics": {
+        "steps": 2,
+        "jevEvaluations": 4,
+        "jevHeads": 26,
+        "jevInputTokens": 5249,
+        "jevOutputTokens": 884,
+        "jevLatencyMs": 986,
+        "reportedCost": null,
+        "deterministicMs": 622,
+        "phaseTransitions": 2,
+        "candidatesBefore": 13,
+        "candidatesAfter": 13,
+        "candidatesNarrowed": 13,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 0,
+        "mutations": 0,
+        "reverts": 0,
+        "checks": 1,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1611,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 276324,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 4,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 4,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.92,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.04,
+              "Repair": 0.94,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.31,
+            "probabilities": {
+              "File": 0.18,
+              "Tests": 0.34,
+              "References": 0,
+              "Symbol": 0.05,
+              "Config": 0,
+              "Unknown": 0.43
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF3",
+            "confidence": 0.82,
+            "probabilities": {
+              "AFF1": 0.05,
+              "AFF3": 0.87,
+              "ANeedsGeneration": 0.05,
+              "unknown": 0.03
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.33
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.58
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.19
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.29
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS2d0b61717704",
+            "confidence": 0.63,
+            "probabilities": {
+              "ASS4cd027da76b1": 0.02,
+              "ASS12e2b7c2785f": 0.12,
+              "ASS98aff7601c66": 0.06,
+              "ASSd93eb047f570": 0,
+              "ASS2d0b61717704": 0.68,
+              "ANeedsGeneration": 0.07,
+              "unknown": 0.05
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.81
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.46
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.34
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.66
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.18
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.27
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE62c9422029ae",
+            "confidence": 0.44,
+            "probabilities": {
+              "AEfdd97e74eb3a": 0.47,
+              "AE62c9422029ae": 0.52,
+              "AE879889117d31": 0,
+              "AE9e73f88a3b3c": 0.01,
+              "AE258fa1a7e13d": 0,
+              "AE241180994a09": 0,
+              "ANeedsGeneration": 0,
+              "unknown": 0
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.77
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.27
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.21
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.11
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "292e2b54b7a35ead638f1880433a4faa57d3fa0a3c780156d09d6162917044fd",
+        "oracleHash": "3c2613e377d4f59f9724d57d45b23edfcdebbb3454d5c483b7d3e551dcc34244",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:51.060Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 9,
+      "cleanupReverts": 1,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-001/runs/random-42-1b8dc9cb",
+      "challengeId": "instance-001",
+      "policy": "random",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Verify",
+      "terminalReason": "Step budget",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J3",
+      "admittedLegalEdits": 6,
+      "totalWorkspaceLegalEdits": 31,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": false,
+      "filesInspected": 2,
+      "correctGenerated": false,
+      "correctSurvivedNarrowing": false,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": false,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "Exhausted",
+      "failure": "BudgetExhaustion",
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy1.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy1.ts",
+          "symbol": "semanticMargin1",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "policy",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of policy"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "probability",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "/",
+            "description": "Replace numeric binary operator - with /; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "scale",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "a",
+            "to": "b",
+            "description": "Use existing same-type in-scope value b instead of a"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "*",
+            "to": "+",
+            "description": "Replace numeric binary operator * with +; expression a*b"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "b",
+            "to": "a",
+            "description": "Use existing same-type in-scope value a instead of b"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "*",
+            "to": "-",
+            "description": "Replace numeric binary operator * with -; expression a*b"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "*",
+            "to": "/",
+            "description": "Replace numeric binary operator * with /; expression a*b"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 125
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 105
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 139
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 88
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 107
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 76
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 102
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 107
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 132
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 4356,
+        "jevInferenceMs": 0,
+        "deterministicMs": 993,
+        "verificationMs": 1084,
+        "solverWallMs": 2078
+      },
+      "metrics": {
+        "steps": 32,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 2077,
+        "phaseTransitions": 32,
+        "candidatesBefore": 77,
+        "candidatesAfter": 57,
+        "candidatesNarrowed": 57,
+        "reads": 4,
+        "searchExpansions": 2,
+        "transformAttempts": 10,
+        "mutations": 10,
+        "reverts": 10,
+        "checks": 10,
+        "failures": 10,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2078,
+        "actionFamilies": {
+          "InspectFile": 2,
+          "InspectSymbol": 2,
+          "ApplyEdit": 10,
+          "ReplaceVariable": 4,
+          "VerifyAffectedRegion": 9,
+          "Revert": 9,
+          "ReplaceOperator": 6
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 276591,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "292e2b54b7a35ead638f1880433a4faa57d3fa0a3c780156d09d6162917044fd",
+        "oracleHash": "3c2613e377d4f59f9724d57d45b23edfcdebbb3454d5c483b7d3e551dcc34244",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:51.060Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-002/runs/heuristic-42-1b8dc9cb",
+      "challengeId": "instance-002",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 6,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "InsertArgument",
+            "from": "",
+            "to": ", end",
+            "description": "Insert existing compatible argument end at position 1"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 4
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 112
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 104
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 131
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2264,
+        "jevInferenceMs": 0,
+        "deterministicMs": 648,
+        "verificationMs": 347,
+        "solverWallMs": 997
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 995,
+        "phaseTransitions": 4,
+        "candidatesBefore": 13,
+        "candidatesAfter": 10,
+        "candidatesNarrowed": 10,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 0,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 997,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "InsertArgument": 1,
+          "VerifyAffectedRegion": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 278101,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "caee3477e612d8d3a1b6ef393258623aca3625a818d0014195e0319c8b7a6595",
+        "oracleHash": "fb7110f450c2f0ae21ebf5176e66c044673a3ac4ae2d8ad8148dd804f795e6d2",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:53.325Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-002/runs/jev-42-1b8dc9cb",
+      "challengeId": "instance-002",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 6,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.92,
+          "runnerUp": 0.06,
+          "margin": 0.8600000000000001,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.06,
+            "Repair": 0.92,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.42,
+          "runnerUp": 0.38,
+          "margin": 0.03999999999999998,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.14,
+            "Tests": 0.38,
+            "References": 0,
+            "Symbol": 0.06,
+            "Config": 0,
+            "Unknown": 0.42
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF3",
+          "top": 0.82,
+          "runnerUp": 0.07,
+          "margin": 0.75,
+          "unknown": 0.04,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF1": 0.07,
+            "AFF3": 0.82,
+            "ANeedsGeneration": 0.07,
+            "unknown": 0.04
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASSa56665e291a8",
+          "top": 0.84,
+          "runnerUp": 0.06,
+          "margin": 0.78,
+          "unknown": 0.06,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS4cd027da76b1": 0.04,
+            "ASSa56665e291a8": 0.84,
+            "ANeedsGeneration": 0.06,
+            "unknown": 0.06
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE30af850a6ea8",
+          "top": 0.8099999999999999,
+          "runnerUp": 0.09,
+          "margin": 0.72,
+          "unknown": 0.04,
+          "executed": true,
+          "oraclePasses": true,
+          "actionSuccessful": true,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AEafaed6bcb6a2": 0.09,
+            "AE30af850a6ea8": 0.8099999999999999,
+            "AE2c522bc96fb0": 0.01,
+            "AE7913130dcdd7": 0.01,
+            "ANeedsGeneration": 0.04,
+            "unknown": 0.04
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Verify",
+          "selected": "AVerify",
+          "top": 0.6,
+          "runnerUp": 0.22,
+          "margin": 0.38,
+          "unknown": 0.18,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AVerify": 0.6,
+            "ANeedsGeneration": 0.22,
+            "unknown": 0.18
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Stop",
+          "selected": "ASuccess",
+          "top": 0.93,
+          "runnerUp": 0.06,
+          "margin": 0.8700000000000001,
+          "unknown": 0.01,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASuccess": 0.93,
+            "ANeedsGeneration": 0.06,
+            "unknown": 0.01
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "InsertArgument",
+            "from": "",
+            "to": ", end",
+            "description": "Insert existing compatible argument end at position 1"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 4
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 116
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 98
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 109
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2264,
+        "jevInferenceMs": 1202,
+        "deterministicMs": 690,
+        "verificationMs": 323,
+        "solverWallMs": 2217
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 6,
+        "jevHeads": 42,
+        "jevInputTokens": 7117,
+        "jevOutputTokens": 1163,
+        "jevLatencyMs": 1202,
+        "reportedCost": null,
+        "deterministicMs": 1013,
+        "phaseTransitions": 4,
+        "candidatesBefore": 13,
+        "candidatesAfter": 10,
+        "candidatesNarrowed": 10,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 0,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2217,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "InsertArgument": 1,
+          "VerifyAffectedRegion": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277425,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 6,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 6,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.9,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.06,
+              "Repair": 0.92,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.3,
+            "probabilities": {
+              "File": 0.14,
+              "Tests": 0.38,
+              "References": 0,
+              "Symbol": 0.06,
+              "Config": 0,
+              "Unknown": 0.42
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF3",
+            "confidence": 0.77,
+            "probabilities": {
+              "AFF1": 0.07,
+              "AFF3": 0.82,
+              "ANeedsGeneration": 0.07,
+              "unknown": 0.04
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.33
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.56
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.32
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASSa56665e291a8",
+            "confidence": 0.79,
+            "probabilities": {
+              "ASS4cd027da76b1": 0.04,
+              "ASSa56665e291a8": 0.84,
+              "ANeedsGeneration": 0.06,
+              "unknown": 0.06
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.85
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.5
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.59
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.22
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.28
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE30af850a6ea8",
+            "confidence": 0.78,
+            "probabilities": {
+              "AEafaed6bcb6a2": 0.09,
+              "AE30af850a6ea8": 0.8099999999999999,
+              "AE2c522bc96fb0": 0.01,
+              "AE7913130dcdd7": 0.01,
+              "ANeedsGeneration": 0.04,
+              "unknown": 0.04
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.84
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.66
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.2
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.18
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AVerify",
+            "confidence": 0.41,
+            "probabilities": {
+              "AVerify": 0.6,
+              "ANeedsGeneration": 0.22,
+              "unknown": 0.18
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.53
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.39
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.54
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.66
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.32
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.4
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASuccess",
+            "confidence": 0.88,
+            "probabilities": {
+              "ASuccess": 0.93,
+              "ANeedsGeneration": 0.06,
+              "unknown": 0.01
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.4
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.4
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.25
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "caee3477e612d8d3a1b6ef393258623aca3625a818d0014195e0319c8b7a6595",
+        "oracleHash": "fb7110f450c2f0ae21ebf5176e66c044673a3ac4ae2d8ad8148dd804f795e6d2",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:53.325Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 6,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-002/runs/random-42-1b8dc9cb",
+      "challengeId": "instance-002",
+      "policy": "random",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 6,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 4,
+      "totalWorkspaceLegalEdits": 9,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 2,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy1.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy1.ts",
+          "symbol": "semanticMargin1",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "policy",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of policy"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "probability",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "/",
+            "description": "Replace numeric binary operator - with /; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "span",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "InsertArgument",
+            "from": "",
+            "to": ", margin",
+            "description": "Insert existing compatible argument margin at position 1"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "InsertArgument",
+            "from": "",
+            "to": ", end",
+            "description": "Insert existing compatible argument end at position 1"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 3
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 87
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 128
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 81
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 121
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 129
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 130
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 116
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 117
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 115
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2264,
+        "jevInferenceMs": 0,
+        "deterministicMs": 1589,
+        "verificationMs": 1127,
+        "solverWallMs": 2718
+      },
+      "metrics": {
+        "steps": 25,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 2716,
+        "phaseTransitions": 25,
+        "candidatesBefore": 60,
+        "candidatesAfter": 43,
+        "candidatesNarrowed": 43,
+        "reads": 5,
+        "searchExpansions": 2,
+        "transformAttempts": 7,
+        "mutations": 7,
+        "reverts": 6,
+        "checks": 10,
+        "failures": 7,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2718,
+        "actionFamilies": {
+          "InspectFile": 2,
+          "InspectSymbol": 3,
+          "ApplyEdit": 7,
+          "ReplaceVariable": 2,
+          "VerifyAffectedRegion": 7,
+          "Revert": 6,
+          "ReplaceOperator": 3,
+          "InsertArgument": 2,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 277695,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "caee3477e612d8d3a1b6ef393258623aca3625a818d0014195e0319c8b7a6595",
+        "oracleHash": "fb7110f450c2f0ae21ebf5176e66c044673a3ac4ae2d8ad8148dd804f795e6d2",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:53.325Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 2,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-003/runs/heuristic-42-1b8dc9cb",
+      "challengeId": "instance-003",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "end",
+            "description": "Use existing same-type in-scope value end instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "/",
+            "description": "Replace numeric binary operator + with /; expression end + start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression end + start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 3
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 134
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 127
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 101
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 131
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 144
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1694,
+        "jevInferenceMs": 0,
+        "deterministicMs": 539,
+        "verificationMs": 637,
+        "solverWallMs": 1181
+      },
+      "metrics": {
+        "steps": 10,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1176,
+        "phaseTransitions": 10,
+        "candidatesBefore": 24,
+        "candidatesAfter": 21,
+        "candidatesNarrowed": 21,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 3,
+        "mutations": 3,
+        "reverts": 2,
+        "checks": 5,
+        "failures": 3,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1181,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 3,
+          "ReplaceVariable": 1,
+          "VerifyAffectedRegion": 3,
+          "Revert": 2,
+          "ReplaceOperator": 2,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 278736,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "58734a482144aa6c4a824af16ab65698b001297aae93ab19122fb222eefc9d8f",
+        "oracleHash": "1823723517b0d6b4bf66e4014d0a3df75eabde472539953a77a1e8e7d2d56e66",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:55.020Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-003/runs/jev-42-1b8dc9cb",
+      "challengeId": "instance-003",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.91,
+          "runnerUp": 0.07,
+          "margin": 0.8400000000000001,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.07,
+            "Repair": 0.91,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.41,
+          "runnerUp": 0.35,
+          "margin": 0.06,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.17,
+            "Tests": 0.35,
+            "References": 0,
+            "Symbol": 0.07,
+            "Config": 0,
+            "Unknown": 0.41
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF3",
+          "top": 0.7,
+          "runnerUp": 0.15,
+          "margin": 0.5499999999999999,
+          "unknown": 0.06,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF1": 0.15,
+            "AFF3": 0.7,
+            "ANeedsGeneration": 0.09,
+            "unknown": 0.06
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS4cd027da76b1",
+          "top": 0.51,
+          "runnerUp": 0.28,
+          "margin": 0.22999999999999998,
+          "unknown": 0.21,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS4cd027da76b1": 0.51,
+            "ANeedsGeneration": 0.28,
+            "unknown": 0.21
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE6241a6fd12db",
+          "top": 0.96,
+          "runnerUp": 0.03,
+          "margin": 0.9299999999999999,
+          "unknown": 0,
+          "executed": true,
+          "oraclePasses": true,
+          "actionSuccessful": true,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AE6241a6fd12db": 0.96,
+            "AE6502710be618": 0,
+            "AE2363c36d8648": 0,
+            "AE96dbe5ce0449": 0.03,
+            "AEa454b75fdf38": 0.01,
+            "ANeedsGeneration": 0,
+            "unknown": 0
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Verify",
+          "selected": "AVerify",
+          "top": 0.7,
+          "runnerUp": 0.17,
+          "margin": 0.5299999999999999,
+          "unknown": 0.13,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AVerify": 0.7,
+            "ANeedsGeneration": 0.17,
+            "unknown": 0.13
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Stop",
+          "selected": "ASuccess",
+          "top": 0.98,
+          "runnerUp": 0.02,
+          "margin": 0.96,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASuccess": 0.98,
+            "ANeedsGeneration": 0.02,
+            "unknown": 0
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression end + start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 5
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 122
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 92
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1694,
+        "jevInferenceMs": 1067,
+        "deterministicMs": 445,
+        "verificationMs": 317,
+        "solverWallMs": 1831
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 6,
+        "jevHeads": 42,
+        "jevInputTokens": 6982,
+        "jevOutputTokens": 1165,
+        "jevLatencyMs": 1067,
+        "reportedCost": null,
+        "deterministicMs": 762,
+        "phaseTransitions": 4,
+        "candidatesBefore": 10,
+        "candidatesAfter": 10,
+        "candidatesNarrowed": 10,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 0,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1831,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "ReplaceOperator": 1,
+          "VerifyAffectedRegion": 1,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 278236,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 6,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 6,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.89,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.07,
+              "Repair": 0.91,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.3,
+            "probabilities": {
+              "File": 0.17,
+              "Tests": 0.35,
+              "References": 0,
+              "Symbol": 0.07,
+              "Config": 0,
+              "Unknown": 0.41
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF3",
+            "confidence": 0.59,
+            "probabilities": {
+              "AFF1": 0.15,
+              "AFF3": 0.7,
+              "ANeedsGeneration": 0.09,
+              "unknown": 0.06
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.27
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.56
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.29
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS4cd027da76b1",
+            "confidence": 0.27,
+            "probabilities": {
+              "ASS4cd027da76b1": 0.51,
+              "ANeedsGeneration": 0.28,
+              "unknown": 0.21
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.77
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.37
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.61
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.24
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.28
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE6241a6fd12db",
+            "confidence": 0.95,
+            "probabilities": {
+              "AE6241a6fd12db": 0.96,
+              "AE6502710be618": 0,
+              "AE2363c36d8648": 0,
+              "AE96dbe5ce0449": 0.03,
+              "AEa454b75fdf38": 0.01,
+              "ANeedsGeneration": 0,
+              "unknown": 0
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.72
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.26
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.25
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.13
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AVerify",
+            "confidence": 0.55,
+            "probabilities": {
+              "AVerify": 0.7,
+              "ANeedsGeneration": 0.17,
+              "unknown": 0.13
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.61
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.39
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.66
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.35
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.24
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASuccess",
+            "confidence": 0.97,
+            "probabilities": {
+              "ASuccess": 0.98,
+              "ANeedsGeneration": 0.02,
+              "unknown": 0
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.69
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.33
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.73
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.13
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "58734a482144aa6c4a824af16ab65698b001297aae93ab19122fb222eefc9d8f",
+        "oracleHash": "1823723517b0d6b4bf66e4014d0a3df75eabde472539953a77a1e8e7d2d56e66",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:55.020Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 6,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-003/runs/random-42-1b8dc9cb",
+      "challengeId": "instance-003",
+      "policy": "random",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 4,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 2,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy1.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy1.ts",
+          "symbol": "semanticMargin1",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "policy",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of policy"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "probability",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "/",
+            "description": "Replace numeric binary operator - with /; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "end",
+            "to": "start",
+            "description": "Use existing same-type in-scope value start instead of end"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "+",
+            "to": "-",
+            "description": "Replace numeric binary operator + with -; expression end + start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 4
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 81
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 101
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 81
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 129
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 105
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 82
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 102
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 116
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 82
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 1694,
+        "jevInferenceMs": 0,
+        "deterministicMs": 752,
+        "verificationMs": 879,
+        "solverWallMs": 1631
+      },
+      "metrics": {
+        "steps": 24,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1631,
+        "phaseTransitions": 24,
+        "candidatesBefore": 54,
+        "candidatesAfter": 43,
+        "candidatesNarrowed": 43,
+        "reads": 4,
+        "searchExpansions": 2,
+        "transformAttempts": 7,
+        "mutations": 7,
+        "reverts": 6,
+        "checks": 9,
+        "failures": 7,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1631,
+        "actionFamilies": {
+          "InspectFile": 2,
+          "InspectSymbol": 2,
+          "ApplyEdit": 7,
+          "ReplaceVariable": 3,
+          "VerifyAffectedRegion": 7,
+          "Revert": 6,
+          "ReplaceOperator": 4,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 278424,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "58734a482144aa6c4a824af16ab65698b001297aae93ab19122fb222eefc9d8f",
+        "oracleHash": "1823723517b0d6b4bf66e4014d0a3df75eabde472539953a77a1e8e7d2d56e66",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:55.020Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 2,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-004/runs/heuristic-42-1b8dc9cb",
+      "challengeId": "instance-004",
+      "policy": "heuristic",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "end",
+            "description": "Use existing same-type in-scope value end instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "margin",
+            "description": "Use existing same-type in-scope value margin instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 3
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 108
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 121
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 106
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 106
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 85
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 102
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2045,
+        "jevInferenceMs": 0,
+        "deterministicMs": 492,
+        "verificationMs": 731,
+        "solverWallMs": 1225
+      },
+      "metrics": {
+        "steps": 10,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 1223,
+        "phaseTransitions": 10,
+        "candidatesBefore": 24,
+        "candidatesAfter": 21,
+        "candidatesNarrowed": 21,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 3,
+        "mutations": 3,
+        "reverts": 2,
+        "checks": 7,
+        "failures": 3,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 1225,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 3,
+          "ReplaceVariable": 3,
+          "VerifyAffectedRegion": 3,
+          "Revert": 2,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 279749,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "69f91e287f790cef263fd2cfe5d55f99a61040bc63d5e5d00488f0af0cbcf456",
+        "oracleHash": "822c65448f573acc72f29b5e38242f17feecd9e8487b2759e0c9367518296089",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:57.066Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 0,
+      "cleanupReverts": 1,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-004/runs/jev-42-1b8dc9cb",
+      "challengeId": "instance-004",
+      "policy": "jev",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "terminalReason": "Exact checks green but semantic goal support remains uncertain",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 1,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": true,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [],
+      "correctEditSelected": true,
+      "exact": {
+        "local": false,
+        "broad": false
+      },
+      "solved": false,
+      "terminal": "NeedsGeneration",
+      "failure": "PrematureNeedsGeneration",
+      "choices": [
+        {
+          "head": "taskKind",
+          "phase": "Task",
+          "selected": "Repair",
+          "top": 0.94,
+          "runnerUp": 0.04,
+          "margin": 0.8999999999999999,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "Locate": 0,
+            "Inspect": 0.04,
+            "Repair": 0.94,
+            "Verify": 0.01,
+            "Unsupported": 0.01
+          }
+        },
+        {
+          "head": "relation",
+          "phase": "Task",
+          "selected": "Unknown",
+          "top": 0.44,
+          "runnerUp": 0.33,
+          "margin": 0.10999999999999999,
+          "unknown": 0,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "File": 0.17,
+            "Tests": 0.33,
+            "References": 0,
+            "Symbol": 0.06,
+            "Config": 0,
+            "Unknown": 0.44
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Localize",
+          "selected": "AFF3",
+          "top": 0.76,
+          "runnerUp": 0.09,
+          "margin": 0.67,
+          "unknown": 0.06,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AFF1": 0.09,
+            "AFF3": 0.76,
+            "ANeedsGeneration": 0.09,
+            "unknown": 0.06
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Inspect",
+          "selected": "ASS4cd027da76b1",
+          "top": 0.57,
+          "runnerUp": 0.25,
+          "margin": 0.31999999999999995,
+          "unknown": 0.18,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASS4cd027da76b1": 0.57,
+            "ANeedsGeneration": 0.25,
+            "unknown": 0.18
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Transform",
+          "selected": "AE569543bc2d3f",
+          "top": 0.68,
+          "runnerUp": 0.29,
+          "margin": 0.39000000000000007,
+          "unknown": 0,
+          "executed": true,
+          "oraclePasses": true,
+          "actionSuccessful": true,
+          "correctSurvivedNarrowing": true,
+          "probabilities": {
+            "AEc639ebdb1795": 0.29,
+            "AE569543bc2d3f": 0.68,
+            "AE648c13d9f8ae": 0.01,
+            "AE3644ea1e2fbf": 0,
+            "AEf5d84e3234f9": 0.01,
+            "ANeedsGeneration": 0.01,
+            "unknown": 0
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Verify",
+          "selected": "AVerify",
+          "top": 0.65,
+          "runnerUp": 0.2,
+          "margin": 0.45,
+          "unknown": 0.15,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "AVerify": 0.65,
+            "ANeedsGeneration": 0.2,
+            "unknown": 0.15
+          }
+        },
+        {
+          "head": "bestAction",
+          "phase": "Stop",
+          "selected": "ASuccess",
+          "top": 0.88,
+          "runnerUp": 0.1,
+          "margin": 0.78,
+          "unknown": 0.02,
+          "executed": null,
+          "oraclePasses": null,
+          "actionSuccessful": null,
+          "correctSurvivedNarrowing": null,
+          "probabilities": {
+            "ASuccess": 0.88,
+            "ANeedsGeneration": 0.1,
+            "unknown": 0.02
+          }
+        }
+      ],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "margin",
+            "description": "Use existing same-type in-scope value margin instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 159
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 106
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 116
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2045,
+        "jevInferenceMs": 1222,
+        "deterministicMs": 517,
+        "verificationMs": 381,
+        "solverWallMs": 2123
+      },
+      "metrics": {
+        "steps": 4,
+        "jevEvaluations": 6,
+        "jevHeads": 42,
+        "jevInputTokens": 7144,
+        "jevOutputTokens": 1166,
+        "jevLatencyMs": 1222,
+        "reportedCost": null,
+        "deterministicMs": 898,
+        "phaseTransitions": 4,
+        "candidatesBefore": 10,
+        "candidatesAfter": 10,
+        "candidatesNarrowed": 10,
+        "reads": 2,
+        "searchExpansions": 1,
+        "transformAttempts": 1,
+        "mutations": 1,
+        "reverts": 1,
+        "checks": 3,
+        "failures": 1,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2123,
+        "actionFamilies": {
+          "InspectFile": 1,
+          "InspectSymbol": 1,
+          "ApplyEdit": 1,
+          "ReplaceVariable": 1,
+          "VerifyAffectedRegion": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 278984,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 6,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 6,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [
+        {
+          "taskKind": {
+            "type": "choice",
+            "choice": "Repair",
+            "confidence": 0.92,
+            "probabilities": {
+              "Locate": 0,
+              "Inspect": 0.04,
+              "Repair": 0.94,
+              "Verify": 0.01,
+              "Unsupported": 0.01
+            }
+          },
+          "relation": {
+            "type": "choice",
+            "choice": "Unknown",
+            "confidence": 0.32,
+            "probabilities": {
+              "File": 0.17,
+              "Tests": 0.33,
+              "References": 0,
+              "Symbol": 0.06,
+              "Config": 0,
+              "Unknown": 0.44
+            }
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AFF3",
+            "confidence": 0.67,
+            "probabilities": {
+              "AFF1": 0.09,
+              "AFF3": 0.76,
+              "ANeedsGeneration": 0.09,
+              "unknown": 0.06
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.23
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.3
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.53
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.33
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASS4cd027da76b1",
+            "confidence": 0.36,
+            "probabilities": {
+              "ASS4cd027da76b1": 0.57,
+              "ANeedsGeneration": 0.25,
+              "unknown": 0.18
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.67
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.36
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.33
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.64
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.47
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AE569543bc2d3f",
+            "confidence": 0.63,
+            "probabilities": {
+              "AEc639ebdb1795": 0.29,
+              "AE569543bc2d3f": 0.68,
+              "AE648c13d9f8ae": 0.01,
+              "AE3644ea1e2fbf": 0,
+              "AEf5d84e3234f9": 0.01,
+              "ANeedsGeneration": 0.01,
+              "unknown": 0
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.87
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.72
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.29
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.62
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.24
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.14
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "AVerify",
+            "confidence": 0.48,
+            "probabilities": {
+              "AVerify": 0.65,
+              "ANeedsGeneration": 0.2,
+              "unknown": 0.15
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.57
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.37
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.54
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.37
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.5
+          }
+        },
+        {
+          "bestAction": {
+            "type": "choice",
+            "choice": "ASuccess",
+            "confidence": 0.82,
+            "probabilities": {
+              "ASuccess": 0.88,
+              "ANeedsGeneration": 0.1,
+              "unknown": 0.02
+            }
+          },
+          "evidenceSufficient": {
+            "type": "noul",
+            "noul": 0.53
+          },
+          "likelyProgress": {
+            "type": "noul",
+            "noul": 0.31
+          },
+          "likelyRegression": {
+            "type": "noul",
+            "noul": 0.35
+          },
+          "needVerification": {
+            "type": "noul",
+            "noul": 0.38
+          },
+          "likelyLooping": {
+            "type": "noul",
+            "noul": 0.2
+          },
+          "goalSatisfied": {
+            "type": "noul",
+            "noul": 0.59
+          },
+          "unknownActionRequired": {
+            "type": "noul",
+            "noul": 0.28
+          }
+        }
+      ],
+      "reproducibility": {
+        "workspaceHash": "69f91e287f790cef263fd2cfe5d55f99a61040bc63d5e5d00488f0af0cbcf456",
+        "oracleHash": "822c65448f573acc72f29b5e38242f17feecd9e8487b2759e0c9367518296089",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:57.066Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    },
+    {
+      "recoveryReverts": 8,
+      "cleanupReverts": 0,
+      "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-004/runs/random-42-1b8dc9cb",
+      "challengeId": "instance-004",
+      "policy": "random",
+      "task": "Repair the current behavior regression and verify it with the existing checks.",
+      "terminalPhase": "Stop",
+      "candidateRecall": true,
+      "retrievalRetainedTarget": true,
+      "regionSelected": null,
+      "difficulty": {
+        "localizationDistractors": 1,
+        "symbolDistractors": 0,
+        "actionBranching": 5,
+        "requiredSuccessfulMutations": 1,
+        "misleadingEvidence": true,
+        "broadVerificationTrap": true
+      },
+      "grammar": "J2",
+      "admittedLegalEdits": 5,
+      "totalWorkspaceLegalEdits": 10,
+      "taskClassificationCorrect": true,
+      "fileSelected": true,
+      "symbolSelected": true,
+      "filesInspected": 2,
+      "correctGenerated": true,
+      "correctSurvivedNarrowing": true,
+      "firstEditSuccessful": false,
+      "legalFinalArtifact": true,
+      "changedVisibleFiles": [
+        "subject.ts"
+      ],
+      "correctEditSelected": true,
+      "exact": {
+        "local": true,
+        "broad": true
+      },
+      "solved": true,
+      "terminal": "Success",
+      "failure": null,
+      "choices": [],
+      "trajectory": [
+        {
+          "action": "InspectFile",
+          "file": "policy1.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "policy1.ts",
+          "symbol": "semanticMargin1",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "policy",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of policy"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "probability",
+            "to": "policy",
+            "description": "Use existing same-type in-scope value policy instead of probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "*",
+            "description": "Replace numeric binary operator - with *; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "/",
+            "description": "Replace numeric binary operator - with /; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 2
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "policy1.ts",
+          "edits": 1,
+          "selectedEdit": {
+            "family": "ReplaceOperator",
+            "from": "-",
+            "to": "+",
+            "description": "Replace numeric binary operator - with +; expression policy - probability"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "Revert",
+          "file": "policy1.ts",
+          "edits": 1
+        },
+        {
+          "action": "InspectFile",
+          "file": "subject.ts",
+          "edits": 0
+        },
+        {
+          "action": "InspectSymbol",
+          "file": "subject.ts",
+          "symbol": "compute",
+          "edits": 0
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 5,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "probability",
+            "description": "Use existing same-type in-scope value probability instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 5
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 4,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "end",
+            "description": "Use existing same-type in-scope value end instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 4
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 3,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "threshold",
+            "description": "Use existing same-type in-scope value threshold instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "Revert",
+          "file": "subject.ts",
+          "edits": 3
+        },
+        {
+          "action": "ApplyEdit",
+          "file": "subject.ts",
+          "edits": 2,
+          "selectedEdit": {
+            "family": "ReplaceVariable",
+            "from": "start",
+            "to": "margin",
+            "description": "Use existing same-type in-scope value margin instead of start"
+          }
+        },
+        {
+          "action": "VerifyAffectedRegion",
+          "file": "subject.ts",
+          "edits": 2
+        },
+        {
+          "action": "StopSuccess",
+          "file": "subject.ts",
+          "edits": 2
+        }
+      ],
+      "checks": [
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 123
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 110
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 113
+        },
+        {
+          "localOrBroad": "local",
+          "passed": false,
+          "ms": 103
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 136
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 109
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 82
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 120
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 106
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": false,
+          "ms": 80
+        },
+        {
+          "localOrBroad": "local",
+          "passed": true,
+          "ms": 104
+        },
+        {
+          "localOrBroad": "broad",
+          "passed": true,
+          "ms": 110
+        }
+      ],
+      "timings": {
+        "generationMs": 0,
+        "admissionMs": 2045,
+        "jevInferenceMs": 0,
+        "deterministicMs": 912,
+        "verificationMs": 1502,
+        "solverWallMs": 2415
+      },
+      "metrics": {
+        "steps": 30,
+        "jevEvaluations": 0,
+        "jevHeads": 0,
+        "jevInputTokens": 0,
+        "jevOutputTokens": 0,
+        "jevLatencyMs": 0,
+        "reportedCost": null,
+        "deterministicMs": 2414,
+        "phaseTransitions": 30,
+        "candidatesBefore": 68,
+        "candidatesAfter": 52,
+        "candidatesNarrowed": 52,
+        "reads": 4,
+        "searchExpansions": 2,
+        "transformAttempts": 9,
+        "mutations": 9,
+        "reverts": 8,
+        "checks": 14,
+        "failures": 9,
+        "repeatedStates": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "wallMs": 2415,
+        "actionFamilies": {
+          "InspectFile": 2,
+          "InspectSymbol": 2,
+          "ApplyEdit": 9,
+          "ReplaceVariable": 6,
+          "VerifyAffectedRegion": 9,
+          "Revert": 8,
+          "ReplaceOperator": 3,
+          "StopSuccess": 1
+        },
+        "narrowingStages": 0
+      },
+      "isolation": {
+        "freshPid": 279358,
+        "mode": "jev",
+        "allowedProvider": "JevClient.evaluate only",
+        "jevRequests": 0,
+        "codexCalls": 0,
+        "workerCalls": 0,
+        "generativeRuntimeLoaded": false,
+        "oracleSupplied": false,
+        "transportAudit": {
+          "classifierRequests": 0,
+          "deniedRequests": 0
+        }
+      },
+      "distributions": [],
+      "reproducibility": {
+        "workspaceHash": "69f91e287f790cef263fd2cfe5d55f99a61040bc63d5e5d00488f0af0cbcf456",
+        "oracleHash": "822c65448f573acc72f29b5e38242f17feecd9e8487b2759e0c9367518296089",
+        "seed": 42,
+        "budgets": {
+          "maxSteps": 32,
+          "maxTransforms": 10,
+          "maxTests": 24,
+          "maxEvaluations": 40,
+          "maxWallMs": 120000
+        },
+        "generator": {
+          "model": null,
+          "provider": null,
+          "timestamp": "2026-10-07T00:11:57.066Z"
+        },
+        "solverSourceHash": "0d46dbe83c60d5b832202a1734365d8895f93c06eb7cd409310d03ecd639ad90",
+        "playgroundRunnerHash": "9b62ea5ff7d1de31a725ab7fd0b792b4669955293923786fc5834c929bef116c"
+      }
+    }
+  ]
+}

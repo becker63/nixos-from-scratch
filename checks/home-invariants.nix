@@ -69,11 +69,6 @@ let
       "neovim-unwrapped"
       "nvim"
     ];
-    pi = [
-      "pi"
-      "pi-agent"
-      "pi-coding-agent"
-    ];
     waybar = [ "waybar" ];
     wofi = [ "wofi" ];
   };
@@ -103,7 +98,36 @@ let
 
   bashInit = getHome [ "programs" "bash" "initExtra" ] "";
 
+  piConfig = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (getHome [ "home" "file" ".pi/agent/fabric.json" "text" ] "{}")
+  );
+
   checks = [
+    {
+      name = "Upstream Pi runtime installed once";
+      pass = builtins.length (packagesNamed "pi-runtime") == 1;
+      expected = 1;
+      actual = builtins.length (packagesNamed "pi-runtime");
+    }
+    {
+      name = "Pi OAuth remains mutable and unmanaged";
+      pass = !(builtins.hasAttr ".pi/agent/auth.json" homeConfig.home.file);
+      expected = false;
+      actual = builtins.hasAttr ".pi/agent/auth.json" homeConfig.home.file;
+    }
+    {
+      name = "Pi uses full-code QuickJS TypeScript and pinned native Jev";
+      pass =
+        (piConfig.fullCodeMode or false)
+        && (piConfig.executor.kernel or "") == "typescript"
+        && (piConfig.executor.runtime or "") == "quickjs"
+        && (piConfig.jev.model or "") == "jev-1.13.0";
+      expected = "full-code / typescript / quickjs / jev-1.13.0";
+      actual = "${piConfig.executor.kernel or "missing"} / ${piConfig.executor.runtime or "missing"} / ${
+        piConfig.jev.model or "missing"
+      }";
+    }
+
     {
       name = "Home Manager username";
       pass = getHome [ "home" "username" ] null == "becker";

@@ -1,0 +1,293 @@
+{
+  "recoveryReverts": 0,
+  "cleanupReverts": 0,
+  "runPath": "/home/becker/nixos-from-scratch/.tmp/jev-playground/recovery-v2/instance-001/runs/jev-42-1b8dc9cb-0",
+  "challengeId": "instance-001",
+  "policy": "jev",
+  "task": "Repair the current behavior regression and verify it with the existing checks.",
+  "terminalPhase": "Stop",
+  "candidateRecall": true,
+  "retrievalRetainedTarget": true,
+  "regionSelected": null,
+  "difficulty": {
+    "localizationDistractors": 1,
+    "symbolDistractors": 0,
+    "actionBranching": 5,
+    "requiredSuccessfulMutations": 1,
+    "misleadingEvidence": true,
+    "broadVerificationTrap": true
+  },
+  "grammar": "J3",
+  "admittedLegalEdits": 6,
+  "totalWorkspaceLegalEdits": 31,
+  "taskClassificationCorrect": true,
+  "fileSelected": true,
+  "symbolSelected": true,
+  "filesInspected": 1,
+  "correctGenerated": true,
+  "correctSurvivedNarrowing": true,
+  "firstEditSuccessful": true,
+  "legalFinalArtifact": true,
+  "changedVisibleFiles": [
+    "subject.ts"
+  ],
+  "correctEditSelected": true,
+  "exact": {
+    "local": true,
+    "broad": true
+  },
+  "solved": true,
+  "terminal": "Success",
+  "failure": null,
+  "choices": [
+    {
+      "head": "taskKind",
+      "phase": "Task",
+      "selected": "Repair",
+      "top": 0.91,
+      "runnerUp": 0.07,
+      "margin": 0.8400000000000001,
+      "unknown": 0,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "Locate": 0,
+        "Inspect": 0.07,
+        "Repair": 0.91,
+        "Verify": 0.01,
+        "Unsupported": 0.01
+      }
+    },
+    {
+      "head": "relation",
+      "phase": "Task",
+      "selected": "Unknown",
+      "top": 0.48,
+      "runnerUp": 0.27,
+      "margin": 0.20999999999999996,
+      "unknown": 0,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "File": 0.19,
+        "Tests": 0.27,
+        "References": 0,
+        "Symbol": 0.06,
+        "Config": 0,
+        "Unknown": 0.48
+      }
+    },
+    {
+      "head": "bestAction",
+      "phase": "Localize",
+      "selected": "AFF3",
+      "top": 0.88,
+      "runnerUp": 0.06,
+      "margin": 0.8200000000000001,
+      "unknown": 0.03,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "AFF1": 0.03,
+        "AFF3": 0.88,
+        "ANeedsGeneration": 0.06,
+        "unknown": 0.03
+      }
+    },
+    {
+      "head": "bestAction",
+      "phase": "Inspect",
+      "selected": "ASS2d0b61717704",
+      "top": 0.67,
+      "runnerUp": 0.16,
+      "margin": 0.51,
+      "unknown": 0.03,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "ASS4cd027da76b1": 0.02,
+        "ASS12e2b7c2785f": 0.16,
+        "ASS98aff7601c66": 0.06,
+        "ASSd93eb047f570": 0,
+        "ASS2d0b61717704": 0.67,
+        "ANeedsGeneration": 0.06,
+        "unknown": 0.03
+      }
+    },
+    {
+      "head": "bestAction",
+      "phase": "Transform",
+      "selected": "AE62c9422029ae",
+      "top": 0.55,
+      "runnerUp": 0.43,
+      "margin": 0.12000000000000005,
+      "unknown": 0,
+      "executed": true,
+      "oraclePasses": true,
+      "actionSuccessful": true,
+      "correctSurvivedNarrowing": true,
+      "probabilities": {
+        "AEfdd97e74eb3a": 0.43,
+        "AE62c9422029ae": 0.55,
+        "AE879889117d31": 0,
+        "AE9e73f88a3b3c": 0.01,
+        "AE258fa1a7e13d": 0.01,
+        "AE241180994a09": 0,
+        "ANeedsGeneration": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "head": "bestAction",
+      "phase": "Verify",
+      "selected": "AVerify",
+      "top": 0.66,
+      "runnerUp": 0.18,
+      "margin": 0.48000000000000004,
+      "unknown": 0.16,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "AVerify": 0.66,
+        "ANeedsGeneration": 0.18,
+        "unknown": 0.16
+      }
+    },
+    {
+      "head": "bestAction",
+      "phase": "Stop",
+      "selected": "ASuccess",
+      "top": 0.93,
+      "runnerUp": 0.06,
+      "margin": 0.8700000000000001,
+      "unknown": 0.01,
+      "executed": null,
+      "oraclePasses": null,
+      "actionSuccessful": null,
+      "correctSurvivedNarrowing": null,
+      "probabilities": {
+        "ASuccess": 0.93,
+        "ANeedsGeneration": 0.06,
+        "unknown": 0.01
+      }
+    }
+  ],
+  "trajectory": [
+    {
+      "action": "InspectFile",
+      "file": "subject.ts",
+      "edits": 0
+    },
+    {
+      "action": "InspectSymbol",
+      "file": "subject.ts",
+      "symbol": "compute",
+      "edits": 0
+    },
+    {
+      "action": "ApplyEdit",
+      "file": "subject.ts",
+      "edits": 6,
+      "selectedEdit": {
+        "family": "ReplaceCallable",
+        "from": "add",
+        "to": "distance",
+        "description": "Call existing signature-compatible helper distance instead of add"
+      }
+    },
+    {
+      "action": "VerifyAffectedRegion",
+      "file": "subject.ts",
+      "edits": 6
+    },
+    {
+      "action": "StopSuccess",
+      "file": "subject.ts",
+      "edits": 6
+    }
+  ],
+  "checks": [
+    {
+      "localOrBroad": "local",
+      "passed": false,
+      "ms": 88
+    },
+    {
+      "localOrBroad": "local",
+      "passed": true,
+      "ms": 61
+    },
+    {
+      "localOrBroad": "broad",
+      "passed": true,
+      "ms": 67
+    }
+  ],
+  "timings": {
+    "generationMs": 0,
+    "admissionMs": 4356,
+    "jevInferenceMs": 1409,
+    "deterministicMs": 465,
+    "verificationMs": 216,
+    "solverWallMs": 2093
+  },
+  "metrics": {
+    "steps": 4,
+    "jevEvaluations": 6,
+    "jevHeads": 42,
+    "jevInputTokens": 7707,
+    "jevOutputTokens": 1262,
+    "jevLatencyMs": 1409,
+    "reportedCost": null,
+    "deterministicMs": 681,
+    "phaseTransitions": 4,
+    "candidatesBefore": 15,
+    "candidatesAfter": 15,
+    "candidatesNarrowed": 15,
+    "reads": 2,
+    "searchExpansions": 1,
+    "transformAttempts": 1,
+    "mutations": 1,
+    "reverts": 0,
+    "checks": 3,
+    "failures": 1,
+    "repeatedStates": 0,
+    "codexCalls": 0,
+    "workerCalls": 0,
+    "wallMs": 2093,
+    "actionFamilies": {
+      "InspectFile": 1,
+      "InspectSymbol": 1,
+      "ApplyEdit": 1,
+      "ReplaceCallable": 1,
+      "VerifyAffectedRegion": 1,
+      "StopSuccess": 1
+    },
+    "narrowingStages": 0
+  },
+  "isolation": {
+    "freshPid": 288254,
+    "mode": "jev",
+    "allowedProvider": "JevClient.evaluate only",
+    "jevRequests": 6,
+    "codexCalls": 0,
+    "workerCalls": 0,
+    "generativeRuntimeLoaded": false,
+    "oracleSupplied": false,
+    "checksRestricted": true,
+    "transportAudit": {
+      "classifierRequests": 6,
+      "deniedRequests": 0
+    }
+  }
+}

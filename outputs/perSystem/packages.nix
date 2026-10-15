@@ -18,11 +18,13 @@ let
   # Portable set: pure Python/shell tooling that builds from plain nixpkgs
   # on every system listed in flake.nix.
   portable = {
-    research-textual = pkgs.callPackage ../../packages/research-workbench/python { };
-    research-ratatui = pkgs.callPackage ../../packages/research-workbench/rust { };
-    research-graph-app = pkgs.callPackage ../../packages/research-workbench/mcp-app { };
-    morph-lab = pkgs.callPackage ../../packages/morph-lab { };
+    dsh = pkgs.callPackage ../../packages/dsh { };
+    tunnel-client = pkgs.callPackage ../../packages/tunnel-client { };
+    pi-runtime = pkgs.callPackage ../../packages/pi-runtime { };
     jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
+    buildbuddy-history = pkgs.callPackage ../../packages/buildbuddy-history { };
+    jev-tunnel = pkgs.callPackage ../../packages/jev-mcp/tunnel.nix { };
+    jev-native-mcp = pkgs.callPackage ../../packages/jev-mcp/native.nix { };
     factory-config = pkgs.callPackage ../../packages/factory-config { };
     # The dedicated local DSH integration profile. It wraps the pinned `dsh`
     # above with its own profile home and store, so it is portable for exactly
@@ -32,6 +34,9 @@ let
     attune-dsh-integration = pkgs.callPackage ../../packages/attune-dsh-integration {
       dsh = pkgs.callPackage ../../packages/dsh { };
     };
+    research-textual = pkgs.callPackage ../../packages/research-workbench/python { };
+    research-ratatui = pkgs.callPackage ../../packages/research-workbench/rust { };
+    research-graph-app = pkgs.callPackage ../../packages/research-workbench/mcp-app { };
   }
   // lib.optionalAttrs ((inputs'.llm-agents.packages or { }) ? droid) {
     # factory-droid wraps llm-agents' droid, which is published per system
@@ -66,6 +71,9 @@ let
         };
       in
       {
+        alacritty-semantic = hostPkgs.alacritty;
+        alacritty-semantic-check = import ../../checks/alacritty-copybuffer.nix { pkgs = hostPkgs; };
+        chatgpt-desktop = hostPkgs.callPackage ../../packages/chatgpt-desktop { };
         inherit (hostPkgs)
           attune-demo-director
           buildbuddy-cli
