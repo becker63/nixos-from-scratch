@@ -20,7 +20,6 @@ let
   portable = {
     research-textual = pkgs.callPackage ../../packages/research-workbench/python { };
     research-ratatui = pkgs.callPackage ../../packages/research-workbench/rust { };
-    research-graph-app = pkgs.callPackage ../../packages/research-workbench/mcp-app { };
     jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
     factory-config = pkgs.callPackage ../../packages/factory-config { };
   }

@@ -7,6 +7,5 @@
     modules'.packages
     modules'.opencode
     modules'.factory
-    modules'.research-visualizer
   ];
 }

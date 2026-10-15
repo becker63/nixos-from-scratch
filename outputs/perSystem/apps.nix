@@ -17,14 +17,6 @@ lib.optionalAttrs (system == "aarch64-linux") {
     type = "app";
     program = "${outputs'.packages.research-textual}/bin/research-textual";
   };
-  research-graph-app = {
-    type = "app";
-    program = "${outputs'.packages.research-graph-app}/bin/research-graph-mcp";
-  };
-  research-graph-tunnel = {
-    type = "app";
-    program = "${outputs'.packages.research-graph-app}/bin/research-graph-tunnel";
-  };
   research-ratatui = {
     type = "app";
     program = "${outputs'.packages.research-ratatui}/bin/attune-ratatui-workbench";

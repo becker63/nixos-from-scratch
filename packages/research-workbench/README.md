@@ -96,41 +96,4 @@ nix develop -c research-textual --check-fixture
 nix develop -c research-textual --evaluate-routing
 nix build .#research-textual .#research-ratatui
 nix run .#research-ratatui -- --check-fixture
-nix run .#research-graph-app -- --check-fixture
 ```
-
-## Inline graph app
-
-`research-graph-app` is the MCP Apps companion for showing a chart inline in a
-ChatGPT/Codex app conversation. It accepts the same `attune.visualization.v1`
-JSON used by Textual and Ratatui, validates it, and returns a linked MCP Apps
-widget. The widget renders line, sparkline, bar, scatter, histogram, heatmap,
-and explicit-node tree charts; every view has a table fallback and visible
-provenance. The terminal Textual client remains a separate frontend: a terminal
-screen cannot be embedded as an inline app, so the companion widget uses a
-small HTML/SVG view over the shared data contract.
-
-The Home Manager configuration declares a separate
-`research-visualizer-tunnel.service`, guarded by its own local profile. No
-existing Jev or BuildBuddy tunnel is reused. After creating a dedicated Secure
-MCP Tunnel in the OpenAI platform, configure it with the owner-private runtime
-key prompt:
-
-```sh
-nix run .#research-graph-tunnel -- configure --tunnel-id tunnel_YOUR_ID
-nix run .#research-graph-tunnel -- doctor
-systemctl --user start research-visualizer-tunnel.service
-```
-
-The service definition and `research-graph-tunnel` Home Manager package become
-available after the next Home Manager activation. The `nix run` setup command
-works before that activation.
-
-Then add a custom MCP app in ChatGPT app settings using the **Tunnel**
-connection and select that tunnel. Enable the `show_graph` tool. The app tool
-registration is managed in ChatGPT; the Nix configuration supplies the
-reproducible local server and service. The existing ChatGPT/Codex login is not
-used for tunnel auth: the dedicated runtime key stays in
-`~/.config/tunnel-client/research-visualizer-secrets/` with mode `0600` and is
-never put in the Nix store. The current conversation’s Apps tool list must be
-refreshed after the custom app is connected.
