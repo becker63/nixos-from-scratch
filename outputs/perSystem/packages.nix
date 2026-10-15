@@ -18,6 +18,8 @@ let
   # Portable set: pure Python/shell tooling that builds from plain nixpkgs
   # on every system listed in flake.nix.
   portable = {
+    research-textual = pkgs.callPackage ../../packages/research-workbench/python { };
+    research-ratatui = pkgs.callPackage ../../packages/research-workbench/rust { };
     jev-mcp = pkgs.callPackage ../../packages/jev-mcp { };
     factory-config = pkgs.callPackage ../../packages/factory-config { };
   }

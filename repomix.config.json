@@ -1,0 +1,10 @@
+{
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": false
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

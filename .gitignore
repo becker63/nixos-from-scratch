@@ -1,6 +1,11 @@
 # Generated python bytecode
 __pycache__/
 *.pyc
+.pytest_cache/
+.venv/
+target/
+node_modules/
+*.log
 
 # Nix build result symlinks
 result
@@ -10,6 +15,10 @@ result-*
 .direnv/
 
 # repoclip xonsh function output; regenerable on demand into whatever cwd
-repomix-output.xml
+repomix-output*.xml
+
+# Scratch working directories and generated Attune validation reports.
+.tmp/
+packages/pi-runtime/jev-*-results.json
 
 # hardware-configuration.nix is tracked on purpose (nodes/nixos-btw/)
