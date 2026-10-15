@@ -1,0 +1,21 @@
+# Extra context exclusions: generated experiment output and previous pack files.
+.tmp/
+packages/pi-runtime/jev-*-results.json
+packages/pi-runtime/jev-playground/results/
+packages/pi-runtime/jev-playground/*.json
+packages/pi-runtime/jev-agent/*.json
+repomix-output*.xml
+**/.git/
+firmware/all_firmware.tar.gz
+firmware/kernelcache.*
+
+# Credentials and local runtime state, even if a Git ignore rule is later removed.
+.env
+.env.*
+secrets/
+.codex/
+.pi/fabric/
+**/auth.json
+**/credentials.json
+**/*.pem
+**/*.key

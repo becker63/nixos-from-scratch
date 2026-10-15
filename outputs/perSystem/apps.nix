@@ -19,6 +19,14 @@ lib.optionalAttrs (system == "aarch64-linux") {
     type = "app";
     program = "${outputs'.packages.attune-dsh-integration}/bin/attune-dsh-integration";
   };
+  research-textual = {
+    type = "app";
+    program = "${outputs'.packages.research-textual}/bin/research-textual";
+  };
+  research-ratatui = {
+    type = "app";
+    program = "${outputs'.packages.research-ratatui}/bin/attune-ratatui-workbench";
+  };
   zed-deps-report = {
     type = "app";
     program = "${outputs'.packages.zed-deps-report}/bin/zed-deps-report";
