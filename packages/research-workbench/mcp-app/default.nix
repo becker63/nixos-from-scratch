@@ -7,7 +7,7 @@
 }:
 
 let
-  tunnelClient = callPackage ../../tunnel-client { };
+  tunnelClient = callPackage ./tunnel-client.nix { };
   runtime = python313.withPackages (ps: [ ps.mcp ]);
 in
 stdenvNoCC.mkDerivation {
