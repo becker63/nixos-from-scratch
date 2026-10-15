@@ -25,6 +25,7 @@ if [[ "$mode" == all || "$mode" == portable ]]; then
     '.#packages.x86_64-linux' >/dev/null
   # Also forces assertions in the existing cross-architecture package contract.
   nix_eval --raw '.#checks.x86_64-linux.portable-packages-eval.drvPath' >/dev/null
+  nix_eval --raw '.#checks.x86_64-linux.portable-desktop.drvPath' >/dev/null
   echo 'PASS: all portable x86_64 package derivations and invariant assertions evaluated.'
 fi
 
@@ -36,6 +37,7 @@ if [[ "$mode" == all || "$mode" == host ]]; then
     exit 1
   fi
   nix_eval --raw '.#nixosConfigurations.nixos-btw.config.system.build.toplevel.drvPath' >/dev/null
+  nix_eval --raw '.#checks.aarch64-linux.portable-desktop.drvPath' >/dev/null
   echo 'PASS: pinned Asahi host evaluates; its kernel and system closure were NOT built.'
 fi
 
