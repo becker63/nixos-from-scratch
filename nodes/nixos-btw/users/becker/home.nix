@@ -2,8 +2,7 @@
 
 {
   imports = [
-    modules'.base
-    modules'.desktop
+    modules'.desktop-profile
     modules'.pi
     modules'.packages
     modules'.opencode

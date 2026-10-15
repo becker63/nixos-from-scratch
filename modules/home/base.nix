@@ -4,18 +4,7 @@ let
   dotfiles = "${config.home.homeDirectory}/nixos-from-scratch/config";
   create_symlink = path: config.lib.file.mkOutOfStoreSymlink path;
 
-  configs = {
-    hypr = "hypr";
-    alacritty = "alacritty";
-    xonsh = "xonsh";
-    tofi = "tofi";
-    starship = "starship";
-    zed = "zed";
-    sway = "sway";
-    atuin = "atuin";
-    fastfetch = "fastfetch";
-    eww = "eww";
-  };
+  configs = import ../../lib/desktop-files.nix;
 in
 {
   home.username = "becker";

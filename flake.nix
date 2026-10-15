@@ -87,16 +87,44 @@
       # context and evaluates to an invalid deferred store path. Keep this
       # context-free string until Nixverse accepts a regular flake path.
       flakePath = builtins.unsafeDiscardStringContext (toString ./.);
+      loaded = nixverse.lib.load {
+        inherit inputs flakePath;
+        # Hosts are per-node (nodes/*/host.nix), so listing both systems only
+        # fans the perSystem outputs out — the aarch64 host is never
+        # instantiated on x86_64. Host-bound perSystem exports are guarded to
+        # aarch64 in outputs/perSystem/*.
+        systems = [
+          "aarch64-linux"
+          "x86_64-linux"
+        ];
+      };
     in
-    nixverse.lib.load {
-      inherit inputs flakePath;
-      # Hosts are per-node (nodes/*/host.nix), so listing both systems only
-      # fans the perSystem outputs out — the aarch64 host is never
-      # instantiated on x86_64. Host-bound perSystem exports are guarded to
-      # aarch64 in outputs/perSystem/*.
-      systems = [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
+    loaded
+    // {
+      # Portable exports use the same desktop source as the laptop. Consumers
+      # choose their own hardware, accounts, login manager and credentials.
+      checks = builtins.mapAttrs (
+        system: checks:
+        checks
+        // {
+          portable-desktop = import ./checks/portable-desktop.nix { inherit inputs system; };
+        }
+      ) loaded.checks;
+      homeManagerModules.desktop = import ./modules/home/desktop-profile.nix;
+      nixosModules.desktop = { ... }: {
+        imports = [
+          inputs.home-manager-unstable.nixosModules.home-manager
+          ./modules/nixos/system/desktop-common.nix
+        ];
+        nixpkgs.overlays = [
+          (import ./overlays/alacritty-copy-buffer.nix)
+          (import ./overlays/hyprland-stable.nix {
+            inherit (inputs) hyprland-pinned-nixpkgs;
+          })
+        ];
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+        home-manager.sharedModules = [ ./modules/home/desktop-profile.nix ];
+      };
     };
 }
